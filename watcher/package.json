@@ -1,0 +1,16 @@
+{
+  "name": "claude-dash-watcher",
+  "version": "1.0.0",
+  "description": "File watcher for Claude-Dash",
+  "main": "watcher.js",
+  "scripts": {
+    "start": "node watcher.js",
+    "watch": "node watcher.js --daemon"
+  },
+  "dependencies": {
+    "chokidar": "^3.5.3"
+  },
+  "optionalDependencies": {
+    "fsevents": "^2.3.3"
+  }
+}

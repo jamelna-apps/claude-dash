@@ -1,0 +1,12 @@
+{
+  "name": "claude-memory-dashboard",
+  "version": "1.0.0",
+  "description": "Claude Memory Dashboard Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "sql.js": "^1.10.3"
+  }
+}

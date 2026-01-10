@@ -1,0 +1,378 @@
+#!/bin/bash
+#
+# MLX Tools Runner for Claude-Dash
+#
+# Usage:
+#   mlx summarize <project> [--limit N]    # Re-summarize files
+#   mlx search <project> "query"           # Semantic search
+#   mlx similar <project> <file>           # Find similar files
+#   mlx build-embeddings <project>         # Build search index
+#   mlx classify "query"                   # Classify intent
+#   mlx pending                            # Show pending summaries
+#   mlx process [--all]                    # Process pending summaries
+#
+
+MLX_DIR="$HOME/.claude-dash/mlx-tools"
+VENV="$HOME/.claude-dash/mlx-env/bin/activate"
+
+# Activate virtual environment
+source "$VENV" 2>/dev/null || {
+    echo "Error: MLX virtual environment not found."
+    echo "Run: python3 -m venv ~/.claude-dash/mlx-env && source ~/.claude-dash/mlx-env/bin/activate && pip install mlx-lm"
+    exit 1
+}
+
+case "$1" in
+    dashboard|ui)
+        cd "$HOME/.claude-dash/dashboard"
+        ./start.sh
+        ;;
+    status|st)
+        python3 "$MLX_DIR/status.py" "${@:2}"
+        ;;
+    ask|a)
+        shift
+        python3 "$MLX_DIR/ask.py" "$@"
+        ;;
+    chat)
+        shift
+        python3 "$MLX_DIR/ask.py" "$1" --chat
+        ;;
+    q|query)
+        shift
+        python3 "$MLX_DIR/query.py" "$@"
+        ;;
+    hybrid|hs)
+        # Explicit hybrid search (BM25 + semantic)
+        shift
+        python3 "$MLX_DIR/hybrid_search.py" "$@"
+        ;;
+    summarize)
+        shift
+        python "$MLX_DIR/summarizer.py" "$@"
+        ;;
+    search)
+        project="$2"
+        shift 2
+        # Use v2 embeddings if available
+        if [ -f "$HOME/.claude-dash/projects/$project/embeddings_v2.json" ]; then
+            python3 "$MLX_DIR/embeddings_v2.py" "$project" search "$@"
+        else
+            python "$MLX_DIR/semantic_search.py" "$project" search "$@"
+        fi
+        ;;
+    analyze)
+        shift
+        python3 "$MLX_DIR/code_analyzer.py" "$@" analyze
+        ;;
+    explain)
+        shift
+        python3 "$MLX_DIR/code_analyzer.py" "$@" explain
+        ;;
+    review)
+        shift
+        python3 "$MLX_DIR/code_analyzer.py" "$@" review
+        ;;
+    health)
+        project="$2"
+        project_path=$(python3 -c "import json; c=json.load(open('$HOME/.claude-dash/config.json')); print([p['path'] for p in c['projects'] if p['id']=='$project'][0])" 2>/dev/null)
+        if [ -z "$project_path" ]; then
+            echo "Project not found: $project"
+            exit 1
+        fi
+        shift 2
+        python3 "$MLX_DIR/code_health.py" "$project_path" "$project" "${@:-scan}"
+        ;;
+    health-status)
+        project="$2"
+        project_path=$(python3 -c "import json; c=json.load(open('$HOME/.claude-dash/config.json')); print([p['path'] for p in c['projects'] if p['id']=='$project'][0])" 2>/dev/null)
+        python3 "$MLX_DIR/code_health.py" "$project_path" "$project" status
+        ;;
+    wireframe|wf)
+        shift
+        python3 "$MLX_DIR/wireframe_analyzer.py" "$@"
+        ;;
+    similar)
+        project="$2"
+        file="$3"
+        shift 3
+        python "$MLX_DIR/semantic_search.py" "$project" similar "$file" "$@"
+        ;;
+    build-embeddings)
+        shift
+        python "$MLX_DIR/semantic_search.py" "$@" build
+        ;;
+    classify)
+        shift
+        python "$MLX_DIR/intent_classifier.py" "$@"
+        ;;
+    sessions|obs)
+        shift
+        python3 "$MLX_DIR/session_search.py" "$@"
+        ;;
+    # ===================
+    # ERROR LOGGING
+    # ===================
+    errors|err)
+        shift
+        python3 "$MLX_DIR/error_logger.py" "$@"
+        ;;
+    log-error|le)
+        shift
+        python3 "$MLX_DIR/error_logger.py" log "$@"
+        ;;
+    error-stats|es)
+        shift
+        python3 "$MLX_DIR/error_logger.py" stats "$@"
+        ;;
+    pending)
+        python "$MLX_DIR/process_pending.py"
+        ;;
+    process)
+        shift
+        if [ "$1" = "--all" ]; then
+            python "$MLX_DIR/process_pending.py" --all-projects
+        else
+            python "$MLX_DIR/process_pending.py" --project "$1"
+        fi
+        ;;
+    tasks)
+        project="$2"
+        if [ -z "$project" ]; then
+            echo "Usage: mlx tasks <project>"
+            exit 1
+        fi
+        project_path=$(python3 -c "import json; c=json.load(open('$HOME/.claude-dash/config.json')); print([p['path'] for p in c['projects'] if p['id']=='$project'][0])" 2>/dev/null)
+        if [ -z "$project_path" ]; then
+            echo "Project not found: $project"
+            exit 1
+        fi
+        beads_dir="$project_path/.beads"
+        if [ ! -d "$beads_dir" ]; then
+            echo "Beads not initialized in $project"
+            echo "Run: cd $project_path && bd init"
+            exit 1
+        fi
+        echo "=== Active Tasks for $project ==="
+        cd "$project_path" && bd ready
+        ;;
+    # ===================
+    # GIT HELPERS
+    # ===================
+    commit|cm)
+        python3 "$MLX_DIR/commit_helper.py"
+        ;;
+    pr|pull-request)
+        shift
+        python3 "$MLX_DIR/pr_helper.py" "$@"
+        ;;
+    # ===================
+    # CODE HELPERS
+    # ===================
+    code-review|cr)
+        shift
+        python3 "$MLX_DIR/code_reviewer.py" "$@"
+        ;;
+    test|generate-test|gt)
+        shift
+        python3 "$MLX_DIR/test_generator.py" "$@"
+        ;;
+    error|analyze-error|ae)
+        shift
+        python3 "$MLX_DIR/error_analyzer.py" "$@"
+        ;;
+    # ===================
+    # EMBEDDINGS & RAG
+    # ===================
+    ollama-embed|oe)
+        shift
+        python3 "$MLX_DIR/ollama_embeddings.py" "$@"
+        ;;
+    rag)
+        shift
+        python3 "$MLX_DIR/rag_pipeline.py" "$@"
+        ;;
+    memory-assist|ma)
+        shift
+        python3 "$MLX_DIR/memory_assistant.py" "$@"
+        ;;
+    portfolio|pf)
+        shift
+        python3 "$MLX_DIR/portfolio_assistant.py" "$@"
+        ;;
+    install-hooks)
+        bash "$MLX_DIR/install-hooks.sh"
+        ;;
+    # ===================
+    # DATABASE & DAEMON
+    # ===================
+    db)
+        shift
+        python3 "$MLX_DIR/memory_db.py" "$@"
+        ;;
+    db-search|dbs)
+        shift
+        python3 "$MLX_DIR/memory_db.py" search "$@"
+        ;;
+    db-functions|dbf)
+        shift
+        python3 "$MLX_DIR/memory_db.py" functions "$@"
+        ;;
+    daemon|d)
+        shift
+        python3 "$MLX_DIR/indexing_daemon.py" "$@"
+        ;;
+    context|ctx)
+        shift
+        python3 "$MLX_DIR/proactive_assistant.py" "$@"
+        ;;
+    index)
+        shift
+        python3 "$MLX_DIR/indexing_daemon.py" once "$@"
+        ;;
+    index-full)
+        shift
+        python3 "$MLX_DIR/indexing_daemon.py" full "$@"
+        ;;
+    hnsw)
+        shift
+        python3 "$MLX_DIR/hnsw_index.py" "$@"
+        ;;
+    # ===================
+    # GOALS & INTENT
+    # ===================
+    goal|goals|g)
+        shift
+        python3 "$MLX_DIR/goals.py" "$@"
+        ;;
+    help|--help|-h|"")
+        echo "MLX Tools for Claude-Dash"
+        echo ""
+        echo "OLLAMA AI (requires: ./dev-env.sh start):"
+        echo "  mlx ask <project> \"question\"           # Ask about codebase using AI"
+        echo "  mlx chat <project>                     # Interactive chat mode"
+        echo "  mlx status                             # System health check"
+        echo ""
+        echo "DASHBOARD:"
+        echo "  mlx dashboard                          # Open visual dashboard"
+        echo ""
+        echo "QUICK COMMANDS:"
+        echo "  mlx q <project> \"question\"             # Quick query (hybrid BM25+semantic)"
+        echo "  mlx hybrid <project> \"query\"           # Explicit hybrid search"
+        echo "  mlx search <project> \"query\"           # Semantic search (uses embeddings)"
+        echo "  mlx similar <project> <file>           # Find similar files"
+        echo ""
+        echo "CODE ANALYSIS:"
+        echo "  mlx analyze <project> <file>           # Analyze code structure"
+        echo "  mlx explain <project> <file>           # Explain code in plain English"
+        echo "  mlx review <project> <file>            # Code review for issues"
+        echo ""
+        echo "CODE HEALTH:"
+        echo "  mlx health <project>                   # Run quick health scan"
+        echo "  mlx health-status <project>            # Show current health status"
+        echo ""
+        echo "WIREFRAME & DESIGN:"
+        echo "  mlx wireframe <project> inventory      # List all screens"
+        echo "  mlx wireframe <project> flow           # Navigation flow (Mermaid)"
+        echo "  mlx wireframe <project> screen <name>  # Screen details"
+        echo "  mlx wireframe <project> data-map       # Screen data dependencies"
+        echo "  mlx wireframe <project> export         # Full wireframe JSON"
+        echo ""
+        echo "SESSION MEMORY:"
+        echo "  mlx sessions \"query\"                   # Search past observations"
+        echo "  mlx sessions -l                        # List recent sessions"
+        echo "  mlx sessions -s <id>                   # Show session details"
+        echo "  mlx sessions -c decision \"query\"       # Filter by category"
+        echo "  mlx sessions -p <project> \"query\"      # Filter by project"
+        echo ""
+        echo "ERROR LOGGING:"
+        echo "  mlx errors list [--project X]          # List recent errors"
+        echo "  mlx errors search \"query\"              # Search error logs"
+        echo "  mlx errors stats                       # Error statistics"
+        echo "  mlx log-error <project> '<json>'       # Log new error (JSON)"
+        echo ""
+        echo "TASKS:"
+        echo "  mlx tasks <project>                    # Show active Beads tasks"
+        echo ""
+        echo "GOALS & INTENT:"
+        echo "  mlx goal list <project>                # List active goals"
+        echo "  mlx goal list <project> --all          # Include completed/archived"
+        echo "  mlx goal add <project> \"summary\"       # Add new goal"
+        echo "  mlx goal add <project> \"s\" --why \"r\"   # Add with reason"
+        echo "  mlx goal complete <project> <id>       # Mark goal complete"
+        echo "  mlx goal archive <project> <id>        # Archive/abandon goal"
+        echo "  mlx goal note <project> <id> \"note\"    # Add note to goal"
+        echo "  mlx goal all                           # Show all active goals"
+        echo ""
+        echo "GIT HELPERS:"
+        echo "  mlx commit                             # Generate commit message from staged changes"
+        echo "  mlx pr [base]                          # Generate PR description (default: main)"
+        echo ""
+        echo "CODE HELPERS:"
+        echo "  mlx code-review [file]                 # Review code/staged changes for issues"
+        echo "  mlx test <file> [--output <test_file>] # Generate unit tests"
+        echo "  mlx error [file]                       # Analyze error/stack trace"
+        echo ""
+        echo "RAG & EMBEDDINGS:"
+        echo "  mlx rag <project> <question>           # RAG-powered Q&A (best quality)"
+        echo "  mlx ollama-embed build <project>       # Build Ollama embeddings"
+        echo "  mlx ollama-embed search <project> <q>  # Semantic search with Ollama"
+        echo ""
+        echo "MEMORY ASSISTANT (single project visibility for Ollama):"
+        echo "  mlx memory-assist <project> <question> # Ask anything about memory data"
+        echo "  mlx memory-assist <project> --health   # Get structured health data"
+        echo "  mlx memory-assist <project> --explain-health  # AI explanation of health"
+        echo "  mlx memory-assist <project> --summary  # Get full project overview"
+        echo "  mlx memory-assist <project> --all      # Export all memory data as JSON"
+        echo "  mlx memory-assist --list               # List available projects"
+        echo ""
+        echo "PORTFOLIO ASSISTANT (cross-project intelligence for Ollama):"
+        echo "  mlx portfolio overview                 # Overview of all projects"
+        echo "  mlx portfolio health                   # Health comparison across projects"
+        echo "  mlx portfolio tech                     # Technology stacks analysis"
+        echo "  mlx portfolio features                 # Feature catalog across projects"
+        echo "  mlx portfolio sessions                 # Recent session activity"
+        echo "  mlx portfolio patterns                 # Patterns and learnings"
+        echo "  mlx portfolio search <query>           # Search across all projects"
+        echo "  mlx portfolio ask <question>           # Ask Ollama about portfolio"
+        echo ""
+        echo "SETUP:"
+        echo "  mlx install-hooks                      # Install AI git hooks"
+        echo ""
+        echo "DATABASE & INDEXING:"
+        echo "  mlx db stats                           # Database statistics"
+        echo "  mlx db-search <query>                  # Cross-project file search"
+        echo "  mlx db-functions <name>                # Cross-project function search"
+        echo "  mlx index [-p project]                 # Index changed files"
+        echo "  mlx index-full [-p project]            # Full re-index"
+        echo "  mlx daemon start                       # Start background indexer"
+        echo "  mlx daemon stop                        # Stop background indexer"
+        echo "  mlx daemon status                      # Check daemon status"
+        echo ""
+        echo "PROACTIVE CONTEXT:"
+        echo "  mlx ctx <project> --startup            # Context when starting work"
+        echo "  mlx ctx <project> --file <path>        # Context for a file"
+        echo "  mlx ctx <project> --dir <path>         # Context for a directory"
+        echo "  mlx ctx <project> --branch <name>      # Context for a git branch"
+        echo "  mlx ctx --error <type> <message>       # Find similar past errors"
+        echo ""
+        echo "MAINTENANCE:"
+        echo "  mlx summarize <project> [--limit N]    # Re-summarize changed files"
+        echo "  mlx build-embeddings <project>         # Build search index"
+        echo "  mlx pending                            # Show pending summaries"
+        echo "  mlx process [--all | <project>]        # Process pending summaries"
+        echo ""
+        echo "Examples:"
+        echo "  mlx ask gyst \"how does authentication work?\""
+        echo "  mlx chat gyst                              # Start interactive chat"
+        echo "  mlx status                                 # Check system health"
+        echo "  mlx q gyst \"where is the login screen?\""
+        echo "  mlx search gyst \"authentication firebase\""
+        echo "  mlx sessions \"PID file\""
+        ;;
+    *)
+        echo "Unknown command: $1"
+        echo "Run 'mlx help' for usage"
+        exit 1
+        ;;
+esac

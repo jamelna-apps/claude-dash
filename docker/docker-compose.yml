@@ -1,0 +1,118 @@
+# Claude Memory System + Local AI Infrastructure
+# Usage: cd ~/.claude-memory/docker && docker-compose up -d
+#
+# Services:
+#   - ollama: Local AI (Llama, etc.)
+#   - memory-dashboard: Web UI on port 3333
+#   - memory-watcher: File monitoring (optional, can run natively)
+
+services:
+  # ===================
+  # LOCAL AI (Ollama)
+  # ===================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===================
+  # CLAUDE MEMORY DASHBOARD
+  # ===================
+  memory-dashboard:
+    image: node:20-alpine
+    container_name: memory-dashboard
+    working_dir: /app/dashboard
+    command: sh -c "npm install --silent 2>/dev/null; node server.js 3333"
+    ports:
+      - "3333:3333"
+    volumes:
+      - ../dashboard:/app/dashboard
+      - ../config.json:/app/claude-memory/config.json:ro
+      - ../projects:/app/claude-memory/projects:ro
+      - ../global:/app/claude-memory/global:ro
+      # SQLite database for unified storage
+      - ../memory.db:/app/claude-memory/memory.db:ro
+      # HNSW vector indexes
+      - ../indexes:/app/claude-memory/indexes:ro
+      # MLX tools for queries
+      - ../mlx-tools:/app/claude-memory/mlx-tools:ro
+      # Sessions data
+      - ../sessions:/app/claude-memory/sessions:ro
+    environment:
+      - MEMORY_ROOT=/app/claude-memory
+      - OLLAMA_URL=http://ollama:11434
+    networks:
+      - default
+      - dev-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3333"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===================
+  # CLAUDE MEMORY WATCHER (Legacy Node.js)
+  # Note: Runs better natively on macOS due to fsevents
+  # ===================
+  memory-watcher:
+    image: node:20-alpine
+    container_name: memory-watcher
+    working_dir: /app/watcher
+    command: sh -c "npm install --silent 2>/dev/null; node watcher.js"
+    volumes:
+      - ../watcher:/app/watcher
+      - ../config.json:/app/claude-memory/config.json
+      - ../projects:/app/claude-memory/projects
+      - ../logs:/app/claude-memory/logs
+      - ${PROJECTS_ROOT:-/Users/jmelendez/Documents/Projects}:/data/projects:ro
+    environment:
+      - MEMORY_ROOT=/app/claude-memory
+      - PROJECTS_ROOT=/data/projects
+    profiles:
+      - watcher  # Optional: docker-compose --profile watcher up
+    restart: unless-stopped
+
+  # ===================
+  # INDEXING DAEMON (Python - Recommended)
+  # New background indexer using SQLite
+  # ===================
+  indexing-daemon:
+    image: python:3.11-slim
+    container_name: indexing-daemon
+    working_dir: /app/mlx-tools
+    command: python indexing_daemon.py watch
+    volumes:
+      - ../mlx-tools:/app/mlx-tools:ro
+      - ../config.json:/app/claude-memory/config.json:ro
+      - ../projects:/app/claude-memory/projects
+      - ../memory.db:/app/claude-memory/memory.db
+      - ../indexes:/app/claude-memory/indexes
+      - ../logs:/app/claude-memory/logs
+      - ${PROJECTS_ROOT:-/Users/jmelendez/Documents/Projects}:/data/projects:ro
+    environment:
+      - MEMORY_ROOT=/app/claude-memory
+      - PROJECTS_ROOT=/data/projects
+    profiles:
+      - indexer  # Optional: docker-compose --profile indexer up
+    restart: unless-stopped
+
+volumes:
+  ollama_models:
+    name: ollama_models
+
+networks:
+  default:
+    name: claude-memory-network
+  dev-network:
+    external: true

@@ -1,0 +1,49 @@
+# Personal data
+config.json
+memory.db
+daemon.log
+
+# Project-specific data
+projects/
+sessions/
+indexes/
+logs/
+error-queue/
+
+# Sensitive files
+global/api-keys.json
+global/keys-metadata.json
+global/integrations.json
+global/knowledge-base.json
+
+# Generated files
+*.log
+*.pid
+watcher/watcher.log
+watcher/watcher.error.log
+
+# Dependencies
+node_modules/
+mlx-env/
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+.Trash/
+
+# IDE
+.vscode/
+.idea/
+
+# Docker volumes
+docker/data/
+
+# Temporary files
+fix-requests/
+reports/
+*.tmp
+
+# Build artifacts
+dist/
+build/

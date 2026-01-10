@@ -1,0 +1,16 @@
+{
+  "name": "mlx-tools",
+  "version": "1.0.0",
+  "description": "Local AI tools using Apple MLX - zero API token cost.",
+  "main": "ast_analyzer.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "acorn": "^8.15.0",
+    "acorn-jsx": "^5.3.2"
+  }
+}

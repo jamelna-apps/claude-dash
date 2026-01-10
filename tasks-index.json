@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "lastUpdated": "2025-12-30T12:23:52.100Z",
+  "projects": {
+    "claude-memory-dashboard": {
+      "initialized": true,
+      "activeCount": 0,
+      "lastSync": "2025-12-30T12:23:46.723Z"
+    },
+    "gyst": {
+      "initialized": true,
+      "activeCount": 0,
+      "lastSync": "2025-12-30T12:23:46.770Z"
+    },
+    "gyst-seller-portal": {
+      "initialized": true,
+      "activeCount": 0,
+      "lastSync": "2025-12-30T12:23:46.817Z"
+    },
+    "jamelna": {
+      "initialized": true,
+      "activeCount": 0,
+      "lastSync": "2025-12-30T12:23:51.959Z"
+    },
+    "smartiegoals": {
+      "initialized": true,
+      "activeCount": 0,
+      "lastSync": "2025-12-30T12:23:52.007Z"
+    },
+    "spread-your-ashes": {
+      "initialized": true,
+      "activeCount": 0,
+      "lastSync": "2025-12-30T12:23:52.052Z"
+    },
+    "codetale": {
+      "initialized": true,
+      "activeCount": 0,
+      "lastSync": "2025-12-30T12:23:52.100Z"
+    },
+    "android-gyst": {
+      "initialized": false
+    }
+  }
+}

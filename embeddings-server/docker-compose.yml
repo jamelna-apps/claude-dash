@@ -1,0 +1,45 @@
+# Local Embeddings Server with Cloudflare Tunnel
+#
+# Usage:
+#   docker-compose up -d          # Start in background
+#   docker-compose logs -f        # View logs
+#   docker-compose down           # Stop
+#   docker-compose build --no-cache  # Rebuild embeddings server
+
+services:
+  embeddings:
+    build: .
+    container_name: embeddings-server
+    restart: unless-stopped
+    environment:
+      - EMBEDDING_MODEL=BAAI/bge-m3
+    volumes:
+      - model-cache:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - embeddings-net
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: embeddings-tunnel
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=eyJhIjoiY2EzYTQ5OWY3MWMzMDAyNzdlMTVhNGM0OGM3YTU2ZGUiLCJ0IjoiZjQ2ZTA0ZmMtMmI2Yy00OWNiLThhNDMtNTE4M2U2NWEwYTU1IiwicyI6IlpHUmhPV0V5Tm1NdFlqTXlOaTAwWWpVNExXSmxPREV0WWpCa1l6SXdNREkxWXpBeCJ9
+    depends_on:
+      embeddings:
+        condition: service_healthy
+    networks:
+      - embeddings-net
+
+volumes:
+  model-cache:
+
+networks:
+  embeddings-net:
+    driver: bridge

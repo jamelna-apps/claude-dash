@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-01-01T00:00:00Z",
+
+  "use": [],
+
+  "avoid": [],
+
+  "conventions": [
+    {
+      "topic": "claude workflow",
+      "rule": "ALWAYS read Claude Memory files BEFORE planning or implementing new features. Read: summaries.json (file structure/patterns), schema.json (database collections), graph.json (navigation/relationships), functions.json (function index), preferences.json (project rules)",
+      "priority": "critical",
+      "addedOn": "2025-01-01"
+    },
+    {
+      "topic": "model selection for agents",
+      "rule": "Use gradient approach: MLX local ($0) -> Haiku ($) -> Sonnet ($$) -> Opus ($$$$). Reserve Opus for genuinely complex architecture only (~25% of planning). Use Sonnet for 75% of planning and ALL implementation.",
+      "decision_tree": {
+        "planning": {
+          "complex": "Opus - Greenfield architecture, multiple non-obvious approaches, high reversal cost",
+          "standard": "Sonnet - Following patterns, clear approach, well-understood problems (75% of cases)"
+        },
+        "implementation": "Sonnet - ALWAYS use Sonnet, even for Opus-planned features",
+        "exploration": "Haiku - Fast file/code exploration",
+        "quick_tasks": "Haiku - Formatting, simple refactors, debug logging"
+      },
+      "priority": "critical",
+      "addedOn": "2025-01-01"
+    }
+  ],
+
+  "patterns": []
+}

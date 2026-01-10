@@ -1,0 +1,102 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-12-31T00:00:00Z",
+
+  "use": [],
+
+  "avoid": [],
+
+  "conventions": [
+    {
+      "topic": "claude workflow",
+      "rule": "ALWAYS read Claude Memory files BEFORE planning or implementing new features. Read: summaries.json (file structure/patterns), schema.json (database collections), graph.json (navigation/relationships), functions.json (function index), preferences.json (project rules)",
+      "priority": "critical",
+      "addedOn": "2025-12-15"
+    },
+    {
+      "topic": "model selection for agents",
+      "rule": "Use gradient approach: MLX local ($0) → Haiku ($) → Sonnet ($$) → Opus ($$$$). Reserve Opus for genuinely complex architecture only (~25% of planning). Use Sonnet for 75% of planning and ALL implementation. See AI-MODEL-STRATEGY.md for full decision tree.",
+      "decision_tree": {
+        "planning": {
+          "complex": "Opus - Greenfield architecture, multiple non-obvious approaches, high reversal cost, cross-cutting concerns",
+          "standard": "Sonnet - Following patterns, clear approach, well-understood problems, refactoring (75% of cases)"
+        },
+        "implementation": "Sonnet - ALWAYS use Sonnet, even for Opus-planned features",
+        "exploration": "Haiku - Fast file/code exploration",
+        "quick_tasks": "Haiku - Formatting, simple refactors, debug logging, documentation"
+      },
+      "examples": [
+        "Task(model: 'opus') ONLY for genuinely complex architecture (e.g., 'design offline-first sync system')",
+        "Task(model: 'sonnet') for standard planning (e.g., 'plan user profile screen')",
+        "Task(model: 'sonnet') for ALL implementation/coding",
+        "Task(model: 'haiku') for exploration, simple tasks"
+      ],
+      "priority": "critical",
+      "addedOn": "2025-12-18",
+      "lastUpdated": "2026-01-10"
+    },
+    {
+      "topic": "ollama local ai tools",
+      "rule": "Use local Ollama-powered MLX tools PROACTIVELY and AUTOMATICALLY to save tokens. These run locally ($0 cost). Upgrade to qwen2.5:7b recommended for better quality.",
+      "automatic_routing": {
+        "description": "Claude automatically uses MLX for certain question patterns during exploration phase",
+        "patterns": {
+          "where_is": "mlx q <project> - Auto-trigger on 'where is X?' / 'find X'",
+          "how_does": "mlx rag <project> - Auto-trigger on 'how does X work?' (exploring phase only)",
+          "what_uses": "mlx q <project> - Auto-trigger on 'what files use X?'",
+          "function_lookup": "mlx db-functions - Auto-trigger on function name searches"
+        },
+        "context_aware": "Skip MLX during mid-implementation (files loaded, actively coding) - use loaded context instead"
+      },
+      "tools": {
+        "mlx q <project> <question>": "Quick queries - where is X, find X, what uses X",
+        "mlx rag <project> <question>": "Use FIRST when exploring unfamiliar code - provides RAG-powered answers with file context",
+        "mlx db-search <query>": "Cross-project file search",
+        "mlx db-functions <name>": "Cross-project function search",
+        "mlx similar <project> <file>": "Find related files",
+        "mlx code-review [file]": "Run on significant code written before presenting to user - catches bugs/security issues",
+        "mlx test <file>": "Generate test scaffolds after implementing features",
+        "mlx error": "Analyze stack traces/errors the user shares",
+        "mlx commit": "Use for commit messages - incorporates project conventions",
+        "mlx pr [base]": "Generate PR descriptions with full branch context"
+      },
+      "workflow": [
+        "FIRST: Check if MLX can answer (where/find/how questions) - automatic during exploration",
+        "Before exploring codebase: mlx rag <project> 'question' for quick context",
+        "After writing significant code: mlx code-review to catch issues",
+        "When user shares errors: mlx error for analysis",
+        "After completing features: suggest mlx commit and mlx test"
+      ],
+      "recommended_model": "qwen2.5:7b (4.7GB) - Better reasoning than llama3.2:3b, fits in 16GB RAM",
+      "priority": "critical",
+      "addedOn": "2025-12-31",
+      "lastUpdated": "2026-01-10"
+    },
+    {
+      "topic": "gemini cli integration",
+      "rule": "Gemini CLI (v0.21.3) is available as a complementary AI tool. SUGGEST using it for: (1) parallel subtasks while Claude handles main work, (2) specialized research/comparison tasks, (3) second opinions on architecture or debugging. Always ASK before invoking - don't auto-run.",
+      "usage": {
+        "oneShot": "gemini \"your prompt here\" 2>/dev/null",
+        "withModel": "gemini -m gemini-2.5-pro \"prompt\" 2>/dev/null",
+        "jsonOutput": "gemini \"prompt\" -o json 2>/dev/null"
+      },
+      "usageTracking": {
+        "command": "swift ~/.claude/fetch-claude-usage.swift 2>/dev/null",
+        "format": "utilization_percent|reset_time_iso",
+        "threshold": 90,
+        "action": "When utilization >= 90%, proactively suggest offloading tasks to Gemini"
+      },
+      "whenToSuggest": [
+        "Complex debugging where a second perspective helps",
+        "Research tasks that can run in parallel",
+        "Comparing different approaches to a problem",
+        "Tasks involving Google-specific knowledge (Firebase, GCP, Android)",
+        "When usage >= 90% (check via usageTracking.command) - offload research, exploration, and simpler tasks to Gemini"
+      ],
+      "priority": "medium",
+      "addedOn": "2025-12-19"
+    }
+  ],
+
+  "patterns": []
+}

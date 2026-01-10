@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "projectsRoot": "/path/to/your/projects",
+  "watcher": {
+    "enabled": true,
+    "ignorePatterns": [
+      "node_modules",
+      ".git",
+      "dist",
+      "build",
+      ".expo",
+      "*.log",
+      ".DS_Store",
+      "ios",
+      "android",
+      "Pods",
+      ".worktrees",
+      "*.lock",
+      "coverage",
+      ".next",
+      ".vercel",
+      "*.map",
+      "__tests__",
+      "*.test.js",
+      "*.spec.js"
+    ],
+    "scanIntervalMs": 5000
+  },
+  "projects": [
+    {
+      "id": "my-project",
+      "displayName": "My Project",
+      "path": "/path/to/your/projects/my-project",
+      "memoryPath": "projects/my-project"
+    }
+  ]
+}
