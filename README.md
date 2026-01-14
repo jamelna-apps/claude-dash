@@ -16,9 +16,29 @@ Claude-Dash gives Claude Code persistent memory across sessions. It indexes your
 
 ## Quick Start
 
+### One-Line Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jamelna-apps/claude-dash/main/install.sh | bash
+```
+
+### Manual Installation
+
 1. Clone this repository:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/claude-dash.git ~/.claude-dash
+   git clone https://github.com/jamelna-apps/claude-dash.git ~/.claude-dash
+   ```
+
+2. Run the installer:
+   ```bash
+   ~/.claude-dash/install.sh
+   ```
+
+### Manual Setup (Advanced)
+
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/jamelna-apps/claude-dash.git ~/.claude-dash
    ```
 
 2. Set up configuration:
@@ -288,6 +308,16 @@ python3 ~/.claude-dash/learning/git_awareness.py /path/to/project
 **Storage growing large**
 - Run compaction: `python3 ~/.claude-dash/memory/transcript_compactor.py --compact-all`
 - Clear logs: `rm ~/.claude-dash/logs/*.log`
+
+## Uninstalling
+
+To remove Claude-Dash:
+
+```bash
+~/.claude-dash/uninstall.sh
+```
+
+The uninstaller will optionally preserve your project data and learning history.
 
 ## License
 
