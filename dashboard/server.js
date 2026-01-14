@@ -14,6 +14,8 @@ const MEMORY_ROOT = process.env.MEMORY_ROOT || path.join(process.env.HOME, '.cla
 const PROJECTS_DIR = path.join(MEMORY_ROOT, 'projects');
 const CONFIG_PATH = path.join(MEMORY_ROOT, 'config.json');
 const MLX_TOOLS = path.join(MEMORY_ROOT, 'mlx-tools');
+const LEARNING_DIR = path.join(MEMORY_ROOT, 'learning');
+const SESSIONS_DIR = path.join(MEMORY_ROOT, 'sessions');
 
 // MIME types
 const MIME_TYPES = {
@@ -70,6 +72,217 @@ function checkOllama() {
   } catch (e) {
     return { available: false, model: null };
   }
+}
+
+// Load efficiency data from learning systems
+function loadEfficiencyData() {
+  const data = {
+    sessions: { total: 0, byWeek: {} },
+    corrections: { total: 0, byWeek: {}, rate: 0 },
+    outcomes: { success: 0, failure: 0, partial: 0, byWeek: {} },
+    tokenSavings: { memoryHits: 0, filesAvoided: 0, estimated: 0 },
+    confidence: { domains: {}, weakAreas: [] },
+    preferences: { learned: 0, highConfidence: 0 },
+    trends: []
+  };
+
+  // Load corrections
+  const correctionsPath = path.join(LEARNING_DIR, 'corrections.json');
+  if (fs.existsSync(correctionsPath)) {
+    try {
+      const corrections = JSON.parse(fs.readFileSync(correctionsPath, 'utf8'));
+      const list = corrections.corrections || [];
+      data.corrections.total = list.length;
+
+      // Group by week
+      list.forEach(c => {
+        if (c.timestamp) {
+          const date = new Date(c.timestamp);
+          const week = getWeekString(date);
+          data.corrections.byWeek[week] = (data.corrections.byWeek[week] || 0) + 1;
+        }
+      });
+    } catch (e) { console.error('Error loading corrections:', e.message); }
+  }
+
+  // Load outcomes
+  const outcomesPath = path.join(LEARNING_DIR, 'outcomes.json');
+  if (fs.existsSync(outcomesPath)) {
+    try {
+      const outcomes = JSON.parse(fs.readFileSync(outcomesPath, 'utf8'));
+      const list = outcomes.outcomes || [];
+
+      list.forEach(o => {
+        if (o.outcome === 'success') data.outcomes.success++;
+        else if (o.outcome === 'failure') data.outcomes.failure++;
+        else if (o.outcome === 'partial') data.outcomes.partial++;
+
+        if (o.timestamp) {
+          const date = new Date(o.timestamp);
+          const week = getWeekString(date);
+          if (!data.outcomes.byWeek[week]) {
+            data.outcomes.byWeek[week] = { success: 0, failure: 0, partial: 0 };
+          }
+          if (o.outcome in data.outcomes.byWeek[week]) {
+            data.outcomes.byWeek[week][o.outcome]++;
+          }
+        }
+      });
+    } catch (e) { console.error('Error loading outcomes:', e.message); }
+  }
+
+  // Load confidence calibration
+  const calibrationPath = path.join(LEARNING_DIR, 'confidence_calibration.json');
+  if (fs.existsSync(calibrationPath)) {
+    try {
+      const calibration = JSON.parse(fs.readFileSync(calibrationPath, 'utf8'));
+      data.confidence.domains = calibration.domains || {};
+
+      // Find weak areas (accuracy < 0.65)
+      Object.entries(data.confidence.domains).forEach(([domain, stats]) => {
+        if (stats.total >= 3 && stats.accuracy < 0.65) {
+          data.confidence.weakAreas.push({ domain, accuracy: stats.accuracy, total: stats.total });
+        }
+      });
+    } catch (e) { console.error('Error loading calibration:', e.message); }
+  }
+
+  // Load preferences
+  const preferencesPath = path.join(LEARNING_DIR, 'inferred_preferences.json');
+  if (fs.existsSync(preferencesPath)) {
+    try {
+      const prefs = JSON.parse(fs.readFileSync(preferencesPath, 'utf8'));
+      const list = prefs.preferences || [];
+      data.preferences.learned = list.length;
+      data.preferences.highConfidence = list.filter(p => p.confidence >= 0.7).length;
+    } catch (e) { console.error('Error loading preferences:', e.message); }
+  }
+
+  // Count sessions from transcripts
+  const transcriptsDir = path.join(SESSIONS_DIR, 'transcripts');
+  if (fs.existsSync(transcriptsDir)) {
+    try {
+      const files = fs.readdirSync(transcriptsDir).filter(f => f.endsWith('.jsonl'));
+      data.sessions.total = files.length;
+
+      files.forEach(f => {
+        const stat = fs.statSync(path.join(transcriptsDir, f));
+        const week = getWeekString(stat.mtime);
+        data.sessions.byWeek[week] = (data.sessions.byWeek[week] || 0) + 1;
+      });
+    } catch (e) { console.error('Error counting sessions:', e.message); }
+  }
+
+  // Calculate correction rate
+  if (data.sessions.total > 0) {
+    data.corrections.rate = data.corrections.total / data.sessions.total;
+  }
+
+  // Estimate token savings
+  const AVG_FILE_TOKENS = 1500;
+  const AVG_MEMORY_TOKENS = 200;
+  data.tokenSavings.memoryHits = data.sessions.total * 5; // Estimate 5 memory hits per session
+  data.tokenSavings.filesAvoided = Math.floor(data.tokenSavings.memoryHits * 0.7);
+  data.tokenSavings.estimated = data.tokenSavings.filesAvoided * (AVG_FILE_TOKENS - AVG_MEMORY_TOKENS);
+
+  // Build weekly trends
+  const allWeeks = new Set([
+    ...Object.keys(data.sessions.byWeek),
+    ...Object.keys(data.corrections.byWeek)
+  ]);
+  const sortedWeeks = Array.from(allWeeks).sort().slice(-8);
+
+  sortedWeeks.forEach(week => {
+    const sessions = data.sessions.byWeek[week] || 0;
+    const corrections = data.corrections.byWeek[week] || 0;
+    const outcomes = data.outcomes.byWeek[week] || { success: 0, failure: 0, partial: 0 };
+
+    data.trends.push({
+      week,
+      sessions,
+      corrections,
+      correctionsPerSession: sessions > 0 ? corrections / sessions : null,
+      successRate: (outcomes.success + outcomes.failure + outcomes.partial) > 0
+        ? outcomes.success / (outcomes.success + outcomes.failure + outcomes.partial) * 100
+        : null
+    });
+  });
+
+  return data;
+}
+
+// Get week string from date
+function getWeekString(date) {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const startOfYear = new Date(year, 0, 1);
+  const weekNum = Math.ceil(((d - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+  return `${year}-W${weekNum.toString().padStart(2, '0')}`;
+}
+
+// Calculate efficiency projection
+function calculateProjection(data, weeksAhead) {
+  const trends = data.trends || [];
+  const projection = {
+    current: {
+      correctionsPerSession: data.corrections.rate,
+      successRate: data.outcomes.success + data.outcomes.failure + data.outcomes.partial > 0
+        ? data.outcomes.success / (data.outcomes.success + data.outcomes.failure + data.outcomes.partial) * 100
+        : null,
+      tokenSavings: data.tokenSavings.estimated,
+      preferencesLearned: data.preferences.learned
+    },
+    projected: [],
+    improvementRate: null,
+    weeksToTarget: null
+  };
+
+  // Calculate improvement rate from trends
+  const cpsValues = trends
+    .filter(t => t.correctionsPerSession !== null)
+    .map(t => t.correctionsPerSession);
+
+  if (cpsValues.length >= 2) {
+    // Simple linear regression
+    const n = cpsValues.length;
+    const xMean = (n - 1) / 2;
+    const yMean = cpsValues.reduce((a, b) => a + b, 0) / n;
+
+    let numerator = 0;
+    let denominator = 0;
+    cpsValues.forEach((y, i) => {
+      numerator += (i - xMean) * (y - yMean);
+      denominator += (i - xMean) ** 2;
+    });
+
+    const slope = denominator !== 0 ? numerator / denominator : 0;
+    const intercept = yMean - slope * xMean;
+
+    projection.improvementRate = -slope; // Negative slope = improvement
+
+    // Project forward
+    const currentCps = cpsValues[cpsValues.length - 1];
+    for (let w = 4; w <= weeksAhead; w += 4) {
+      const projectedCps = Math.max(0, intercept + slope * (n - 1 + w));
+      const improvement = currentCps > 0 ? ((currentCps - projectedCps) / currentCps * 100) : 0;
+
+      projection.projected.push({
+        weeksAhead: w,
+        correctionsPerSession: projectedCps,
+        improvementPercent: improvement,
+        tokenSavings: data.tokenSavings.estimated * (1 + improvement / 100),
+        preferencesLearned: data.preferences.learned + Math.floor(w * 0.5)
+      });
+    }
+
+    // Calculate weeks to target (0.5 corrections per session)
+    const targetCps = 0.5;
+    if (slope < 0 && currentCps > targetCps) {
+      projection.weeksToTarget = Math.ceil((targetCps - intercept) / slope - (n - 1));
+    }
+  }
+
+  return projection;
 }
 
 // Query Ollama
@@ -285,6 +498,30 @@ const apiHandlers = {
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(health));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  },
+
+  '/api/efficiency': (req, res) => {
+    try {
+      const data = loadEfficiencyData();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(data));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  },
+
+  '/api/efficiency/projection': (req, res, params) => {
+    try {
+      const weeks = parseInt(params.get('weeks')) || 12;
+      const data = loadEfficiencyData();
+      const projection = calculateProjection(data, weeks);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(projection));
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: e.message }));

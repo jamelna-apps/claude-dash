@@ -220,7 +220,13 @@ fi
 info "Installing Python dependencies..."
 source "$CLAUDE_DASH_DIR/mlx-env/bin/activate"
 pip install --quiet --upgrade pip
-pip install --quiet sentence-transformers 2>/dev/null || pip install sentence-transformers
+if [ -f "$CLAUDE_DASH_DIR/mlx-tools/requirements.txt" ]; then
+    pip install --quiet -r "$CLAUDE_DASH_DIR/mlx-tools/requirements.txt" 2>/dev/null || \
+    pip install -r "$CLAUDE_DASH_DIR/mlx-tools/requirements.txt"
+else
+    pip install --quiet numpy sentence-transformers 2>/dev/null || \
+    pip install numpy sentence-transformers
+fi
 deactivate
 success "Installed Python dependencies"
 

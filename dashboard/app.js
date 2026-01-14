@@ -133,6 +133,7 @@ function showPortalTab(tab, btn) {
   } else if (tab === 'reports') {
     reportsView?.classList.remove('hidden');
     ollamaAccess?.classList.add('hidden');
+    loadEfficiencyData();
   }
 }
 
@@ -1092,8 +1093,224 @@ function renderFeatures() {
   `).join('');
 }
 
+// ===== EFFICIENCY METRICS =====
+
+let efficiencyData = null;
+let projectionData = null;
+
+async function loadEfficiencyData() {
+  try {
+    const [effRes, projRes] = await Promise.all([
+      fetch('/api/efficiency'),
+      fetch('/api/efficiency/projection?weeks=12')
+    ]);
+
+    efficiencyData = await effRes.json();
+    projectionData = await projRes.json();
+
+    renderEfficiencyMetrics();
+  } catch (e) {
+    console.error('Error loading efficiency data:', e);
+  }
+}
+
+function renderEfficiencyMetrics() {
+  if (!efficiencyData) return;
+
+  // Update stat cards
+  document.getElementById('eff-sessions').textContent = efficiencyData.sessions?.total || 0;
+  document.getElementById('eff-corrections').textContent = efficiencyData.corrections?.total || 0;
+
+  const rate = efficiencyData.corrections?.rate || 0;
+  document.getElementById('eff-correction-rate').textContent = `${rate.toFixed(2)} per session`;
+
+  const tokens = efficiencyData.tokenSavings?.estimated || 0;
+  document.getElementById('eff-tokens').textContent = tokens > 1000
+    ? `~${(tokens / 1000).toFixed(1)}k`
+    : `~${tokens}`;
+
+  const prefs = efficiencyData.preferences?.learned || 0;
+  const highConf = efficiencyData.preferences?.highConfidence || 0;
+  document.getElementById('eff-preferences').textContent = prefs;
+  document.getElementById('eff-pref-confidence').textContent = `${highConf} high-confidence`;
+
+  // Update progress bars
+  renderProgressBars();
+
+  // Render projections
+  renderProjections();
+
+  // Render domain confidence
+  renderDomainConfidence();
+}
+
+function renderProgressBars() {
+  // Correction rate improvement (compare to baseline of 1.0 corrections/session)
+  const baselineCps = 1.0;
+  const currentCps = efficiencyData.corrections?.rate || 0;
+  const correctionImprovement = baselineCps > 0
+    ? Math.max(0, Math.min(100, ((baselineCps - currentCps) / baselineCps) * 100))
+    : 0;
+
+  document.getElementById('eff-correction-bar').style.width = `${correctionImprovement}%`;
+  document.getElementById('eff-correction-progress-val').textContent = `${correctionImprovement.toFixed(0)}%`;
+
+  if (correctionImprovement > 50) {
+    document.getElementById('eff-correction-hint').textContent = 'Excellent! Correction rate well below baseline.';
+  } else if (correctionImprovement > 20) {
+    document.getElementById('eff-correction-hint').textContent = 'Good progress. System is learning from corrections.';
+  } else if (efficiencyData.sessions?.total >= 5) {
+    document.getElementById('eff-correction-hint').textContent = 'Building baseline. More sessions needed for improvement.';
+  } else {
+    document.getElementById('eff-correction-hint').textContent = 'Baseline being established...';
+  }
+
+  // Memory utilization (estimate based on sessions)
+  const sessions = efficiencyData.sessions?.total || 0;
+  const memoryUtil = Math.min(100, sessions * 8); // ~8% per session up to 100%
+  document.getElementById('eff-memory-bar').style.width = `${memoryUtil}%`;
+  document.getElementById('eff-memory-progress-val').textContent = `${memoryUtil.toFixed(0)}%`;
+
+  // Preference confidence
+  const totalPrefs = efficiencyData.preferences?.learned || 0;
+  const highConfPrefs = efficiencyData.preferences?.highConfidence || 0;
+  const prefConfidence = totalPrefs > 0 ? (highConfPrefs / totalPrefs) * 100 : 0;
+  document.getElementById('eff-pref-bar').style.width = `${prefConfidence}%`;
+  document.getElementById('eff-pref-progress-val').textContent =
+    totalPrefs > 0 ? `${prefConfidence.toFixed(0)}%` : 'No data';
+}
+
+function renderProjections() {
+  const container = document.getElementById('eff-projection-content');
+  if (!container) return;
+
+  if (!projectionData || !projectionData.projected || projectionData.projected.length === 0) {
+    container.innerHTML = `
+      <div class="efficiency-projection-card">
+        <div class="projection-period">Current</div>
+        <div class="projection-stats">
+          <div class="projection-stat">
+            <span class="projection-stat-value">${(efficiencyData?.corrections?.rate || 0).toFixed(2)}</span>
+            <span class="projection-stat-label">corrections/session</span>
+          </div>
+          <div class="projection-stat">
+            <span class="projection-stat-value">${efficiencyData?.preferences?.learned || 0}</span>
+            <span class="projection-stat-label">preferences learned</span>
+          </div>
+        </div>
+      </div>
+      <div class="efficiency-projection-note">
+        Need more data to project. Keep using Claude to build learning history.
+      </div>
+    `;
+    return;
+  }
+
+  const current = projectionData.current || {};
+  const projected = projectionData.projected || [];
+
+  let html = `
+    <div class="efficiency-projection-card current">
+      <div class="projection-period">Now</div>
+      <div class="projection-stats">
+        <div class="projection-stat">
+          <span class="projection-stat-value">${(current.correctionsPerSession || 0).toFixed(2)}</span>
+          <span class="projection-stat-label">corr/session</span>
+        </div>
+        <div class="projection-stat">
+          <span class="projection-stat-value">${formatTokens(current.tokenSavings || 0)}</span>
+          <span class="projection-stat-label">tokens saved</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  projected.forEach(p => {
+    const improvementClass = p.improvementPercent > 30 ? 'good' : p.improvementPercent > 10 ? 'moderate' : '';
+    html += `
+      <div class="efficiency-projection-card ${improvementClass}">
+        <div class="projection-period">${p.weeksAhead} weeks</div>
+        <div class="projection-stats">
+          <div class="projection-stat">
+            <span class="projection-stat-value">${p.correctionsPerSession.toFixed(2)}</span>
+            <span class="projection-stat-label">corr/session</span>
+          </div>
+          <div class="projection-stat improvement">
+            <span class="projection-stat-value">${p.improvementPercent > 0 ? '+' : ''}${p.improvementPercent.toFixed(0)}%</span>
+            <span class="projection-stat-label">improvement</span>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  if (projectionData.weeksToTarget) {
+    html += `
+      <div class="efficiency-projection-target">
+        Target (0.5 corr/session) in ~${projectionData.weeksToTarget} weeks
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+function renderDomainConfidence() {
+  const container = document.getElementById('eff-domains-content');
+  if (!container) return;
+
+  const domains = efficiencyData?.confidence?.domains || {};
+  const entries = Object.entries(domains).filter(([_, stats]) => stats.total >= 1);
+
+  if (entries.length === 0) {
+    container.innerHTML = `
+      <div class="efficiency-domain-empty">
+        No domain data yet. Use Claude more to build calibration.
+      </div>
+    `;
+    return;
+  }
+
+  // Sort by total interactions
+  entries.sort((a, b) => b[1].total - a[1].total);
+
+  container.innerHTML = entries.map(([domain, stats]) => {
+    const accuracy = (stats.accuracy * 100) || 0;
+    const level = accuracy >= 85 ? 'high' : accuracy >= 65 ? 'medium' : 'low';
+
+    return `
+      <div class="efficiency-domain-card ${level}">
+        <div class="domain-name">${escapeHtml(domain)}</div>
+        <div class="domain-accuracy">
+          <div class="domain-accuracy-bar">
+            <div class="domain-accuracy-fill" style="width: ${accuracy}%"></div>
+          </div>
+          <span class="domain-accuracy-value">${accuracy.toFixed(0)}%</span>
+        </div>
+        <div class="domain-stats">${stats.total} interactions</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function formatTokens(num) {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
+  return num.toString();
+}
+
+function refreshEfficiency() {
+  loadEfficiencyData();
+}
+
+// Load efficiency when reports tab is shown
+function onReportsTabShown() {
+  loadEfficiencyData();
+}
+
 // Global functions for onclick handlers in HTML
 window.showPortalTab = showPortalTab;
+window.refreshEfficiency = refreshEfficiency;
 window.showOllamaChat = () => showChat(currentProject?.id);
 window.hideOllamaChat = closeChat;
 window.closeChat = closeChat;

@@ -117,6 +117,92 @@
       <div id="reports-list" class="reports-list">
         <div class="loading">Loading...</div>
       </div>
+
+      <!-- Efficiency Metrics Section -->
+      <div class="efficiency-section">
+        <div class="efficiency-header">
+          <h3>Learning Efficiency</h3>
+          <button onclick="refreshEfficiency()" class="zoom-btn">Refresh</button>
+        </div>
+
+        <!-- Current Stats Cards -->
+        <div class="efficiency-cards">
+          <div class="efficiency-card">
+            <div class="efficiency-card-label">Sessions</div>
+            <div class="efficiency-card-value" id="eff-sessions">-</div>
+            <div class="efficiency-card-sub">total tracked</div>
+          </div>
+          <div class="efficiency-card">
+            <div class="efficiency-card-label">Corrections</div>
+            <div class="efficiency-card-value" id="eff-corrections">-</div>
+            <div class="efficiency-card-sub" id="eff-correction-rate">- per session</div>
+          </div>
+          <div class="efficiency-card">
+            <div class="efficiency-card-label">Token Savings</div>
+            <div class="efficiency-card-value" id="eff-tokens">-</div>
+            <div class="efficiency-card-sub">estimated saved</div>
+          </div>
+          <div class="efficiency-card">
+            <div class="efficiency-card-label">Preferences</div>
+            <div class="efficiency-card-value" id="eff-preferences">-</div>
+            <div class="efficiency-card-sub" id="eff-pref-confidence">learned</div>
+          </div>
+        </div>
+
+        <!-- Progress Bars -->
+        <div class="efficiency-progress-section">
+          <h4>Learning Progress</h4>
+
+          <div class="efficiency-progress-item">
+            <div class="efficiency-progress-header">
+              <span class="efficiency-progress-label">Correction Rate Improvement</span>
+              <span class="efficiency-progress-value" id="eff-correction-progress-val">-</span>
+            </div>
+            <div class="efficiency-progress-bar">
+              <div class="efficiency-progress-fill correction-fill" id="eff-correction-bar" style="width: 0%"></div>
+            </div>
+            <div class="efficiency-progress-hint" id="eff-correction-hint">Baseline being established...</div>
+          </div>
+
+          <div class="efficiency-progress-item">
+            <div class="efficiency-progress-header">
+              <span class="efficiency-progress-label">Memory Utilization</span>
+              <span class="efficiency-progress-value" id="eff-memory-progress-val">-</span>
+            </div>
+            <div class="efficiency-progress-bar">
+              <div class="efficiency-progress-fill memory-fill" id="eff-memory-bar" style="width: 0%"></div>
+            </div>
+            <div class="efficiency-progress-hint">Token savings from memory vs raw file reads</div>
+          </div>
+
+          <div class="efficiency-progress-item">
+            <div class="efficiency-progress-header">
+              <span class="efficiency-progress-label">Preference Confidence</span>
+              <span class="efficiency-progress-value" id="eff-pref-progress-val">-</span>
+            </div>
+            <div class="efficiency-progress-bar">
+              <div class="efficiency-progress-fill preference-fill" id="eff-pref-bar" style="width: 0%"></div>
+            </div>
+            <div class="efficiency-progress-hint">High-confidence inferred preferences</div>
+          </div>
+        </div>
+
+        <!-- Projections -->
+        <div class="efficiency-projections">
+          <h4>12-Week Projection</h4>
+          <div id="eff-projection-content" class="efficiency-projection-grid">
+            <div class="loading">Loading projections...</div>
+          </div>
+        </div>
+
+        <!-- Confidence by Domain -->
+        <div class="efficiency-domains">
+          <h4>Confidence by Domain</h4>
+          <div id="eff-domains-content" class="efficiency-domains-grid">
+            <div class="efficiency-domain-empty">No domain data yet. Use Claude more to build calibration.</div>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
