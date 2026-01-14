@@ -402,10 +402,79 @@ find "$CLAUDE_DASH_DIR" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
 success "Made scripts executable"
 
 # =============================================================================
-# Step 9: Run Health Check
+# Step 9: Create CLAUDE.md for Claude Awareness
 # =============================================================================
 
-echo -e "\n${BLUE}Step 9: Running health check...${NC}\n"
+echo -e "\n${BLUE}Step 9: Creating Claude awareness file...${NC}\n"
+
+CLAUDE_MD_FILE="$CLAUDE_DIR/CLAUDE.md"
+if [ ! -f "$CLAUDE_MD_FILE" ]; then
+    cat > "$CLAUDE_MD_FILE" << 'CLAUDEMD'
+# Claude-Dash Memory System
+
+This machine has claude-dash installed - a persistent memory and learning system.
+
+## What It Does
+- **Session Continuity**: Remembers context from previous sessions
+- **Learning from Corrections**: Records and recalls past mistakes
+- **Git Awareness**: Shows what changed since last session
+- **Preference Learning**: Infers your coding style from edits
+- **Confidence Calibration**: Tracks accuracy by domain
+
+## MCP Tools Available
+Use these tools to query the memory system:
+- `memory_query` - Natural language search (hybrid BM25 + semantic)
+- `memory_search` - Semantic search across files
+- `memory_functions` - Look up function definitions by name
+- `memory_similar` - Find files similar to a given file
+- `memory_health` - Check code health status
+- `memory_sessions` - Search past session observations
+
+## How Context Injection Works
+On every prompt, hooks automatically inject:
+- Session continuity (what you worked on last time)
+- Relevant past corrections
+- Semantic memory (topic-triggered context)
+- Pattern detection (debugging, performance, etc.)
+
+## Project Configuration
+Projects are registered in `~/.claude-dash/config.json`. Each project has:
+- `index.json` - File structure
+- `functions.json` - Function index with line numbers
+- `summaries.json` - File summaries
+- `schema.json` - Database schema (if applicable)
+- `decisions.json` - Past decisions and workarounds
+
+## Useful Commands
+```bash
+# Check system health
+python3 ~/.claude-dash/memory/health_check.py
+
+# View efficiency metrics
+python3 ~/.claude-dash/learning/efficiency_tracker.py --report
+
+# Watcher status
+~/.claude-dash/watcher/start-watcher.sh status
+
+# Start dashboard
+~/.claude-dash/dashboard/start.sh
+```
+
+## Recording Preferences
+When the user says "always use X", "prefer X over Y", or "don't use X", update:
+- Global: `~/.claude-dash/global/preferences.json`
+- Project-specific: `~/.claude-dash/projects/{project}/preferences.json`
+CLAUDEMD
+    success "Created $CLAUDE_MD_FILE"
+else
+    success "CLAUDE.md already exists"
+fi
+
+# =============================================================================
+# Step 10: Run Health Check
+# =============================================================================
+
+echo -e "\n${BLUE}Step 10: Running health check...${NC}\n"
 
 if [ -f "$CLAUDE_DASH_DIR/memory/health_check.py" ]; then
     python3 "$CLAUDE_DASH_DIR/memory/health_check.py" 2>/dev/null || warn "Health check reported issues"
