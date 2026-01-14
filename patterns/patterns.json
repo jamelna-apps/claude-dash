@@ -1,0 +1,59 @@
+{
+  "modes": {
+    "debugging": {
+      "signals": ["fix", "broken", "error", "bug", "issue", "wrong", "not working", "fails", "crash", "exception"],
+      "context": {
+        "description": "Fixing errors, investigating issues, troubleshooting",
+        "actions": ["Check recent changes", "Review error logs", "Identify root cause before fixing"],
+        "avoid": ["Making changes without understanding the issue"],
+        "tools": ["Error logs", "git diff", "debugger"]
+      }
+    },
+    "performance": {
+      "signals": ["slow", "fast", "optimize", "performance", "speed", "memory", "cpu", "latency", "efficient"],
+      "context": {
+        "description": "Optimizing speed, reducing resource usage",
+        "actions": ["Measure before changing", "Profile to identify bottleneck", "Document baseline metrics"],
+        "avoid": ["Premature optimization", "Changing without measuring"],
+        "tools": ["Profiler", "time command", "Check resource usage"]
+      }
+    },
+    "feature": {
+      "signals": ["add", "create", "implement", "build", "new", "feature", "want", "need to"],
+      "context": {
+        "description": "Adding new functionality",
+        "actions": ["Understand requirements", "Check existing patterns", "Plan before coding"],
+        "avoid": ["Over-engineering", "Skipping tests"],
+        "tools": ["Memory query for similar features", "Project patterns"]
+      }
+    },
+    "refactor": {
+      "signals": ["refactor", "clean", "reorganize", "restructure", "improve", "simplify"],
+      "context": {
+        "description": "Improving code structure without changing behavior",
+        "actions": ["Ensure tests exist", "Make small incremental changes", "Verify behavior unchanged"],
+        "avoid": ["Changing behavior during refactor", "Large changes without tests"],
+        "tools": ["Test suite", "git diff"]
+      }
+    },
+    "exploration": {
+      "signals": ["how", "what", "where", "why", "explain", "understand", "find", "show", "look"],
+      "context": {
+        "description": "Understanding codebase, researching solutions",
+        "actions": ["Use memory query first", "Check existing documentation", "Explore systematically"],
+        "avoid": ["Modifying code while exploring"],
+        "tools": ["memory_query", "memory_search", "Grep", "Read"]
+      }
+    },
+    "infrastructure": {
+      "signals": ["docker", "deploy", "server", "database", "config", "setup", "install", "environment"],
+      "context": {
+        "description": "Setting up or modifying infrastructure",
+        "actions": ["Check current state", "Document changes", "Test in isolation first"],
+        "avoid": ["Making production changes without testing"],
+        "tools": ["Docker", "config files", "environment variables"]
+      }
+    }
+  },
+  "learned_patterns": []
+}

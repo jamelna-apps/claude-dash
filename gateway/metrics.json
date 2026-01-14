@@ -1,0 +1,17 @@
+{
+  "totalQueries": 0,
+  "routingBreakdown": {
+    "memory": 0,
+    "filesystem": 0,
+    "commander": 0,
+    "cached": 0
+  },
+  "tokenEstimates": {
+    "saved": 0,
+    "actual": 0,
+    "wouldHaveBeen": 0
+  },
+  "recentQueries": [],
+  "dailyStats": {},
+  "lastUpdated": 1768265996557
+}

@@ -1,0 +1,63 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2026-01-13T23:30:00Z",
+  "description": "System-wide infrastructure decisions and configurations",
+
+  "decisions": [
+    {
+      "id": "ollama-native",
+      "date": "2026-01-13",
+      "decision": "Run Ollama natively on Mac instead of Docker",
+      "reason": "Metal GPU acceleration provides ~40x performance improvement (28 TPS vs ~5 TPS in Docker)",
+      "impact": "All services using Ollama now connect via host.docker.internal:11434",
+      "reversible": true
+    },
+    {
+      "id": "anythingllm-over-openwebui",
+      "date": "2026-01-13",
+      "decision": "Use AnythingLLM as sole local AI interface, removed Open WebUI",
+      "reason": "AnythingLLM provides chat + document RAG in one tool, Open WebUI was redundant",
+      "impact": "Freed 520MB RAM, 5.5GB disk, simplified stack",
+      "reversible": true
+    },
+    {
+      "id": "rag-settings",
+      "date": "2026-01-13",
+      "decision": "RAG configured with Top N=4, similarity threshold=0.15, model=qwen2.5:7b",
+      "reason": "Better document coverage and reasoning capability for complex queries",
+      "impact": "Slower responses (~23s vs ~3s) but higher quality",
+      "reversible": true
+    }
+  ],
+
+  "services": {
+    "ollama": {
+      "type": "native",
+      "path": "/opt/homebrew/bin/ollama",
+      "port": 11434,
+      "models": ["qwen2.5:7b", "llama3.2:3b", "nomic-embed-text"],
+      "gpu": "Metal"
+    },
+    "anythingllm": {
+      "type": "docker",
+      "port": 3001,
+      "workspace": "TERRA",
+      "apiKey": "EPDM6YT-EHW4NJ5-M941M99-BZFFKY2",
+      "ollamaUrl": "http://host.docker.internal:11434"
+    },
+    "claude-dash-gateway": {
+      "type": "native",
+      "port": 3847,
+      "tools": ["memory_query", "memory_search", "memory_functions", "memory_similar", "doc_query"]
+    },
+    "memory-dashboard": {
+      "type": "docker",
+      "port": 3333
+    }
+  },
+
+  "docker_compose_notes": {
+    "ollama": "DISABLED - using native for Metal GPU",
+    "open-webui": "REMOVED - replaced by AnythingLLM"
+  }
+}

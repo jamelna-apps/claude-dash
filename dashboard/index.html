@@ -288,25 +288,17 @@
       <!-- Tabs -->
       <div class="tabs">
         <div class="tab-group">
-          <button class="tab active" data-tab="graph">
-            <svg class="tab-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 14.25V1.75h1.25v12.5zM6 14.25v-7h1.25v7zm4.5-10v10h1.25v-10zm4.5 5.5v4.5h1.25v-4.5z"/></svg>
-            Graph
-          </button>
-          <button class="tab" data-tab="files">
-            <svg class="tab-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75z"/></svg>
-            Files
-          </button>
-          <button class="tab" data-tab="functions">
+          <button class="tab active" data-tab="code">
             <svg class="tab-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M4.72 3.22a.75.75 0 0 1 1.06 0l3.5 3.5a.75.75 0 0 1 0 1.06l-3.5 3.5a.75.75 0 1 1-1.06-1.06L7.44 7.5 4.72 4.78a.75.75 0 0 1 0-1.06zm3.5 9.25a.75.75 0 0 1 .75-.75h6.25a.75.75 0 0 1 0 1.5H8.97a.75.75 0 0 1-.75-.75z"/></svg>
-            Functions
+            Code
+          </button>
+          <button class="tab" data-tab="architecture">
+            <svg class="tab-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 14.25V1.75h1.25v12.5zM6 14.25v-7h1.25v7zm4.5-10v10h1.25v-10zm4.5 5.5v4.5h1.25v-4.5z"/></svg>
+            Architecture
           </button>
           <button class="tab" data-tab="schema">
             <svg class="tab-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h11A1.5 1.5 0 0 1 15 3.5v.75H1V3.5zM1 5.75h14v4.5H1v-4.5zm0 6V12.5A1.5 1.5 0 0 0 2.5 14h11a1.5 1.5 0 0 0 1.5-1.5v-.75H1z"/></svg>
             Schema
-          </button>
-          <button class="tab" data-tab="tasks">
-            <svg class="tab-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 3.5a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5v-9zm1 0v9h9v-9h-9zm1.5 1.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/></svg>
-            Tasks
           </button>
         </div>
         <span class="tab-separator"></span>
@@ -319,83 +311,57 @@
             <svg class="tab-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215l-3.04-3.04zM11.5 7a4.5 4.5 0 1 0-9 0 4.5 4.5 0 0 0 9 0z"/></svg>
             Ask
           </button>
-        </div>
-        <span class="tab-separator"></span>
-        <div class="tab-group">
           <button class="tab" data-tab="features">
             <svg class="tab-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8.878.392a1.75 1.75 0 0 0-1.756 0l-5.25 3.045A1.75 1.75 0 0 0 1 4.951v6.098c0 .624.332 1.2.872 1.514l5.25 3.045a1.75 1.75 0 0 0 1.756 0l5.25-3.045c.54-.313.872-.89.872-1.514V4.951c0-.624-.332-1.2-.872-1.514L8.878.392z"/></svg>
             Features
-          </button>
-          <button class="tab" data-tab="wireframe">
-            <svg class="tab-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v12.5A1.75 1.75 0 0 1 14.25 16H1.75A1.75 1.75 0 0 1 0 14.25V1.75zm1.75-.25a.25.25 0 0 0-.25.25V14.25c0 .138.112.25.25.25H14.25a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25H1.75z"/><path d="M5 5v6h6V5z"/></svg>
-            Wireframe
-          </button>
-          <button class="tab" data-tab="sessions">
-            <svg class="tab-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5h-3.32Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"/></svg>
-            Sessions
-          </button>
-          <button class="tab" data-tab="keys">
-            <svg class="tab-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 10.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 1.5a3.5 3.5 0 1 1 2.376-6.082l4.27-4.27a.75.75 0 0 1 1.06 1.06l-1.292 1.293.86.86a.75.75 0 1 1-1.061 1.06l-.86-.859-.86.86.86.86a.75.75 0 1 1-1.061 1.06l-.86-.859-1.07 1.071A3.5 3.5 0 0 1 6.5 12Z"/></svg>
-            Keys
-          </button>
-        </div>
-        <span class="tab-separator"></span>
-        <div class="tab-group">
-          <button class="tab" data-tab="pixelart">
-            <svg class="tab-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v12.5A1.75 1.75 0 0 1 14.25 16H1.75A1.75 1.75 0 0 1 0 14.25V1.75zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25H1.75z"/><rect x="3" y="3" width="2" height="2"/><rect x="6" y="3" width="2" height="2"/><rect x="9" y="3" width="2" height="2"/><rect x="3" y="6" width="2" height="2"/><rect x="6" y="6" width="2" height="2"/><rect x="9" y="6" width="2" height="2"/><rect x="3" y="9" width="2" height="2"/><rect x="6" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></svg>
-            Pixel Art
           </button>
         </div>
       </div>
 
       <!-- Content Area -->
       <div class="content">
-        <!-- Graph Tab -->
-        <div id="tab-graph" class="tab-content">
-          <div class="graph-toolbar">
-            <div class="legend">
+        <!-- Code Tab (Files + Functions) -->
+        <div id="tab-code" class="tab-content">
+          <div class="code-toolbar">
+            <div class="view-toggle">
+              <button class="view-btn active" data-code-view="files" onclick="setCodeView('files')">Files</button>
+              <button class="view-btn" data-code-view="functions" onclick="setCodeView('functions')">Functions</button>
+            </div>
+            <input type="text" class="search-box" id="code-search" placeholder="Search..." style="flex: 1; max-width: 400px;">
+            <div class="code-stats" id="code-stats"></div>
+          </div>
+          <div id="code-list" class="file-list"></div>
+        </div>
+
+        <!-- Architecture Tab (Graph + Wireframe) -->
+        <div id="tab-architecture" class="tab-content hidden">
+          <div class="architecture-toolbar">
+            <div class="view-toggle">
+              <button class="view-btn active" data-arch-view="graph" onclick="setArchView('graph')">Dependency Graph</button>
+              <button class="view-btn" data-arch-view="screens" onclick="setArchView('screens')">Screen Map</button>
+            </div>
+            <div class="legend" id="arch-legend">
               <div class="legend-item"><div class="legend-dot" style="background: #f78166"></div> Screens</div>
               <div class="legend-item"><div class="legend-dot" style="background: #a371f7"></div> Components</div>
               <div class="legend-item"><div class="legend-dot" style="background: #58a6ff"></div> Services</div>
               <div class="legend-item"><div class="legend-dot" style="background: #3fb950"></div> Hooks</div>
             </div>
-            <div class="zoom-controls">
-              <button class="zoom-btn" id="zoom-in" title="Zoom In">+ Zoom In</button>
-              <span class="zoom-level" id="zoom-level">100%</span>
-              <button class="zoom-btn" id="zoom-out" title="Zoom Out">- Zoom Out</button>
-              <button class="zoom-btn" id="zoom-fit" title="Fit to Screen">Fit</button>
-              <button class="zoom-btn" id="zoom-reset" title="Reset View">Reset</button>
-            </div>
           </div>
-          <div id="graph" class="graph-container"></div>
-        </div>
-
-        <!-- Files Tab -->
-        <div id="tab-files" class="tab-content hidden">
-          <input type="text" class="search-box" id="file-search" placeholder="Search files...">
-          <div id="file-list" class="file-list"></div>
-        </div>
-
-        <!-- Functions Tab -->
-        <div id="tab-functions" class="tab-content hidden">
-          <input type="text" class="search-box" id="func-search" placeholder="Search functions...">
-          <div id="func-list" class="func-list"></div>
+          <div id="architecture-content">
+            <div id="graph" class="graph-container"></div>
+          </div>
+          <div id="screen-detail" class="card" style="margin-top: 16px; display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <h3 id="screen-detail-title">Screen Details</h3>
+              <button onclick="document.getElementById('screen-detail').style.display='none'" class="zoom-btn">Close</button>
+            </div>
+            <div id="screen-detail-content"></div>
+          </div>
         </div>
 
         <!-- Schema Tab -->
         <div id="tab-schema" class="tab-content hidden">
           <div id="schema-grid" class="collection-grid"></div>
-        </div>
-
-        <!-- Tasks Tab -->
-        <div id="tab-tasks" class="tab-content hidden">
-          <div class="tasks-header">
-            <h2>Active Tasks</h2>
-            <button id="refresh-tasks" class="btn btn-secondary">Refresh</button>
-          </div>
-          <div id="tasks-list" class="tasks-list">
-            <div class="loading">Loading tasks...</div>
-          </div>
         </div>
 
         <!-- Health Tab -->
@@ -409,7 +375,7 @@
               <div class="health-label">Health Score</div>
             </div>
             <div class="health-actions">
-              <button class="zoom-btn" id="run-scan">Run Scan</button>
+              <button type="button" class="zoom-btn" id="run-scan">Run Scan</button>
               <button class="zoom-btn fix-all-btn" id="fix-all" disabled>Fix All Safe (<span id="fixable-count">0</span>)</button>
               <span class="health-timestamp" id="health-timestamp">Never scanned</span>
               <div class="fix-buttons-group">
@@ -582,482 +548,6 @@
           </div>
         </div>
 
-        <!-- Wireframe Tab -->
-        <div id="tab-wireframe" class="tab-content hidden">
-          <div class="wireframe-header">
-            <h2>App Wireframe & Screen Map</h2>
-            <p style="color: var(--text-muted); margin-top: 8px;">Visual overview of screens, navigation flow, and data dependencies</p>
-          </div>
-
-          <div class="wireframe-stats">
-            <div class="card" style="text-align: center;">
-              <div style="font-size: 32px; color: var(--accent-blue); font-weight: bold;" id="wf-screen-count">-</div>
-              <div style="color: var(--text-muted); font-size: 13px;">Screens</div>
-            </div>
-            <div class="card" style="text-align: center;">
-              <div style="font-size: 32px; color: var(--accent-cyan); font-weight: bold;" id="wf-collection-count">-</div>
-              <div style="color: var(--text-muted); font-size: 13px;">Collections</div>
-            </div>
-            <div class="card" style="text-align: center;">
-              <div style="font-size: 32px; color: var(--accent-orange); font-weight: bold;" id="wf-function-count">-</div>
-              <div style="color: var(--text-muted); font-size: 13px;">Functions</div>
-            </div>
-            <div class="card" style="text-align: center;">
-              <div style="font-size: 32px; color: var(--accent-purple); font-weight: bold;" id="wf-nav-links">-</div>
-              <div style="color: var(--text-muted); font-size: 13px;">Nav Links</div>
-            </div>
-          </div>
-
-          <!-- Navigation Flow Controls -->
-          <div class="card" style="margin-bottom: 16px;">
-            <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: space-between;">
-              <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <label style="color: var(--text-muted); font-size: 13px;">Filter by Stack:</label>
-                  <select id="wf-stack-filter" class="search-box" style="width: auto; min-width: 150px;">
-                    <option value="all">All Stacks</option>
-                  </select>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <label style="color: var(--text-muted); font-size: 13px;">Focus Screen:</label>
-                  <select id="wf-focus-screen" class="search-box" style="width: auto; min-width: 200px;">
-                    <option value="">Show All</option>
-                  </select>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <label style="color: var(--text-muted); font-size: 13px;">Depth:</label>
-                  <select id="wf-focus-depth" class="search-box" style="width: auto;">
-                    <option value="1">1 level</option>
-                    <option value="2" selected>2 levels</option>
-                    <option value="3">3 levels</option>
-                  </select>
-                </div>
-                <button class="zoom-btn" onclick="resetWireframeFilters()">Reset Filters</button>
-              </div>
-              <div class="view-toggle">
-                <button class="view-btn active" data-wf-view="mermaid" onclick="setWireframeView('mermaid')">Flow Chart</button>
-                <button class="view-btn" data-wf-view="graph" onclick="setWireframeView('graph')">Interactive</button>
-                <button class="view-btn" data-wf-view="tree" onclick="setWireframeView('tree')">Tree List</button>
-              </div>
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 24px;">
-            <!-- Left: Navigation Flow Views -->
-            <div class="card" style="min-width: 0; overflow: hidden;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h3>Navigation Flow</h3>
-                <span id="wf-filter-info" style="color: var(--text-muted); font-size: 12px;"></span>
-              </div>
-              <!-- Mermaid Flow Chart View -->
-              <div id="wf-mermaid-container" class="wf-view-container" style="background: var(--bg-primary); border-radius: 8px; padding: 20px; min-height: 500px; overflow: auto; max-width: 100%;">
-                <div class="loading">Loading navigation flow...</div>
-              </div>
-              <!-- Interactive Graph View -->
-              <div id="wf-graph-container" class="wf-view-container" style="display: none; height: 600px; position: relative; background: var(--bg-primary); border-radius: 8px;">
-                <div id="wf-graph-controls" style="position: absolute; top: 10px; right: 10px; z-index: 100; display: flex; gap: 8px;">
-                  <button onclick="wfGraphNetwork && wfGraphNetwork.moveTo({scale: wfGraphNetwork.getScale() * 1.3})" class="zoom-btn">+</button>
-                  <button onclick="wfGraphNetwork && wfGraphNetwork.moveTo({scale: wfGraphNetwork.getScale() / 1.3})" class="zoom-btn">-</button>
-                  <button onclick="wfGraphNetwork && wfGraphNetwork.fit()" class="zoom-btn">Fit</button>
-                </div>
-                <div id="wf-graph-network" style="width: 100%; height: 100%;"></div>
-              </div>
-              <!-- Tree List View -->
-              <div id="wf-tree-container" class="wf-view-container" style="display: none; background: var(--bg-primary); border-radius: 8px; padding: 20px; min-height: 500px; max-height: 600px; overflow: auto;">
-                <div class="loading">Loading tree view...</div>
-              </div>
-            </div>
-
-            <!-- Right: Screen List -->
-            <div class="card">
-              <h3 style="margin-bottom: 16px;">Screen Inventory</h3>
-              <input type="text" id="wf-screen-search" class="search-box" placeholder="Search screens...">
-              <div id="wf-screen-list" class="file-list" style="max-height: 600px;">
-                <div class="loading">Loading screens...</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Orphan Screens Detection -->
-          <div id="wf-orphans" class="card" style="margin-top: 16px; display: none;">
-            <h3 style="margin-bottom: 12px; color: var(--warning);">⚠️ Orphan Screens</h3>
-            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;">These screens are not reachable from the main navigation flow:</p>
-            <div id="wf-orphan-list" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
-          </div>
-
-          <!-- Screen Detail Modal -->
-          <div id="wf-screen-detail" class="card" style="margin-top: 24px; display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-              <h3 id="wf-detail-title">Screen Details</h3>
-              <button onclick="document.getElementById('wf-screen-detail').style.display='none'" class="zoom-btn">Close</button>
-            </div>
-            <div id="wf-detail-content"></div>
-          </div>
-        </div>
-
-        <!-- Sessions Tab -->
-        <div id="tab-sessions" class="tab-content hidden">
-          <div class="sessions-header">
-            <h2>Session History & Observations</h2>
-            <p style="color: var(--text-muted); margin-top: 8px;">Browse past decisions, patterns learned, and bugs fixed</p>
-          </div>
-
-          <div class="sessions-controls card" style="margin-top: 16px;">
-            <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <label style="color: var(--text-muted); font-size: 13px;">Search:</label>
-                <input type="text" class="search-box" id="session-search" placeholder="Search observations..." style="width: 250px;">
-              </div>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <label style="color: var(--text-muted); font-size: 13px;">Category:</label>
-                <select id="session-category" class="search-box" style="width: auto;">
-                  <option value="">All Categories</option>
-                  <option value="decision">🎯 Decisions</option>
-                  <option value="pattern">🔄 Patterns</option>
-                  <option value="bugfix">🐛 Bug Fixes</option>
-                  <option value="gotcha">⚠️ Gotchas</option>
-                  <option value="feature">✨ Features</option>
-                  <option value="implementation">🔧 Implementations</option>
-                </select>
-              </div>
-              <button class="zoom-btn" id="search-sessions">Search</button>
-              <button class="zoom-btn" id="list-sessions" style="margin-left: auto;">List Recent Sessions</button>
-            </div>
-          </div>
-
-          <div class="sessions-stats" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-top: 16px;">
-            <div class="card" style="text-align: center; padding: 12px;">
-              <div style="font-size: 24px; color: var(--accent-blue); font-weight: bold;" id="stat-decisions">0</div>
-              <div style="color: var(--text-muted); font-size: 12px;">🎯 Decisions</div>
-            </div>
-            <div class="card" style="text-align: center; padding: 12px;">
-              <div style="font-size: 24px; color: var(--accent-purple); font-weight: bold;" id="stat-patterns">0</div>
-              <div style="color: var(--text-muted); font-size: 12px;">🔄 Patterns</div>
-            </div>
-            <div class="card" style="text-align: center; padding: 12px;">
-              <div style="font-size: 24px; color: var(--accent-green); font-weight: bold;" id="stat-bugfixes">0</div>
-              <div style="color: var(--text-muted); font-size: 12px;">🐛 Bug Fixes</div>
-            </div>
-            <div class="card" style="text-align: center; padding: 12px;">
-              <div style="font-size: 24px; color: var(--warning); font-weight: bold;" id="stat-gotchas">0</div>
-              <div style="color: var(--text-muted); font-size: 12px;">⚠️ Gotchas</div>
-            </div>
-            <div class="card" style="text-align: center; padding: 12px;">
-              <div style="font-size: 24px; color: var(--accent-cyan); font-weight: bold;" id="stat-features">0</div>
-              <div style="color: var(--text-muted); font-size: 12px;">✨ Features</div>
-            </div>
-            <div class="card" style="text-align: center; padding: 12px;">
-              <div style="font-size: 24px; color: var(--accent-orange); font-weight: bold;" id="stat-implementations">0</div>
-              <div style="color: var(--text-muted); font-size: 12px;">🔧 Impls</div>
-            </div>
-          </div>
-
-          <div id="sessions-list" class="card" style="margin-top: 16px; min-height: 300px;">
-            <div class="loading">Search for observations or list recent sessions</div>
-          </div>
-        </div>
-
-        <!-- Keys Tab -->
-        <div id="tab-keys" class="tab-content hidden">
-          <div class="keys-header">
-            <div>
-              <h2>API Keys</h2>
-              <p style="color: var(--text-muted); margin-top: 8px;">Securely manage API keys across projects (stored in macOS Keychain)</p>
-            </div>
-            <button class="zoom-btn fix-all-btn" id="add-key-btn">+ Add Key</button>
-          </div>
-
-          <div class="keys-controls card" style="margin-top: 16px;">
-            <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
-              <input type="text" class="search-box" id="keys-search" placeholder="Search keys..." style="width: 250px;">
-              <select id="keys-project-filter" class="search-box" style="width: auto;">
-                <option value="">All Projects</option>
-              </select>
-            </div>
-          </div>
-
-          <div id="keys-list" class="card" style="margin-top: 16px; min-height: 200px;">
-            <div class="loading">Loading keys...</div>
-          </div>
-        </div>
-
-        <!-- Pixel Art Tab -->
-        <div id="tab-pixelart" class="tab-content hidden">
-          <div class="pixelart-header">
-            <h2>Pixel Art Generator</h2>
-            <p style="color: var(--text-muted); margin-top: 8px;">Generate 16x16 pixel art tiles for CodeTale themes</p>
-          </div>
-
-          <!-- Generator Type Selection -->
-          <div class="card" style="margin-top: 16px;">
-            <h3 style="margin-bottom: 16px;">Generator Type</h3>
-            <div class="pixelart-type-buttons" style="display: flex; gap: 12px; flex-wrap: wrap;">
-              <button class="pixelart-type-btn active" data-type="floor" onclick="selectPixelArtType('floor')">
-                <span style="font-size: 24px;">🟫</span>
-                <span>Floors</span>
-              </button>
-              <button class="pixelart-type-btn" data-type="item" onclick="selectPixelArtType('item')">
-                <span style="font-size: 24px;">🧪</span>
-                <span>Items</span>
-              </button>
-              <button class="pixelart-type-btn" data-type="decoration" onclick="selectPixelArtType('decoration')">
-                <span style="font-size: 24px;">🌿</span>
-                <span>Decorations</span>
-              </button>
-              <button class="pixelart-type-btn" data-type="batch" onclick="selectPixelArtType('batch')">
-                <span style="font-size: 24px;">📦</span>
-                <span>Batch Theme</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Options Panel -->
-          <div class="card" style="margin-top: 16px;">
-            <h3 style="margin-bottom: 16px;">Options</h3>
-
-            <!-- Floor Options -->
-            <div id="floor-options" class="pixelart-options">
-              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-                <div>
-                  <label style="color: var(--text-muted); font-size: 13px; display: block; margin-bottom: 8px;">Theme</label>
-                  <select id="floor-theme" class="search-box" style="width: 100%;">
-                    <option value="dungeon">Dungeon</option>
-                    <option value="forest">Forest</option>
-                    <option value="castle">Castle</option>
-                    <option value="cave">Cave</option>
-                  </select>
-                </div>
-                <div>
-                  <label style="color: var(--text-muted); font-size: 13px; display: block; margin-bottom: 8px;">Variant</label>
-                  <select id="floor-variant" class="search-box" style="width: 100%;">
-                    <option value="basic">Basic</option>
-                    <option value="cracked">Cracked</option>
-                    <option value="debris">Debris</option>
-                    <option value="mossy">Mossy</option>
-                    <option value="stone">Stone</option>
-                    <option value="grass">Grass</option>
-                    <option value="dirt">Dirt</option>
-                  </select>
-                </div>
-                <div>
-                  <label style="color: var(--text-muted); font-size: 13px; display: block; margin-bottom: 8px;">Seed</label>
-                  <input type="number" id="floor-seed" class="search-box" style="width: 100%;" placeholder="Random">
-                </div>
-              </div>
-            </div>
-
-            <!-- Item Options -->
-            <div id="item-options" class="pixelart-options" style="display: none;">
-              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-                <div>
-                  <label style="color: var(--text-muted); font-size: 13px; display: block; margin-bottom: 8px;">Type</label>
-                  <select id="item-type" class="search-box" style="width: 100%;" onchange="updateItemColors()">
-                    <option value="potion">Potion</option>
-                    <option value="gem">Gem</option>
-                    <option value="coin">Coin</option>
-                  </select>
-                </div>
-                <div>
-                  <label style="color: var(--text-muted); font-size: 13px; display: block; margin-bottom: 8px;">Color</label>
-                  <select id="item-color" class="search-box" style="width: 100%;">
-                    <option value="red">Red</option>
-                    <option value="blue">Blue</option>
-                    <option value="green">Green</option>
-                    <option value="yellow">Yellow</option>
-                    <option value="purple">Purple</option>
-                  </select>
-                </div>
-                <div>
-                  <label style="color: var(--text-muted); font-size: 13px; display: block; margin-bottom: 8px;">Seed</label>
-                  <input type="number" id="item-seed" class="search-box" style="width: 100%;" placeholder="Random">
-                </div>
-              </div>
-            </div>
-
-            <!-- Decoration Options -->
-            <div id="decoration-options" class="pixelart-options" style="display: none;">
-              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-                <div>
-                  <label style="color: var(--text-muted); font-size: 13px; display: block; margin-bottom: 8px;">Type</label>
-                  <select id="decoration-type" class="search-box" style="width: 100%;">
-                    <option value="rock">Rock</option>
-                    <option value="grass_tuft">Grass Tuft</option>
-                    <option value="flower">Flower</option>
-                    <option value="mushroom">Mushroom</option>
-                    <option value="bush">Bush</option>
-                    <option value="bones">Bones</option>
-                    <option value="crystal">Crystal</option>
-                  </select>
-                </div>
-                <div>
-                  <label style="color: var(--text-muted); font-size: 13px; display: block; margin-bottom: 8px;">Theme</label>
-                  <select id="decoration-theme" class="search-box" style="width: 100%;">
-                    <option value="dungeon">Dungeon</option>
-                    <option value="forest">Forest</option>
-                    <option value="castle">Castle</option>
-                    <option value="cave">Cave</option>
-                  </select>
-                </div>
-                <div>
-                  <label style="color: var(--text-muted); font-size: 13px; display: block; margin-bottom: 8px;">Seed</label>
-                  <input type="number" id="decoration-seed" class="search-box" style="width: 100%;" placeholder="Random">
-                </div>
-              </div>
-            </div>
-
-            <!-- Batch Options -->
-            <div id="batch-options" class="pixelart-options" style="display: none;">
-              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
-                <div>
-                  <label style="color: var(--text-muted); font-size: 13px; display: block; margin-bottom: 8px;">Theme</label>
-                  <select id="batch-theme" class="search-box" style="width: 100%;">
-                    <option value="dungeon">Dungeon</option>
-                    <option value="forest">Forest</option>
-                    <option value="castle">Castle</option>
-                    <option value="cave">Cave</option>
-                  </select>
-                </div>
-                <div>
-                  <label style="color: var(--text-muted); font-size: 13px; display: block; margin-bottom: 8px;">Seed</label>
-                  <input type="number" id="batch-seed" class="search-box" style="width: 100%;" placeholder="Random">
-                </div>
-              </div>
-              <div style="margin-top: 16px;">
-                <label style="color: var(--text-muted); font-size: 13px; display: block; margin-bottom: 8px;">Include</label>
-                <div style="display: flex; gap: 16px;">
-                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="checkbox" id="batch-floors" checked>
-                    <span>Floors</span>
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="checkbox" id="batch-items" checked>
-                    <span>Items</span>
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="checkbox" id="batch-decorations" checked>
-                    <span>Decorations</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div style="margin-top: 16px;">
-              <button class="zoom-btn fix-all-btn" id="generate-pixelart" onclick="generatePixelArt()">Generate</button>
-              <button class="zoom-btn" id="randomize-seed" onclick="randomizeSeed()" style="margin-left: 8px;">Randomize Seed</button>
-            </div>
-          </div>
-
-          <!-- Preview Area -->
-          <div class="card" style="margin-top: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-              <h3>Preview</h3>
-              <div style="display: flex; gap: 8px;">
-                <button class="zoom-btn" id="download-pixelart" onclick="downloadPixelArt()" disabled>Download PNG</button>
-                <button class="zoom-btn" id="save-to-theme" onclick="saveToTheme()" disabled>Save to Theme</button>
-              </div>
-            </div>
-            <div id="pixelart-preview" class="pixelart-preview" style="min-height: 200px; display: flex; align-items: center; justify-content: center; background: var(--bg-primary); border-radius: 8px; padding: 20px;">
-              <div style="text-align: center; color: var(--text-muted);">
-                <div style="font-size: 48px; margin-bottom: 12px;">🎨</div>
-                <div>Select options and click Generate</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Generated Gallery -->
-          <div class="card" style="margin-top: 16px;">
-            <h3 style="margin-bottom: 16px;">Generated Gallery</h3>
-            <div id="pixelart-gallery" class="pixelart-gallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 12px; min-height: 100px;">
-              <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 20px;">
-                Generated tiles will appear here
-              </div>
-            </div>
-          </div>
-
-          <!-- CodeTale Server Status -->
-          <div class="card" style="margin-top: 16px;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <div id="codetale-status" style="width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted);"></div>
-              <span style="color: var(--text-muted); font-size: 13px;">CodeTale Server: <span id="codetale-status-text">Checking...</span></span>
-              <button class="zoom-btn" onclick="checkCodeTaleServer()" style="margin-left: auto;">Check Connection</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Add/Edit Key Modal -->
-        <div id="key-modal" class="modal hidden">
-          <div class="modal-backdrop" onclick="closeKeyModal()"></div>
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3 id="key-modal-title">Add New Key</h3>
-              <button class="modal-close" onclick="closeKeyModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-              <div class="form-group">
-                <label for="key-name">Key Name</label>
-                <input type="text" id="key-name" class="search-box" placeholder="e.g., CLAUDE_API_KEY" style="width: 100%;">
-                <small style="color: var(--text-muted);">Will be converted to UPPERCASE_WITH_UNDERSCORES</small>
-              </div>
-              <div class="form-group">
-                <label for="key-value">Key Value</label>
-                <div style="position: relative;">
-                  <input type="password" id="key-value" class="search-box" placeholder="Paste your API key..." style="width: 100%; padding-right: 40px;">
-                  <button class="key-toggle-visibility" onclick="toggleKeyValueVisibility()" title="Toggle visibility" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted);">
-                    <svg id="key-visibility-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3.5a4.5 4.5 0 0 0-4.496 4.306l-.004.194A4.5 4.5 0 0 0 8 12.5a4.5 4.5 0 0 0 4.496-4.306l.004-.194A4.5 4.5 0 0 0 8 3.5Zm0 7.5a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm0-5a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/></svg>
-                  </button>
-                </div>
-              </div>
-              <div class="form-group">
-                <label for="key-description">Description (optional)</label>
-                <input type="text" id="key-description" class="search-box" placeholder="e.g., Anthropic API key for Claude" style="width: 100%;">
-              </div>
-              <div class="form-group">
-                <label>Sync to Projects</label>
-                <div id="key-projects-checkboxes" class="projects-checkboxes"></div>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button class="zoom-btn" onclick="closeKeyModal()">Cancel</button>
-              <button class="zoom-btn fix-all-btn" id="save-key-btn" onclick="saveKey()">Save Key</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sync Modal -->
-        <div id="sync-modal" class="modal hidden">
-          <div class="modal-backdrop" onclick="closeSyncModal()"></div>
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3>Sync <span id="sync-key-name"></span></h3>
-              <button class="modal-close" onclick="closeSyncModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-              <p style="margin-bottom: 16px; color: var(--text-muted);">Select projects to sync this key to:</p>
-              <div id="sync-projects-checkboxes" class="projects-checkboxes"></div>
-            </div>
-            <div class="modal-footer">
-              <button class="zoom-btn" onclick="closeSyncModal()">Cancel</button>
-              <button class="zoom-btn fix-all-btn" onclick="performSync()">Sync to Selected</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sync Results Modal -->
-        <div id="sync-results-modal" class="modal hidden">
-          <div class="modal-backdrop" onclick="closeSyncResultsModal()"></div>
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3>Sync Complete</h3>
-              <button class="modal-close" onclick="closeSyncResultsModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-              <div id="sync-results-list"></div>
-            </div>
-            <div class="modal-footer">
-              <button class="zoom-btn fix-all-btn" onclick="closeSyncResultsModal()">Done</button>
-            </div>
-          </div>
-        </div>
 
       </div>
     </div>

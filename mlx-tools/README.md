@@ -6,7 +6,7 @@ Local AI tools using Apple MLX - zero API token cost.
 
 ```bash
 # Create and activate virtual environment (already done)
-cd ~/.claude-memory
+cd ~/.claude-dash
 python3 -m venv mlx-env
 source mlx-env/bin/activate
 pip install mlx-lm
@@ -65,14 +65,14 @@ mlx process --all        # Process all projects
 
 ## Integration with Watcher
 
-The file watcher (`~/.claude-memory/watcher/watcher.js`) marks changed files with
+The file watcher (`~/.claude-dash/watcher/watcher.js`) marks changed files with
 `needsResummarization: true`. Run `mlx process --all` periodically to update summaries.
 
 ### Automatic Processing (cron)
 
 ```bash
 # Add to crontab (runs every hour)
-0 * * * * cd ~/.claude-memory && source mlx-env/bin/activate && python mlx-tools/process_pending.py --all-projects --limit 20
+0 * * * * cd ~/.claude-dash && source mlx-env/bin/activate && python mlx-tools/process_pending.py --all-projects --limit 20
 ```
 
 ## Models

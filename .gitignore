@@ -2,6 +2,7 @@
 config.json
 memory.db
 daemon.log
+.last_compaction
 
 # Project-specific data
 projects/
@@ -9,6 +10,9 @@ sessions/
 indexes/
 logs/
 error-queue/
+
+# Learning data (user-specific)
+learning/*.json
 
 # Sensitive files
 global/api-keys.json

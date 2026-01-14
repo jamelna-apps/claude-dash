@@ -20,7 +20,7 @@ import os
 class OllamaClient:
     def __init__(self, base_url: str = None, model: str = None):
         self.base_url = base_url or os.environ.get("OLLAMA_URL", "http://localhost:11434")
-        self.model = model or os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
+        self.model = model or os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
         self._available = None
 
     @property
