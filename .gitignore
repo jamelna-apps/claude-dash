@@ -51,3 +51,10 @@ reports/
 # Build artifacts
 dist/
 build/
+
+# Environment files with secrets
+.env
+.env.local
+
+# Session markers
+.session-markers/

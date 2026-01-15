@@ -15,10 +15,12 @@ import sys
 import urllib.request
 from pathlib import Path
 
+import os
+
 MEMORY_ROOT = Path.home() / ".claude-dash"
 PATTERNS_FILE = MEMORY_ROOT / "patterns" / "patterns.json"
-OLLAMA_URL = "http://localhost:11434"
-OLLAMA_MODEL = "qwen2.5:7b"
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
 
 
 def load_patterns():
@@ -28,7 +30,7 @@ def load_patterns():
 
     try:
         return json.loads(PATTERNS_FILE.read_text())
-    except:
+    except (json.JSONDecodeError, IOError):
         return {"modes": {}, "learned_patterns": []}
 
 

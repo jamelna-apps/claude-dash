@@ -22,6 +22,7 @@ import os
 import sys
 import argparse
 import urllib.request
+import tempfile
 from pathlib import Path
 from datetime import datetime
 
@@ -60,8 +61,8 @@ def load_transcript(transcript_path):
             try:
                 msg = json.loads(line.strip())
                 messages.append(msg)
-            except:
-                continue
+            except json.JSONDecodeError:
+                continue  # Skip malformed lines
 
     return messages
 
@@ -230,7 +231,7 @@ If no meaningful observations, return: []"""
                             "files": obs.get("files", [])
                         })
             return valid
-    except Exception as e:
+    except (json.JSONDecodeError, KeyError, TypeError) as e:
         print(f"JSON parse error: {e}")
 
     return []
@@ -285,13 +286,16 @@ def save_observations(observations, project_id, session_id, summary):
 
     try:
         global_obs = json.loads(global_obs_path.read_text())
-    except:
+    except (json.JSONDecodeError, IOError, FileNotFoundError):
         global_obs = {"version": "1.0", "lastUpdated": None, "observations": []}
 
     global_obs["observations"].extend(observations)
     global_obs["observations"] = global_obs["observations"][-500:]  # Keep last 500
     global_obs["lastUpdated"] = timestamp
-    global_obs_path.write_text(json.dumps(global_obs, indent=2))
+    # Atomic write: write to temp file, then rename
+    temp_path = global_obs_path.with_suffix('.tmp')
+    temp_path.write_text(json.dumps(global_obs, indent=2))
+    temp_path.rename(global_obs_path)
 
     # Update per-project observations
     if project_id and project_id != "unknown":
@@ -300,13 +304,16 @@ def save_observations(observations, project_id, session_id, summary):
 
         try:
             project_obs = json.loads(project_obs_path.read_text())
-        except:
+        except (json.JSONDecodeError, IOError, FileNotFoundError):
             project_obs = {"version": "1.0", "lastUpdated": None, "observations": []}
 
         project_obs["observations"].extend(observations)
         project_obs["observations"] = project_obs["observations"][-200:]  # Keep last 200 per project
         project_obs["lastUpdated"] = timestamp
-        project_obs_path.write_text(json.dumps(project_obs, indent=2))
+        # Atomic write
+        temp_path = project_obs_path.with_suffix('.tmp')
+        temp_path.write_text(json.dumps(project_obs, indent=2))
+        temp_path.rename(project_obs_path)
 
     # Auto-populate decisions.json for decision-type observations
     decisions = [o for o in observations if o["category"] == "decision"]
@@ -314,7 +321,7 @@ def save_observations(observations, project_id, session_id, summary):
         decisions_path = MEMORY_ROOT / "projects" / project_id / "decisions.json"
         try:
             existing = json.loads(decisions_path.read_text())
-        except:
+        except (json.JSONDecodeError, IOError, FileNotFoundError):
             existing = {"version": "1.0", "project": project_id, "lastUpdated": None, "decisions": []}
 
         for d in decisions:
@@ -327,13 +334,16 @@ def save_observations(observations, project_id, session_id, summary):
 
         existing["decisions"] = existing["decisions"][-50:]  # Keep last 50
         existing["lastUpdated"] = timestamp
-        decisions_path.write_text(json.dumps(existing, indent=2))
+        # Atomic write
+        temp_path = decisions_path.with_suffix('.tmp')
+        temp_path.write_text(json.dumps(existing, indent=2))
+        temp_path.rename(decisions_path)
 
     # Update session index
     index_path = MEMORY_ROOT / "sessions" / "index.json"
     try:
         index = json.loads(index_path.read_text())
-    except:
+    except (json.JSONDecodeError, IOError, FileNotFoundError):
         index = {"version": "1.0", "lastUpdated": None, "sessions": []}
 
     session_entry = {
@@ -348,7 +358,10 @@ def save_observations(observations, project_id, session_id, summary):
     index["sessions"].append(session_entry)
     index["sessions"] = index["sessions"][-100:]  # Keep last 100
     index["lastUpdated"] = timestamp
-    index_path.write_text(json.dumps(index, indent=2))
+    # Atomic write
+    temp_path = index_path.with_suffix('.tmp')
+    temp_path.write_text(json.dumps(index, indent=2))
+    temp_path.rename(index_path)
 
     return len(observations)
 

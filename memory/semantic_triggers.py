@@ -92,8 +92,8 @@ def search_decisions(search_terms, project_id=None):
                         if term.lower() in decision_text.lower():
                             results.append({"type": "decision", "text": decision_text, "project": project_id})
                             break
-            except:
-                pass
+            except (json.JSONDecodeError, IOError, KeyError) as e:
+                pass  # File unreadable or malformed
 
     # Search global infrastructure
     infra_path = MEMORY_ROOT / "global" / "infrastructure.json"
@@ -106,8 +106,8 @@ def search_decisions(search_terms, project_id=None):
                     if term.lower() in decision_text.lower():
                         results.append({"type": "infrastructure", "text": decision_text})
                         break
-        except:
-            pass
+        except (json.JSONDecodeError, IOError, KeyError) as e:
+            pass  # File unreadable or malformed
 
     return results[:5]  # Limit results
 
@@ -135,8 +135,8 @@ def search_observations(search_terms, project_id=None):
                             "text": obs_text
                         })
                         break
-        except:
-            pass
+        except (json.JSONDecodeError, IOError, KeyError) as e:
+            pass  # File unreadable or malformed
 
     return results[:5]
 
@@ -161,8 +161,8 @@ def search_patterns(search_terms):
                             "mode": mode
                         })
                         break
-        except:
-            pass
+        except (json.JSONDecodeError, IOError, KeyError) as e:
+            pass  # File unreadable or malformed
 
     return results[:3]
 

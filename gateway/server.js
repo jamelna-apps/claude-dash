@@ -20,8 +20,8 @@ const MLX_TOOLS = path.join(MEMORY_ROOT, 'mlx-tools');
 const CONFIG_PATH = path.join(MEMORY_ROOT, 'config.json');
 
 // AnythingLLM Configuration
-const ANYTHINGLLM_URL = 'http://localhost:3001';
-const ANYTHINGLLM_API_KEY = 'EPDM6YT-EHW4NJ5-M941M99-BZFFKY2';
+const ANYTHINGLLM_URL = process.env.ANYTHINGLLM_URL || 'http://localhost:3001';
+const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || '';
 
 // Initialize cache and metrics
 const cache = new Cache();

@@ -174,6 +174,8 @@ mkdir -p "$CLAUDE_DASH_DIR/sessions/digests"
 mkdir -p "$CLAUDE_DASH_DIR/sessions/summaries"
 mkdir -p "$CLAUDE_DASH_DIR/logs"
 mkdir -p "$CLAUDE_DASH_DIR/indexes"
+mkdir -p "$CLAUDE_DASH_DIR/patterns"
+mkdir -p "$CLAUDE_DASH_DIR/learning"
 success "Created required directories"
 
 # =============================================================================

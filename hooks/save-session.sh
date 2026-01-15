@@ -101,8 +101,11 @@ EOF
 BACKUP_FILE="$PROJECT_SESSION_DIR/session-$(date +%Y%m%d-%H%M%S).json"
 cp "$SESSION_FILE" "$BACKUP_FILE"
 
-# Keep only last 10 backups
-ls -t "$PROJECT_SESSION_DIR"/session-*.json 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null
+# Keep only last 10 backups (using find for safety)
+find "$PROJECT_SESSION_DIR" -name "session-*.json" -type f -printf '%T@ %p\n' 2>/dev/null | \
+  sort -rn | tail -n +11 | cut -d' ' -f2- | xargs -r rm -f 2>/dev/null || \
+  # Fallback for macOS (doesn't have -printf)
+  ls -t "$PROJECT_SESSION_DIR"/session-*.json 2>/dev/null | tail -n +11 | while read -r f; do rm -f "$f"; done 2>/dev/null
 
 # === NEW: Session Memory with Observation Extraction ===
 

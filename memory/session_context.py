@@ -34,15 +34,15 @@ def get_project_id(cwd=None):
             project_path = Path(project.get("path", "")).expanduser()
             if str(cwd).startswith(str(project_path)):
                 return project.get("id")
-    except:
-        pass
+    except (json.JSONDecodeError, IOError, KeyError):
+        pass  # Config file unreadable or malformed
 
     return cwd.name.lower().replace(" ", "-")
 
 
 def get_last_session_summary(project_id):
     """Get the summary from the last session for this project."""
-    sessions_dir = MEMORY_ROOT / "sessions" / "projects" / project_id if project_id else MEMORY_ROOT / "sessions"
+    sessions_dir = MEMORY_ROOT / "sessions" / project_id if project_id else MEMORY_ROOT / "sessions"
     summary_file = MEMORY_ROOT / "sessions" / "summaries" / f"{project_id}.json" if project_id else None
 
     # Try project-specific summary first
@@ -50,8 +50,8 @@ def get_last_session_summary(project_id):
         try:
             data = json.loads(summary_file.read_text())
             return data.get("summary", "")
-        except:
-            pass
+        except (json.JSONDecodeError, IOError, KeyError):
+            pass  # Summary file unreadable
 
     # Fall back to session index
     index_path = MEMORY_ROOT / "sessions" / "index.json"
@@ -64,8 +64,8 @@ def get_last_session_summary(project_id):
             for session in reversed(sessions):
                 if not project_id or session.get("projectId") == project_id:
                     return session.get("summary", "")
-        except:
-            pass
+        except (json.JSONDecodeError, IOError, KeyError):
+            pass  # Index file unreadable
 
     return None
 
@@ -92,8 +92,8 @@ def get_recent_observations(project_id, limit=5):
 
         result = prioritized[-limit:] if len(prioritized) >= limit else prioritized + others[-(limit-len(prioritized)):]
         return result[-limit:]
-    except:
-        return []
+    except (json.JSONDecodeError, IOError, KeyError):
+        return []  # Observations file unreadable
 
 
 def get_recent_decisions(project_id, limit=3):
@@ -110,15 +110,15 @@ def get_recent_decisions(project_id, limit=3):
             try:
                 data = json.loads(infra_path.read_text())
                 return data.get("decisions", [])[-limit:]
-            except:
-                pass
+            except (json.JSONDecodeError, IOError, KeyError):
+                pass  # Infrastructure file unreadable
         return []
 
     try:
         data = json.loads(decisions_path.read_text())
         return data.get("decisions", [])[-limit:]
-    except:
-        return []
+    except (json.JSONDecodeError, IOError, KeyError):
+        return []  # Decisions file unreadable
 
 
 def get_infrastructure_context():
@@ -141,8 +141,8 @@ def get_infrastructure_context():
             "recent_decisions": decisions,
             "active_services": list(services.keys())
         }
-    except:
-        return None
+    except (json.JSONDecodeError, IOError, KeyError):
+        return None  # Infrastructure file unreadable
 
 
 def search_digests(query, limit=3):
@@ -174,8 +174,8 @@ def search_digests(query, limit=3):
 
             if len(results) >= limit:
                 break
-        except:
-            continue
+        except (json.JSONDecodeError, IOError, KeyError):
+            continue  # Digest file unreadable
 
     return results
 

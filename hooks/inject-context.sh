@@ -20,7 +20,13 @@ CONFIDENCE_CAL="$MEMORY_ROOT/learning/confidence_calibration.py"
 input=$(cat)
 
 # Track if this is the first message of the session
-FIRST_MESSAGE_MARKER="/tmp/claude-session-started-$$"
+# Use MEMORY_ROOT instead of /tmp for persistence across system reboots
+SESSION_MARKERS_DIR="$MEMORY_ROOT/.session-markers"
+mkdir -p "$SESSION_MARKERS_DIR" 2>/dev/null
+FIRST_MESSAGE_MARKER="$SESSION_MARKERS_DIR/claude-session-$$-$(date +%Y%m%d)"
+
+# Clean up old markers (older than 1 day)
+find "$SESSION_MARKERS_DIR" -name "claude-session-*" -mtime +1 -delete 2>/dev/null
 
 # === HEALTH CHECK (first message only) ===
 if [ ! -f "$FIRST_MESSAGE_MARKER" ] && [ -f "$HEALTH_CHECK" ]; then

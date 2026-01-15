@@ -12,7 +12,7 @@ from pathlib import Path
 
 MEMORY_ROOT = Path.home() / '.claude-dash'
 OLLAMA_URL = 'http://localhost:11434'
-MODEL = 'llama3.2:3b'
+MODEL = 'qwen2.5:7b'
 
 
 def get_project_context():

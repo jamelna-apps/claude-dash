@@ -73,6 +73,24 @@ case "$1" in
         shift
         python3 "$MLX_DIR/code_analyzer.py" "$@" review
         ;;
+    # ===================
+    # SMART REVIEW (Token-saving with qwen3)
+    # ===================
+    review-local|rl)
+        # Local-only review using qwen3 (free, no Claude tokens)
+        shift
+        python3 "$MLX_DIR/smart_reviewer.py" "$@"
+        ;;
+    review-summary|rs)
+        # Generate Claude-ready summary (for copy/paste to Claude)
+        shift
+        python3 "$MLX_DIR/smart_reviewer.py" "$@" --summary-only
+        ;;
+    review-smart|smart)
+        # Smart review: local first, escalate if needed
+        shift
+        python3 "$MLX_DIR/smart_reviewer.py" "$@" --verbose
+        ;;
     health)
         project="$2"
         project_path=$(python3 -c "import json; c=json.load(open('$HOME/.claude-dash/config.json')); print([p['path'] for p in c['projects'] if p['id']=='$project'][0])" 2>/dev/null)
