@@ -34,6 +34,13 @@ try:
 except ImportError:
     HAS_HYBRID = False
 
+# Try to import SQLite functions for fast queries
+try:
+    from memory_db import get_connection, search_files, search_functions as db_search_functions
+    HAS_SQLITE = True
+except ImportError:
+    HAS_SQLITE = False
+
 # Intent patterns (no MLX needed for basic classification)
 INTENTS = {
     "find_file": {
@@ -156,7 +163,28 @@ def search_summaries(project_id, terms, use_hybrid=True):
     return results[:10], "keyword"
 
 def search_functions(project_id, terms):
-    """Search functions index."""
+    """Search functions index.
+
+    Uses SQLite for fast indexed lookups when available,
+    falls back to JSON scan otherwise.
+    """
+    # Try SQLite first (fast indexed search)
+    if HAS_SQLITE:
+        try:
+            query = " ".join(terms)
+            # db_search_functions(name, project_id, limit)
+            db_results = db_search_functions(query, project_id, limit=10)
+            if db_results:
+                return [{
+                    "function": r["name"],
+                    "file": r["path"],
+                    "line": r["line_number"],
+                    "type": r.get("type", "function")
+                } for r in db_results]
+        except Exception:
+            pass  # Fall back to JSON
+
+    # Fallback: JSON scan
     path = MEMORY_ROOT / "projects" / project_id / "functions.json"
     if not path.exists():
         return []

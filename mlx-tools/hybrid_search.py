@@ -25,6 +25,45 @@ except ImportError:
 
 MEMORY_ROOT = Path.home() / '.claude-dash'
 
+# Try to import SQLite for FTS5 search
+try:
+    from memory_db import get_connection
+    HAS_SQLITE = True
+except ImportError:
+    HAS_SQLITE = False
+
+
+def fts5_search(project_id: str, query: str, top_k: int = 20) -> List[Dict]:
+    """Fast FTS5 search using SQLite (preferred over in-memory BM25)."""
+    if not HAS_SQLITE:
+        return []
+
+    try:
+        conn = get_connection()
+        # FTS5 with BM25 ranking
+        cursor = conn.execute("""
+            SELECT f.path, f.summary, f.purpose, bm25(files_fts) as score
+            FROM files_fts
+            JOIN files f ON files_fts.rowid = f.id
+            WHERE files_fts MATCH ? AND f.project_id = ?
+            ORDER BY score
+            LIMIT ?
+        """, (query, project_id, top_k))
+
+        results = []
+        for row in cursor.fetchall():
+            results.append({
+                'file': row[0],
+                'summary': row[1] or '',
+                'purpose': row[2] or '',
+                'score': abs(row[3]) if row[3] else 0  # BM25 returns negative scores
+            })
+
+        conn.close()
+        return results
+    except Exception:
+        return []
+
 
 def tokenize(text: str) -> List[str]:
     """Simple tokenization for BM25"""
@@ -246,6 +285,8 @@ def hybrid_search(project_id: str, query: str, top_k: int = 10) -> List[Dict]:
     """
     Perform hybrid search combining BM25 + semantic embeddings
 
+    Uses FTS5 (SQLite) for fast BM25 when available, falls back to in-memory.
+
     Args:
         project_id: Project identifier
         query: Search query
@@ -257,9 +298,12 @@ def hybrid_search(project_id: str, query: str, top_k: int = 10) -> List[Dict]:
     # Get more results from each source for better merging
     fetch_k = top_k * 2
 
-    # BM25 search
-    bm25_index = ProjectBM25Index(project_id)
-    bm25_results = bm25_index.search(query, fetch_k)
+    # BM25 search - try FTS5 first (fast), fall back to in-memory
+    bm25_results = fts5_search(project_id, query, fetch_k)
+    if not bm25_results:
+        # Fall back to in-memory BM25
+        bm25_index = ProjectBM25Index(project_id)
+        bm25_results = bm25_index.search(query, fetch_k)
 
     # Semantic search (if embeddings available)
     semantic_results = search_embeddings(project_id, query, fetch_k)

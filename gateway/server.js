@@ -297,6 +297,23 @@ const TOOLS = [
         limit: { type: 'number' }
       }
     }
+  },
+  {
+    name: 'memory_search_all',
+    description: 'Search across ALL projects for files, functions, or observations. Cross-project search.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search query' },
+        type: {
+          type: 'string',
+          enum: ['files', 'functions', 'observations'],
+          description: 'What to search (default: files)'
+        },
+        limit: { type: 'number', description: 'Max results (default: 20)' }
+      },
+      required: ['query']
+    }
   }
 ];
 
@@ -781,6 +798,20 @@ async function handleMemorySessions(params, cwd) {
   return { result: output };
 }
 
+async function handleMemorySearchAll(params) {
+  const args = [params.query];
+
+  if (params.type) {
+    args.push('--type', params.type);
+  }
+  if (params.limit) {
+    args.push('--limit', String(params.limit));
+  }
+
+  const output = await runPythonScript(path.join(MLX_TOOLS, 'cross_search.py'), args);
+  return { result: output };
+}
+
 // =============================================================================
 // MCP SERVER
 // =============================================================================
@@ -891,6 +922,9 @@ class MCPServer {
           break;
         case 'memory_sessions':
           result = await handleMemorySessions(args, this.currentCwd);
+          break;
+        case 'memory_search_all':
+          result = await handleMemorySearchAll(args);
           break;
 
         default:

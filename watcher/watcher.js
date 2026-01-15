@@ -4,10 +4,33 @@ const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
 const os = require('os');
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const net = require('net');
 
 const MEMORY_ROOT = path.join(os.homedir(), '.claude-dash');
+const MLX_TOOLS = path.join(MEMORY_ROOT, 'mlx-tools');
+const PYTHON_PATH = path.join(MEMORY_ROOT, 'mlx-env', 'bin', 'python3');
+
+// Sync file to SQLite database (runs detached, non-blocking)
+function syncToDatabase(projectId, filePath) {
+  const script = path.join(MLX_TOOLS, 'db_sync.py');
+
+  // Check if Python and script exist
+  if (!fs.existsSync(PYTHON_PATH) || !fs.existsSync(script)) {
+    return; // Silently skip if not set up
+  }
+
+  try {
+    const child = spawn(PYTHON_PATH, [script, projectId, filePath], {
+      detached: true,
+      stdio: 'ignore',
+      cwd: MLX_TOOLS
+    });
+    child.unref(); // Don't wait for completion
+  } catch (error) {
+    // Silently fail - DB sync is best-effort
+  }
+}
 const PID_FILE = path.join(MEMORY_ROOT, 'watcher', 'watcher.pid');
 
 // Check if another instance is already running
@@ -428,6 +451,10 @@ function processFileChange(project, filePath, action) {
   updateFunctionsIndex(project, filePath, action);
   console.log(`  → Updating summaries structure`);
   updateSummariesStructure(project, filePath, action);
+
+  // Sync to SQLite database (async, non-blocking)
+  const relativePath = path.relative(project.path, filePath);
+  syncToDatabase(project.id, relativePath);
 }
 
 // Scan project and update index.json
