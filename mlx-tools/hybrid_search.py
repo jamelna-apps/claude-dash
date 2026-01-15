@@ -124,23 +124,65 @@ class ProjectBM25Index:
         return results[:top_k]
 
 
-def load_ollama_embeddings(project_id: str) -> Optional[Dict]:
-    """Load pre-computed Ollama embeddings if available"""
-    embeddings_path = MEMORY_ROOT / 'projects' / project_id / 'ollama_embeddings.json'
+def load_embeddings_index(project_id: str) -> Optional[Dict]:
+    """Load pre-computed embeddings if available (v2 preferred)"""
+    # Try embeddings_v2 first (newer format)
+    v2_path = MEMORY_ROOT / 'projects' / project_id / 'embeddings_v2.json'
+    if v2_path.exists():
+        return json.loads(v2_path.read_text())
 
-    if embeddings_path.exists():
-        return json.loads(embeddings_path.read_text())
+    # Fall back to legacy ollama format
+    legacy_path = MEMORY_ROOT / 'projects' / project_id / 'ollama_embeddings.json'
+    if legacy_path.exists():
+        return json.loads(legacy_path.read_text())
+
     return None
 
 
 def search_embeddings(project_id: str, query: str, top_k: int = 10) -> List[Dict]:
-    """Search using Ollama embeddings (semantic)"""
+    """Search using embeddings (semantic) - uses unified provider"""
     try:
-        from ollama_embeddings import search
-        return search(project_id, query, top_k)
+        # Use new unified embeddings provider
+        from embeddings import get_provider, similarity
+        import numpy as np
+
+        provider = get_provider()
+        embeddings_data = load_embeddings_index(project_id)
+
+        if not embeddings_data:
+            return []
+
+        # Get query embedding
+        query_vec = provider.embed_single(query)
+
+        # Search through indexed files
+        files = embeddings_data.get('files', {})
+        results = []
+
+        for filepath, file_data in files.items():
+            if 'embedding' not in file_data:
+                continue
+
+            file_vec = np.array(file_data['embedding'])
+            score = similarity(query_vec, file_vec)
+
+            results.append({
+                'file': filepath,
+                'score': score,
+                'summary': file_data.get('summary', ''),
+                'purpose': file_data.get('purpose', '')
+            })
+
+        results.sort(key=lambda x: x['score'], reverse=True)
+        return results[:top_k]
+
     except Exception as e:
-        # Embeddings not available
-        return []
+        # Fall back to legacy ollama_embeddings if available
+        try:
+            from ollama_embeddings import search
+            return search(project_id, query, top_k)
+        except:
+            return []
 
 
 def reciprocal_rank_fusion(

@@ -163,7 +163,28 @@ function queueChange(projectId, filePath, action) {
 // Cache for Metro status to reduce polling overhead
 let cachedMetroStatus = null;
 let lastMetroCheck = 0;
-const METRO_CACHE_TTL = 10000; // Cache Metro status for 10 seconds
+const METRO_CACHE_TTL = 60000; // Cache Metro status for 60 seconds (was 10s)
+
+// Fast port check using net.connect (much faster than lsof)
+function isPortInUse(port) {
+  return new Promise((resolve) => {
+    const socket = net.createConnection(port, '127.0.0.1');
+    socket.setTimeout(500);
+    socket.on('connect', () => { socket.destroy(); resolve(true); });
+    socket.on('timeout', () => { socket.destroy(); resolve(false); });
+    socket.on('error', () => { socket.destroy(); resolve(false); });
+  });
+}
+
+// Quick Metro check using port probe (async, fast)
+async function isMetroRunningFast() {
+  // Check Metro ports first (fast, no shell commands)
+  const [port8081, port19000] = await Promise.all([
+    isPortInUse(8081),  // Metro default
+    isPortInUse(19000)  // Expo default
+  ]);
+  return port8081 || port19000;
+}
 
 // Cached Metro check - only runs shell commands if cache expired
 function getCachedMetroStatus() {
@@ -214,7 +235,7 @@ function startMetroDetection(projects) {
         }
       }
     }
-  }, 30000); // Check every 30 seconds instead of 5
+  }, 60000); // Check every 60 seconds (was 30s) - reduced CPU overhead
 }
 
 // Check if we should process this project
@@ -227,14 +248,31 @@ const { parseFile } = require('./extractors/ast-parser');
 const { scanFileForCollections } = require('./extractors/schema-extractor');
 const CONFIG_PATH = path.join(MEMORY_ROOT, 'config.json');
 
-// Load configuration
-function loadConfig() {
+// Config cache to avoid repeated disk reads
+let configCache = null;
+let configCacheTime = 0;
+const CONFIG_CACHE_TTL = 30000; // 30 seconds
+
+// Load configuration (with caching)
+function loadConfig(forceReload = false) {
+  const now = Date.now();
+  if (!forceReload && configCache && (now - configCacheTime) < CONFIG_CACHE_TTL) {
+    return configCache;
+  }
   try {
-    return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    configCache = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    configCacheTime = now;
+    return configCache;
   } catch (error) {
     console.error('Error loading config:', error.message);
     return null;
   }
+}
+
+// Invalidate config cache (call when config changes)
+function invalidateConfigCache() {
+  configCache = null;
+  configCacheTime = 0;
 }
 
 // Get file type from extension
@@ -412,10 +450,11 @@ function updateProjectIndex(project) {
   const languageCount = {};
   let totalFiles = 0;
 
-  function scanDir(dir, relativePath = '') {
-    const config = loadConfig();
-    const ignorePatterns = config?.watcher?.ignorePatterns || [];
+  // Load config once at start of scan
+  const config = loadConfig();
+  const ignorePatterns = config?.watcher?.ignorePatterns || [];
 
+  function scanDir(dir, relativePath = '') {
     try {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
 
@@ -423,7 +462,7 @@ function updateProjectIndex(project) {
         const entryPath = path.join(dir, entry.name);
         const entryRelative = path.join(relativePath, entry.name);
 
-        // Check ignore patterns
+        // Check ignore patterns (using cached ignorePatterns from outer scope)
         const shouldIgnore = ignorePatterns.some(pattern => {
           if (pattern.includes('*')) {
             const regex = new RegExp(pattern.replace('*', '.*'));

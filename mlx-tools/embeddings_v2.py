@@ -2,6 +2,16 @@
 """
 MLX Embeddings V2 - Using dedicated embedding model
 
+DEPRECATED: Use embeddings.py instead!
+The unified EmbeddingProvider provides:
+- Automatic backend detection (Ollama > sentence-transformers > TF-IDF)
+- Consistent API across all backends
+- Better fallback handling
+
+This file is kept for backwards compatibility.
+Use hybrid_search.py for searches - it uses the unified provider.
+
+Original description:
 Uses Qwen3-Embedding for much better semantic search than LLM embeddings.
 10x better similarity matching for finding related code.
 

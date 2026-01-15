@@ -1,6 +1,17 @@
 #!/usr/bin/env python3
 """
 Ollama Embeddings - Generate embeddings using local Ollama
+
+DEPRECATED: Use embeddings.py instead!
+The unified EmbeddingProvider handles Ollama automatically with fallbacks.
+
+This file is kept for backwards compatibility only.
+New code should use:
+    from embeddings import get_provider
+    provider = get_provider()
+    vectors = provider.embed(["text1", "text2"])
+
+Original description:
 Uses nomic-embed-text for high-quality embeddings
 """
 

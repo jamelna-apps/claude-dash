@@ -2,6 +2,16 @@
 """
 MLX Semantic Search for Claude Memory System
 
+DEPRECATED: Use embeddings.py instead!
+The unified EmbeddingProvider provides:
+- Automatic backend detection (Ollama > sentence-transformers > TF-IDF)
+- Consistent API across all backends
+- Better fallback handling
+
+This file is kept for backwards compatibility.
+Use hybrid_search.py for searches - it uses the unified provider.
+
+Original description:
 Embeds file summaries and enables semantic search across the codebase.
 Find related files even with different naming conventions.
 

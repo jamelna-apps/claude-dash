@@ -1,7 +1,17 @@
 #!/usr/bin/env node
 /**
- * Claude-Dash MCP Server
+ * Claude-Dash MCP Server (DEPRECATED)
  *
+ * ⚠️  DEPRECATED: Use gateway/server.js instead!
+ * The gateway provides all these tools plus:
+ * - Caching (smart_read, smart_exec)
+ * - Metrics tracking
+ * - AnythingLLM integration (doc_query)
+ *
+ * This file is kept for backwards compatibility only.
+ * Configure claude-dash-gateway in your MCP settings instead.
+ *
+ * Original description:
  * Exposes memory tools (query, search, similar, health) as native Claude tools
  * via the Model Context Protocol (MCP).
  *
