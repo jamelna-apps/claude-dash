@@ -19,6 +19,181 @@ const MEMORY_ROOT = path.join(process.env.HOME, '.claude-dash');
 const MLX_TOOLS = path.join(MEMORY_ROOT, 'mlx-tools');
 const CONFIG_PATH = path.join(MEMORY_ROOT, 'config.json');
 
+// =============================================================================
+// SECURITY: Path Validation
+// =============================================================================
+
+// Allowed base directories for file operations
+function getAllowedBasePaths() {
+  const config = loadConfigUncached();
+  const allowed = [
+    process.env.HOME,
+    '/tmp',
+    MEMORY_ROOT
+  ];
+  // Add all registered project paths
+  for (const project of config.projects || []) {
+    if (project.path) {
+      allowed.push(project.path);
+    }
+  }
+  return allowed;
+}
+
+// Load config without caching (for security checks)
+function loadConfigUncached() {
+  try {
+    return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+  } catch (e) {
+    return { projects: [] };
+  }
+}
+
+// Validate path is within allowed directories (prevents path traversal)
+function isPathAllowed(filePath) {
+  if (!filePath || typeof filePath !== 'string') {
+    return false;
+  }
+
+  // Resolve to absolute path and normalize
+  const resolved = path.resolve(filePath);
+
+  // Check for path traversal attempts
+  if (filePath.includes('..') && resolved !== path.normalize(filePath)) {
+    return false;
+  }
+
+  // Check against allowed base paths
+  const allowed = getAllowedBasePaths();
+  return allowed.some(base => resolved.startsWith(path.resolve(base)));
+}
+
+// Validate and sanitize file path
+function validateFilePath(filePath, operation = 'read') {
+  if (!filePath || typeof filePath !== 'string') {
+    return { valid: false, error: 'Invalid file path' };
+  }
+
+  const resolved = path.resolve(filePath);
+
+  // Block obvious dangerous paths
+  const dangerousPaths = ['/etc/passwd', '/etc/shadow', '/.ssh/', '/id_rsa', '/.env'];
+  for (const dangerous of dangerousPaths) {
+    if (resolved.includes(dangerous)) {
+      return { valid: false, error: `Access to ${dangerous} is not allowed` };
+    }
+  }
+
+  if (!isPathAllowed(resolved)) {
+    return { valid: false, error: `Path outside allowed directories: ${filePath}` };
+  }
+
+  // For write operations, additional checks
+  if (operation === 'write') {
+    // Don't allow writing to system directories
+    const systemDirs = ['/bin', '/sbin', '/usr', '/System', '/Library'];
+    for (const sysDir of systemDirs) {
+      if (resolved.startsWith(sysDir)) {
+        return { valid: false, error: `Cannot write to system directory: ${sysDir}` };
+      }
+    }
+  }
+
+  return { valid: true, path: resolved };
+}
+
+// =============================================================================
+// SECURITY: Command Validation
+// =============================================================================
+
+// Commands that are never allowed
+const BLOCKED_COMMANDS = [
+  /\brm\s+(-rf?|--recursive)?\s*\//, // rm -rf /
+  /\bmkfs\b/,
+  /\bdd\s+.*of=\/dev/,
+  /\b(curl|wget).*\|\s*(ba)?sh/,     // curl | sh patterns
+  />\s*\/dev\/sd[a-z]/,
+  /\bchmod\s+777\s+\//,
+  /\bsudo\s+rm/,
+  /\bformat\b.*c:/i,
+  /\b:(){ :|:& };:/,                 // fork bomb
+];
+
+// Commands that require extra scrutiny
+const SENSITIVE_PATTERNS = [
+  /\bsudo\b/,
+  /\bsu\s+-?\s*$/,
+  />\s*\/etc\//,
+  /\beval\b/,
+  /\bexec\b/,
+];
+
+function validateCommand(command) {
+  if (!command || typeof command !== 'string') {
+    return { valid: false, error: 'Invalid command' };
+  }
+
+  // Check for blocked dangerous patterns
+  for (const pattern of BLOCKED_COMMANDS) {
+    if (pattern.test(command)) {
+      return { valid: false, error: 'Command contains blocked dangerous pattern' };
+    }
+  }
+
+  // Warn about sensitive commands but allow them
+  let warning = null;
+  for (const pattern of SENSITIVE_PATTERNS) {
+    if (pattern.test(command)) {
+      warning = 'Command contains sensitive operations';
+      break;
+    }
+  }
+
+  return { valid: true, command, warning };
+}
+
+// =============================================================================
+// SECURITY: Input Validation
+// =============================================================================
+
+// Validate project ID format (alphanumeric, dashes, underscores only)
+function validateProjectId(projectId) {
+  if (!projectId || typeof projectId !== 'string') {
+    return { valid: false, error: 'Invalid project ID' };
+  }
+  // Only allow safe characters in project IDs
+  if (!/^[a-zA-Z0-9_-]+$/.test(projectId)) {
+    return { valid: false, error: 'Project ID contains invalid characters' };
+  }
+  if (projectId.length > 100) {
+    return { valid: false, error: 'Project ID too long' };
+  }
+  return { valid: true, id: projectId };
+}
+
+// Validate numeric parameters
+function validateLimit(limit, defaultValue = 10, maxValue = 100) {
+  if (limit === undefined || limit === null) {
+    return defaultValue;
+  }
+  const num = parseInt(limit, 10);
+  if (isNaN(num) || num < 1) {
+    return defaultValue;
+  }
+  return Math.min(num, maxValue);
+}
+
+// Validate query string
+function validateQuery(query) {
+  if (!query || typeof query !== 'string') {
+    return { valid: false, error: 'Invalid query' };
+  }
+  if (query.length > 10000) {
+    return { valid: false, error: 'Query too long' };
+  }
+  return { valid: true, query: query.trim() };
+}
+
 // AnythingLLM Configuration
 const ANYTHINGLLM_URL = process.env.ANYTHINGLLM_URL || 'http://localhost:3001';
 const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || '';
@@ -323,9 +498,15 @@ const TOOLS = [
 
 async function handleSmartRead(params, cwd) {
   const startTime = Date.now();
-  const filePath = params.path;
   const detail = params.detail || 'summary';
   const project = params.project || detectProject(cwd);
+
+  // SECURITY: Validate file path
+  const pathCheck = validateFilePath(params.path, 'read');
+  if (!pathCheck.valid) {
+    return { error: pathCheck.error };
+  }
+  const filePath = pathCheck.path;
 
   // Check cache first
   const cached = cache.get('fileRead', { path: filePath, detail });
@@ -454,8 +635,14 @@ async function handleSmartSearch(params, cwd) {
 
 async function handleSmartExec(params, cwd) {
   const startTime = Date.now();
-  const command = params.command;
   const workingDir = params.cwd || cwd;
+
+  // SECURITY: Validate command
+  const cmdCheck = validateCommand(params.command);
+  if (!cmdCheck.valid) {
+    return { error: cmdCheck.error };
+  }
+  const command = cmdCheck.command;
 
   // Check cache unless explicitly skipped
   if (!params.skipCache) {
@@ -498,9 +685,15 @@ async function handleSmartExec(params, cwd) {
 }
 
 async function handleSmartEdit(params, cwd) {
-  const filePath = params.path;
   const content = params.content;
   const project = params.project || detectProject(cwd);
+
+  // SECURITY: Validate file path for write operation
+  const pathCheck = validateFilePath(params.path, 'write');
+  if (!pathCheck.valid) {
+    return { error: pathCheck.error };
+  }
+  const filePath = pathCheck.path;
 
   // Write file
   try {
@@ -680,10 +873,22 @@ async function handleDocListWorkspaces() {
 // --- Memory tool handlers (passthrough) ---
 
 async function handleMemoryQuery(params, cwd) {
+  // Validate query
+  const queryCheck = validateQuery(params.query);
+  if (!queryCheck.valid) {
+    return { error: queryCheck.error };
+  }
+
   const project = params.project || detectProject(cwd);
   if (!project) return { error: 'Could not detect project.' };
 
-  const output = await runPythonScript(path.join(MLX_TOOLS, 'query.py'), [project, params.query]);
+  // Validate project ID
+  const projectCheck = validateProjectId(project);
+  if (!projectCheck.valid) {
+    return { error: projectCheck.error };
+  }
+
+  const output = await runPythonScript(path.join(MLX_TOOLS, 'query.py'), [project, queryCheck.query]);
   return { result: output };
 }
 

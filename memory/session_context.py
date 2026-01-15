@@ -14,7 +14,7 @@ Provides:
 import json
 import sys
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 
 MEMORY_ROOT = Path.home() / ".claude-dash"
 DIGESTS_DIR = MEMORY_ROOT / "sessions" / "digests"

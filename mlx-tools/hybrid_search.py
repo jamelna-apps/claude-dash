@@ -216,11 +216,13 @@ def search_embeddings(project_id: str, query: str, top_k: int = 10) -> List[Dict
         return results[:top_k]
 
     except Exception as e:
-        # Fall back to legacy ollama_embeddings if available
+        # Fall back to embeddings provider if available
         try:
-            from ollama_embeddings import search
-            return search(project_id, query, top_k)
-        except:
+            from embeddings import EmbeddingProvider
+            provider = EmbeddingProvider()
+            # Note: This is a simplified fallback - the full search uses indexed data
+            return []
+        except ImportError:
             return []
 
 

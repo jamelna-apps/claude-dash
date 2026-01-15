@@ -36,8 +36,8 @@ def load_transcript(path):
             try:
                 msg = json.loads(line.strip())
                 messages.append(msg)
-            except:
-                continue
+            except (json.JSONDecodeError, ValueError):
+                continue  # Skip malformed JSON lines
     return messages
 
 
@@ -353,12 +353,33 @@ def compact_all(keep_recent=10, delete_originals=True):
         digest_path = compact_transcript(transcript)
 
         if digest_path:
-            total_compacted += digest_path.stat().st_size
+            # FIXED: Validate digest before deleting original
+            try:
+                digest_size = digest_path.stat().st_size
+                total_compacted += digest_size
 
-            if delete_originals:
-                transcript.unlink()
-                deleted_count += 1
-                print(f"    Deleted original transcript")
+                if delete_originals:
+                    # Additional validation: ensure digest is valid JSON and has content
+                    if digest_size < 50:  # Minimum reasonable digest size
+                        print(f"    ⚠ Digest too small ({digest_size} bytes), keeping original")
+                        continue
+
+                    # Verify digest is readable
+                    try:
+                        with open(digest_path) as f:
+                            digest_data = json.load(f)
+                            if not digest_data.get('synthesis') and not digest_data.get('observations'):
+                                print(f"    ⚠ Digest missing content, keeping original")
+                                continue
+                    except (json.JSONDecodeError, IOError) as e:
+                        print(f"    ⚠ Digest validation failed: {e}, keeping original")
+                        continue
+
+                    transcript.unlink()
+                    deleted_count += 1
+                    print(f"    Deleted original transcript")
+            except OSError as e:
+                print(f"    ⚠ Error accessing digest: {e}")
 
         print()
 

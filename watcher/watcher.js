@@ -24,6 +24,10 @@ function logDbSync(message) {
 }
 
 // Sync file to SQLite database (runs detached, non-blocking)
+// FIXED: Memory leak - bounded stderr buffer, proper cleanup
+const MAX_STDERR_SIZE = 4096; // Max 4KB of stderr to prevent unbounded growth
+const SYNC_TIMEOUT_MS = 30000; // 30 second timeout
+
 function syncToDatabase(projectId, filePath) {
   const script = path.join(MLX_TOOLS, 'db_sync.py');
 
@@ -44,14 +48,55 @@ function syncToDatabase(projectId, filePath) {
       cwd: MLX_TOOLS
     });
 
-    // Log any errors from the sync script
+    // FIXED: Bounded stderr buffer to prevent memory leak
     let stderr = '';
-    child.stderr.on('data', (data) => { stderr += data.toString(); });
-    child.on('close', (code) => {
-      if (code !== 0 && stderr) {
-        logDbSync(`ERROR [${projectId}/${filePath}]: ${stderr.trim()}`);
+    let stderrTruncated = false;
+
+    const onData = (data) => {
+      if (stderr.length < MAX_STDERR_SIZE) {
+        stderr += data.toString();
+        if (stderr.length > MAX_STDERR_SIZE) {
+          stderr = stderr.substring(0, MAX_STDERR_SIZE);
+          stderrTruncated = true;
+        }
       }
-    });
+    };
+
+    const cleanup = () => {
+      // Remove listeners to prevent memory leak
+      child.stderr.removeListener('data', onData);
+      child.removeListener('close', onClose);
+      child.removeListener('error', onError);
+      clearTimeout(timeoutId);
+    };
+
+    const onClose = (code) => {
+      if (code !== 0 && stderr) {
+        const suffix = stderrTruncated ? '... (truncated)' : '';
+        logDbSync(`ERROR [${projectId}/${filePath}]: ${stderr.trim()}${suffix}`);
+      }
+      cleanup();
+    };
+
+    const onError = (err) => {
+      logDbSync(`PROCESS ERROR [${projectId}/${filePath}]: ${err.message}`);
+      cleanup();
+    };
+
+    child.stderr.on('data', onData);
+    child.on('close', onClose);
+    child.on('error', onError);
+
+    // Timeout to kill hung processes
+    const timeoutId = setTimeout(() => {
+      try {
+        child.kill('SIGTERM');
+        logDbSync(`TIMEOUT [${projectId}/${filePath}]: Process killed after ${SYNC_TIMEOUT_MS}ms`);
+      } catch (e) {
+        // Process may have already exited
+      }
+      cleanup();
+    }, SYNC_TIMEOUT_MS);
 
     child.unref(); // Don't wait for completion
   } catch (error) {
@@ -373,7 +418,14 @@ function updateFunctionsIndex(project, filePath, action) {
   try {
     functionsIndex = JSON.parse(fs.readFileSync(functionsPath, 'utf8'));
   } catch (error) {
-    return; // No functions index yet
+    // FIXED: Log instead of silent return
+    if (error.code === 'ENOENT') {
+      // File doesn't exist yet - this is expected for new projects
+      return;
+    }
+    console.error(`  ⚠ Error reading functions.json: ${error.message}`);
+    logDbSync(`FUNCTIONS INDEX ERROR [${project.id}]: ${error.message}`);
+    return;
   }
 
   if (action === 'remove') {
@@ -435,7 +487,14 @@ function updateSummariesStructure(project, filePath, action) {
   try {
     summaries = JSON.parse(fs.readFileSync(summariesPath, 'utf8'));
   } catch (error) {
-    return; // No summaries index yet
+    // FIXED: Log instead of silent return
+    if (error.code === 'ENOENT') {
+      // File doesn't exist yet - this is expected for new projects
+      return;
+    }
+    console.error(`  ⚠ Error reading summaries.json: ${error.message}`);
+    logDbSync(`SUMMARIES INDEX ERROR [${project.id}]: ${error.message}`);
+    return;
   }
 
   if (action === 'remove') {

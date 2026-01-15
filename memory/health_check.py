@@ -206,7 +206,7 @@ def check_hooks():
             settings = json.loads(settings_path.read_text())
             if "hooks" not in settings:
                 problems.append("hooks_not_configured")
-        except:
+        except (json.JSONDecodeError, IOError):
             problems.append("settings_invalid")
     else:
         problems.append("settings_missing")
@@ -233,8 +233,8 @@ def fix_hooks(problems):
                 os.chmod(hook_path, 0o755)
                 if f"{hook_name.replace('.sh', '')}_not_executable" in problems:
                     fixes_applied.append(f"Made {hook_name} executable")
-            except:
-                pass
+            except OSError as e:
+                warnings.append(f"Failed to set permissions on {hook_name}: {e}")
 
     # Note issues that need manual intervention
     if "inject_hook_missing" in problems:
@@ -263,8 +263,8 @@ def check_disk_space():
             return True, "low_warning"
 
         return True, "ok"
-    except:
-        return True, "unknown"
+    except OSError:
+        return True, "unknown"  # Can't check disk space
 
 
 def check_logs_size():
@@ -299,8 +299,8 @@ def fix_logs(status):
             try:
                 f.unlink()
                 deleted += 1
-            except:
-                pass
+            except OSError:
+                pass  # Skip files that can't be deleted
 
         if deleted:
             fixes_applied.append(f"Deleted {deleted} old log files")

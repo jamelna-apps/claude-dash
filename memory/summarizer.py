@@ -33,8 +33,8 @@ def load_transcript(transcript_path):
             try:
                 msg = json.loads(line.strip())
                 messages.append(msg)
-            except:
-                continue
+            except (json.JSONDecodeError, ValueError):
+                continue  # Skip malformed JSON lines
 
     return messages
 
@@ -165,7 +165,7 @@ def save_summary(project_id, session_id, summary, content):
     # Load existing summaries
     try:
         existing = json.loads(summary_file.read_text())
-    except:
+    except (json.JSONDecodeError, FileNotFoundError, IOError):
         existing = {"project_id": project_id, "summaries": []}
 
     # Add new summary

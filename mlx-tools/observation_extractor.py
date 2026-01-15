@@ -26,9 +26,13 @@ import tempfile
 from pathlib import Path
 from datetime import datetime
 
-MEMORY_ROOT = Path.home() / ".claude-dash"
-OLLAMA_URL = "http://localhost:11434"
-OLLAMA_MODEL = "qwen2.5:7b"
+# Use centralized config
+try:
+    from config import OLLAMA_URL, OLLAMA_CHAT_MODEL as OLLAMA_MODEL, MEMORY_ROOT
+except ImportError:
+    MEMORY_ROOT = Path.home() / ".claude-dash"
+    OLLAMA_URL = "http://localhost:11434"
+    OLLAMA_MODEL = "qwen2.5:7b"
 
 # Import pattern detector for learning
 sys.path.insert(0, str(MEMORY_ROOT / "patterns"))

@@ -320,8 +320,13 @@ def main():
 
         # Get query embedding from Ollama
         try:
-            from ollama_embeddings import get_embedding
-            query_embedding = get_embedding(args.query)
+            from config import call_ollama_embed
+            query_embedding = call_ollama_embed(args.query)
+        except ImportError:
+            # Fallback to direct Ollama call
+            from embeddings import EmbeddingProvider
+            provider = EmbeddingProvider()
+            query_embedding = provider.embed([args.query])[0]
         except Exception as e:
             print(f"Error getting query embedding: {e}")
             sys.exit(1)

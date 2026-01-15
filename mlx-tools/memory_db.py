@@ -22,22 +22,73 @@ Benefits:
 import sqlite3
 import json
 import os
+import threading
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, List, Dict, Any
+from contextlib import contextmanager
 import hashlib
 
 MEMORY_ROOT = Path.home() / '.claude-dash'
 DB_PATH = MEMORY_ROOT / 'memory.db'
 
+# =============================================================================
+# CONNECTION MANAGEMENT
+# =============================================================================
+
+# Thread-local storage for connections
+_local = threading.local()
+
 def get_connection() -> sqlite3.Connection:
-    """Get database connection with optimized settings."""
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")  # Better concurrent access
-    conn.execute("PRAGMA synchronous=NORMAL")  # Faster writes
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
+    """
+    Get a thread-local database connection with optimized settings.
+
+    FIXED: Uses connection pooling to avoid creating new connections
+    for every function call. Each thread gets its own connection.
+    """
+    if not hasattr(_local, 'connection') or _local.connection is None:
+        conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")  # Better concurrent access
+        conn.execute("PRAGMA synchronous=NORMAL")  # Faster writes
+        conn.execute("PRAGMA foreign_keys=ON")
+        _local.connection = conn
+
+    return _local.connection
+
+
+@contextmanager
+def db_transaction():
+    """
+    Context manager for database transactions.
+
+    Usage:
+        with db_transaction() as conn:
+            conn.execute(...)
+            # Auto-commits on success, auto-rollbacks on exception
+    """
+    conn = get_connection()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def close_connection():
+    """Close the thread-local connection (call at end of script/thread)."""
+    if hasattr(_local, 'connection') and _local.connection is not None:
+        try:
+            _local.connection.close()
+        except Exception:
+            pass
+        _local.connection = None
+
+
+# Register cleanup on program exit
+import atexit
+atexit.register(close_connection)
 
 def init_database():
     """Initialize the database schema."""

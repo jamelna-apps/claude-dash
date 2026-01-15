@@ -74,15 +74,18 @@ class Cache {
       try {
         const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
         if (Date.now() < data.expires) {
-          // Restore to memory
+          // FIXED: Restore to memory with original expiry (not refreshed)
+          // This preserves the original TTL semantics
           this.memory.set(key, data);
           this.hits++;
           return { hit: true, value: data.value, source: 'disk' };
         }
-        // Expired - delete
+        // Expired - delete from both memory and disk
+        this.memory.delete(key);
         fs.unlinkSync(filePath);
       } catch (e) {
-        // Corrupted cache file
+        // Corrupted cache file - delete it
+        try { fs.unlinkSync(filePath); } catch (e2) {}
       }
     }
 
@@ -148,7 +151,16 @@ class Cache {
 
   matchesPattern(entry, pattern) {
     if (pattern.type && entry.type !== pattern.type) return false;
-    if (pattern.path && entry.params?.path && !entry.params.path.includes(pattern.path)) return false;
+    // FIXED: Use exact path match or startsWith for proper path comparison
+    // Previously used .includes() which caused false positives
+    if (pattern.path && entry.params?.path) {
+      const entryPath = path.resolve(entry.params.path);
+      const patternPath = path.resolve(pattern.path);
+      // Match if exact same path, or entry path starts with pattern path (file in directory)
+      if (entryPath !== patternPath && !entryPath.startsWith(patternPath + path.sep)) {
+        return false;
+      }
+    }
     if (pattern.project && entry.params?.project !== pattern.project) return false;
     return true;
   }
@@ -192,6 +204,39 @@ class Cache {
     }
     this.hits = 0;
     this.misses = 0;
+  }
+
+  /**
+   * Clean up expired entries from disk cache
+   * ADDED: Periodic cleanup to prevent disk cache from growing indefinitely
+   */
+  cleanupExpired() {
+    const now = Date.now();
+    let cleaned = 0;
+
+    try {
+      const files = fs.readdirSync(CACHE_DIR);
+      for (const file of files) {
+        if (file.endsWith('.json')) {
+          const filePath = path.join(CACHE_DIR, file);
+          try {
+            const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            if (now >= data.expires) {
+              fs.unlinkSync(filePath);
+              cleaned++;
+            }
+          } catch (e) {
+            // Corrupted file - delete it
+            try { fs.unlinkSync(filePath); } catch (e2) {}
+            cleaned++;
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore
+    }
+
+    return cleaned;
   }
 }
 

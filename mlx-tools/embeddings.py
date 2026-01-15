@@ -22,8 +22,13 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 import numpy as np
 
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "nomic-embed-text")
+# Use centralized config
+try:
+    from config import OLLAMA_URL, OLLAMA_EMBED_MODEL as EMBEDDING_MODEL, cosine_similarity as _cosine_sim
+except ImportError:
+    OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+    EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "nomic-embed-text")
+    _cosine_sim = None
 
 # Cache for embeddings to avoid recomputation
 _embedding_cache = {}
