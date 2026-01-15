@@ -10,25 +10,52 @@ const net = require('net');
 const MEMORY_ROOT = path.join(os.homedir(), '.claude-dash');
 const MLX_TOOLS = path.join(MEMORY_ROOT, 'mlx-tools');
 const PYTHON_PATH = path.join(MEMORY_ROOT, 'mlx-env', 'bin', 'python3');
+const DB_SYNC_LOG = path.join(MEMORY_ROOT, 'logs', 'db-sync.log');
+
+// Log DB sync events (append to log file)
+function logDbSync(message) {
+  const timestamp = new Date().toISOString();
+  const logLine = `[${timestamp}] ${message}\n`;
+  try {
+    fs.appendFileSync(DB_SYNC_LOG, logLine);
+  } catch (e) {
+    // Can't log, ignore
+  }
+}
 
 // Sync file to SQLite database (runs detached, non-blocking)
 function syncToDatabase(projectId, filePath) {
   const script = path.join(MLX_TOOLS, 'db_sync.py');
 
   // Check if Python and script exist
-  if (!fs.existsSync(PYTHON_PATH) || !fs.existsSync(script)) {
-    return; // Silently skip if not set up
+  if (!fs.existsSync(PYTHON_PATH)) {
+    logDbSync(`SKIP: Python not found at ${PYTHON_PATH}`);
+    return;
+  }
+  if (!fs.existsSync(script)) {
+    logDbSync(`SKIP: db_sync.py not found at ${script}`);
+    return;
   }
 
   try {
     const child = spawn(PYTHON_PATH, [script, projectId, filePath], {
       detached: true,
-      stdio: 'ignore',
+      stdio: ['ignore', 'ignore', 'pipe'], // Capture stderr
       cwd: MLX_TOOLS
     });
+
+    // Log any errors from the sync script
+    let stderr = '';
+    child.stderr.on('data', (data) => { stderr += data.toString(); });
+    child.on('close', (code) => {
+      if (code !== 0 && stderr) {
+        logDbSync(`ERROR [${projectId}/${filePath}]: ${stderr.trim()}`);
+      }
+    });
+
     child.unref(); // Don't wait for completion
   } catch (error) {
-    // Silently fail - DB sync is best-effort
+    logDbSync(`SPAWN ERROR [${projectId}/${filePath}]: ${error.message}`);
   }
 }
 const PID_FILE = path.join(MEMORY_ROOT, 'watcher', 'watcher.pid');
