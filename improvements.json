@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "lastReviewed": "2026-01-14T22:00:00Z",
+  "ideas": [
+    {
+      "id": "fts-camelcase-fix",
+      "title": "FTS CamelCase tokenization",
+      "description": "Search for 'login' should find 'LoginScreen.js'",
+      "priority": "critical",
+      "status": "completed",
+      "source": "audit",
+      "addedAt": "2025-01-14T00:00:00Z",
+      "completedAt": "2025-01-14T12:00:00Z"
+    },
+    {
+      "id": "gateway-script-path-fixes-fd50",
+      "title": "Gateway script path fixes",
+      "description": "Fixed references to missing semantic_search.py and embeddings_v2.py, now using hybrid_search.py correctly",
+      "priority": "critical",
+      "status": "completed",
+      "source": "audit",
+      "addedAt": "2026-01-14T21:36:15.410334",
+      "completedAt": "2026-01-14T22:00:00Z"
+    },
+    {
+      "id": "comprehensive-audit-fixes",
+      "title": "Comprehensive system audit fixes",
+      "description": "Fixed 16 HIGH and MEDIUM priority issues from 4-agent audit including: path traversal security, exception handling, cache limits, depth limits, input validation",
+      "priority": "high",
+      "status": "completed",
+      "source": "audit",
+      "addedAt": "2026-01-14T21:00:00Z",
+      "completedAt": "2026-01-14T22:00:00Z",
+      "details": [
+        "Fixed silent fallback chains in hybrid_search.py",
+        "Fixed bare except clauses in memory_db.py",
+        "Fixed unclosed file handles in memory_db.py migrations",
+        "Added disk cache size limits (100MB max, 500 entries)",
+        "Added memory cache eviction (1000 entry limit)",
+        "Added MAX_SCAN_DEPTH=15 to indexing_daemon.py",
+        "Fixed exception handling in ollama_client.py and error_logger.py"
+      ]
+    }
+  ],
+  "issues": [],
+  "techDebt": [
+    {
+      "id": "conn-close-inconsistent",
+      "title": "Inconsistent conn.close() calls in memory_db.py",
+      "description": "Some functions close the connection, some don't. With thread-local pooling, we shouldn't close in individual functions.",
+      "priority": "low",
+      "status": "completed",
+      "file": "~/.claude-dash/mlx-tools/memory_db.py",
+      "addedAt": "2025-01-14T12:00:00Z",
+      "completedAt": "2026-01-14T22:09:00Z"
+    },
+    {
+      "id": "stale-project-indexes",
+      "title": "Stale project summaries",
+      "description": "gyst-seller-portal (8 days) and spread-your-ashes (31 days) have outdated summaries.json",
+      "priority": "low",
+      "status": "completed",
+      "addedAt": "2026-01-14T22:00:00Z",
+      "completedAt": "2026-01-14T22:09:00Z"
+    },
+    {
+      "id": "conn-close-cleanup",
+      "title": "Removed inconsistent conn.close() calls",
+      "description": "Removed 13 conn.close() calls from memory_db.py and indexing_daemon.py - now relies on thread-local pooling with atexit cleanup",
+      "priority": "low",
+      "status": "completed",
+      "addedAt": "2026-01-14T22:00:00Z",
+      "completedAt": "2026-01-14T22:09:00Z"
+    }
+  ],
+  "stats": {
+    "totalIdeas": 3,
+    "completedIdeas": 3,
+    "pendingIssues": 0,
+    "pendingDebt": 0
+  }
+}

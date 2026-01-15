@@ -20,6 +20,14 @@ const DEFAULT_TTLS = {
   default: 60
 };
 
+// Cache size limits to prevent unbounded growth
+const CACHE_LIMITS = {
+  maxMemoryEntries: 1000,       // Max entries in memory cache
+  maxDiskEntries: 500,          // Max files in disk cache
+  maxDiskSizeMB: 100,           // Max total disk cache size in MB
+  maxEntrySizeKB: 500           // Max size per cache entry in KB
+};
+
 class Cache {
   constructor() {
     this.memory = new Map();
@@ -103,17 +111,103 @@ class Cache {
 
     const entry = { value, expires, type, params, cachedAt: Date.now() };
 
+    // Check entry size limit
+    const entrySize = JSON.stringify(entry).length;
+    if (entrySize > CACHE_LIMITS.maxEntrySizeKB * 1024) {
+      // Entry too large - skip caching
+      return;
+    }
+
+    // Evict oldest entries if memory cache is full
+    if (this.memory.size >= CACHE_LIMITS.maxMemoryEntries) {
+      this.evictOldestMemory(Math.ceil(CACHE_LIMITS.maxMemoryEntries * 0.1)); // Evict 10%
+    }
+
     // Store in memory
     this.memory.set(key, entry);
 
     // Persist to disk for longer-lived entries
     if (ttl > 60) {
+      // Check disk cache limits before writing
+      this.enforceDiskLimits();
+
       const filePath = path.join(CACHE_DIR, `${key}.json`);
       try {
         fs.writeFileSync(filePath, JSON.stringify(entry));
       } catch (e) {
         // Non-critical if disk cache fails
       }
+    }
+  }
+
+  /**
+   * Evict oldest entries from memory cache
+   */
+  evictOldestMemory(count) {
+    const entries = Array.from(this.memory.entries())
+      .sort((a, b) => a[1].cachedAt - b[1].cachedAt);
+
+    for (let i = 0; i < Math.min(count, entries.length); i++) {
+      this.memory.delete(entries[i][0]);
+    }
+  }
+
+  /**
+   * Enforce disk cache size limits
+   */
+  enforceDiskLimits() {
+    try {
+      const files = fs.readdirSync(CACHE_DIR).filter(f => f.endsWith('.json'));
+
+      // Check entry count limit
+      if (files.length >= CACHE_LIMITS.maxDiskEntries) {
+        // Get file info sorted by modification time (oldest first)
+        const fileInfos = files.map(f => {
+          const filePath = path.join(CACHE_DIR, f);
+          try {
+            const stats = fs.statSync(filePath);
+            return { file: f, path: filePath, mtime: stats.mtime.getTime(), size: stats.size };
+          } catch (e) {
+            return { file: f, path: filePath, mtime: 0, size: 0 };
+          }
+        }).sort((a, b) => a.mtime - b.mtime);
+
+        // Delete oldest 10%
+        const toDelete = Math.ceil(CACHE_LIMITS.maxDiskEntries * 0.1);
+        for (let i = 0; i < Math.min(toDelete, fileInfos.length); i++) {
+          try { fs.unlinkSync(fileInfos[i].path); } catch (e) {}
+        }
+      }
+
+      // Check total size limit
+      let totalSize = 0;
+      const fileInfos = files.map(f => {
+        const filePath = path.join(CACHE_DIR, f);
+        try {
+          const stats = fs.statSync(filePath);
+          totalSize += stats.size;
+          return { file: f, path: filePath, mtime: stats.mtime.getTime(), size: stats.size };
+        } catch (e) {
+          return { file: f, path: filePath, mtime: 0, size: 0 };
+        }
+      });
+
+      // If over size limit, delete oldest until under limit
+      if (totalSize > CACHE_LIMITS.maxDiskSizeMB * 1024 * 1024) {
+        const sortedFiles = fileInfos.sort((a, b) => a.mtime - b.mtime);
+        for (const fileInfo of sortedFiles) {
+          try {
+            fs.unlinkSync(fileInfo.path);
+            totalSize -= fileInfo.size;
+          } catch (e) {}
+
+          if (totalSize <= CACHE_LIMITS.maxDiskSizeMB * 1024 * 1024 * 0.8) {
+            break; // Get to 80% of limit
+          }
+        }
+      }
+    } catch (e) {
+      // Cache enforcement failed - non-critical
     }
   }
 
@@ -240,4 +334,4 @@ class Cache {
   }
 }
 
-module.exports = { Cache, DEFAULT_TTLS };
+module.exports = { Cache, DEFAULT_TTLS, CACHE_LIMITS };

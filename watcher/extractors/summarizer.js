@@ -16,6 +16,20 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
+/**
+ * Atomic JSON write - writes to temp file then renames
+ */
+function atomicWriteJSON(filePath, data) {
+  const tmpPath = filePath + '.tmp.' + process.pid + '.' + Date.now();
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
+    fs.renameSync(tmpPath, filePath);
+  } catch (e) {
+    try { fs.unlinkSync(tmpPath); } catch (e2) {}
+    throw e;
+  }
+}
+
 // Configuration
 const BATCH_SIZE = 2;  // Files per batch (reduced for rate limits)
 const BATCH_DELAY_MS = 15000;  // 15 seconds between batches for rate limits
@@ -282,9 +296,9 @@ async function main() {
 
     await Promise.all(batchPromises);
 
-    // Save after each batch
+    // Save after each batch (atomic)
     summaries.lastUpdated = new Date().toISOString();
-    fs.writeFileSync(summariesPath, JSON.stringify(summaries, null, 2));
+    atomicWriteJSON(summariesPath, summaries);
 
     // Rate limit delay
     if (i + BATCH_SIZE < filesToProcess.length) {

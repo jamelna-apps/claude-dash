@@ -16,6 +16,20 @@ const fs = require('fs');
 const path = require('path');
 
 /**
+ * Atomic JSON write - writes to temp file then renames
+ */
+function atomicWriteJSON(filePath, data) {
+  const tmpPath = filePath + '.tmp.' + process.pid + '.' + Date.now();
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
+    fs.renameSync(tmpPath, filePath);
+  } catch (e) {
+    try { fs.unlinkSync(tmpPath); } catch (e2) {}
+    throw e;
+  }
+}
+
+/**
  * Build navigation graph from existing summaries and functions
  */
 function buildGraph(projectPath, projectId) {
@@ -315,9 +329,9 @@ function main() {
 
   const graph = buildGraph(projectPath, projectId);
 
-  // Write graph
+  // Write graph (atomic)
   const graphPath = path.join(memoryPath, 'graph.json');
-  fs.writeFileSync(graphPath, JSON.stringify(graph, null, 2));
+  atomicWriteJSON(graphPath, graph);
 
   console.log(`\nGraph Statistics:`);
   console.log(`  Files: ${graph.statistics.totalFiles}`);

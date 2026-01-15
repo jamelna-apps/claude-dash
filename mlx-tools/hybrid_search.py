@@ -61,7 +61,9 @@ def fts5_search(project_id: str, query: str, top_k: int = 20) -> List[Dict]:
 
         conn.close()
         return results
-    except Exception:
+    except Exception as e:
+        # Log error but don't fail - caller can fall back to in-memory BM25
+        print(f"FTS5 search error: {type(e).__name__}: {e}", file=sys.stderr)
         return []
 
 
@@ -215,15 +217,14 @@ def search_embeddings(project_id: str, query: str, top_k: int = 10) -> List[Dict
         results.sort(key=lambda x: x['score'], reverse=True)
         return results[:top_k]
 
+    except ImportError as e:
+        # Missing dependency - log once and return empty
+        print(f"Semantic search unavailable (missing module): {e}", file=sys.stderr)
+        return []
     except Exception as e:
-        # Fall back to embeddings provider if available
-        try:
-            from embeddings import EmbeddingProvider
-            provider = EmbeddingProvider()
-            # Note: This is a simplified fallback - the full search uses indexed data
-            return []
-        except ImportError:
-            return []
+        # Log the error for debugging - semantic search is optional
+        print(f"Semantic search error: {type(e).__name__}: {e}", file=sys.stderr)
+        return []
 
 
 def reciprocal_rank_fusion(
@@ -324,6 +325,85 @@ def hybrid_search(project_id: str, query: str, top_k: int = 10) -> List[Dict]:
     return merged[:top_k]
 
 
+def find_similar_files(project_id: str, file_path: str, top_k: int = 5) -> List[Dict]:
+    """
+    Find files similar to the given file using embeddings.
+
+    Args:
+        project_id: Project identifier
+        file_path: Path to the file to find similar files for
+        top_k: Number of results to return
+
+    Returns:
+        List of similar files with similarity scores
+    """
+    embeddings_path = MEMORY_ROOT / 'projects' / project_id / 'embeddings_v2.json'
+
+    if not embeddings_path.exists():
+        return []
+
+    try:
+        embeddings = json.loads(embeddings_path.read_text())
+        files = embeddings.get('files', {})
+
+        # Normalize the input file path
+        normalized_path = file_path.replace(str(MEMORY_ROOT), '').lstrip('/')
+        for key in [file_path, normalized_path, Path(file_path).name]:
+            if key in files:
+                file_path = key
+                break
+
+        if file_path not in files or 'embedding' not in files[file_path]:
+            return []
+
+        import numpy as np
+        target_vec = np.array(files[file_path]['embedding'])
+
+        results = []
+        for filepath, file_data in files.items():
+            if filepath == file_path:  # Skip the file itself
+                continue
+            if 'embedding' not in file_data:
+                continue
+
+            file_vec = np.array(file_data['embedding'])
+            # Cosine similarity
+            score = float(np.dot(target_vec, file_vec) / (np.linalg.norm(target_vec) * np.linalg.norm(file_vec)))
+
+            results.append({
+                'file': filepath,
+                'score': score,
+                'summary': file_data.get('summary', ''),
+                'purpose': file_data.get('purpose', '')
+            })
+
+        results.sort(key=lambda x: x['score'], reverse=True)
+        return results[:top_k]
+
+    except Exception as e:
+        print(f"Error finding similar files: {e}", file=sys.stderr)
+        return []
+
+
+def format_similar_results(results: List[Dict], source_file: str) -> str:
+    """Format similar file results for display"""
+    lines = [f"Files similar to: {source_file}\n"]
+
+    if not results:
+        lines.append("No similar files found.")
+        return '\n'.join(lines)
+
+    for i, r in enumerate(results, 1):
+        lines.append(f"{i}. {r['file']} (similarity: {r['score']:.3f})")
+        if r.get('purpose'):
+            lines.append(f"   Purpose: {r['purpose']}")
+        elif r.get('summary'):
+            lines.append(f"   {r['summary'][:80]}...")
+        lines.append("")
+
+    return '\n'.join(lines)
+
+
 def format_results(results: List[Dict], query: str) -> str:
     """Format results for display"""
     lines = [f"Hybrid search for: {query}\n"]
@@ -356,15 +436,43 @@ def format_results(results: List[Dict], query: str) -> str:
 def main():
     """CLI interface"""
     if len(sys.argv) < 3:
-        print("Usage: python hybrid_search.py <project> <query>")
-        print("\nPerforms hybrid BM25 + semantic search")
+        print("Usage: python hybrid_search.py <project> <query|similar> [file_path] [--limit N]")
+        print("\nModes:")
+        print("  <project> <query>           - Hybrid BM25 + semantic search")
+        print("  <project> similar <file>    - Find similar files")
+        print("\nOptions:")
+        print("  --limit N                   - Limit results (default: 10 for search, 5 for similar)")
         sys.exit(1)
 
     project_id = sys.argv[1]
-    query = ' '.join(sys.argv[2:])
 
-    results = hybrid_search(project_id, query)
-    print(format_results(results, query))
+    # Parse --limit option
+    limit = None
+    args = sys.argv[2:]
+    if '--limit' in args:
+        idx = args.index('--limit')
+        if idx + 1 < len(args):
+            try:
+                limit = int(args[idx + 1])
+            except ValueError:
+                pass
+            args = args[:idx] + args[idx + 2:]
+
+    # Check for "similar" mode
+    if args and args[0] == 'similar':
+        if len(args) < 2:
+            print("Usage: python hybrid_search.py <project> similar <file_path>")
+            sys.exit(1)
+        file_path = args[1]
+        top_k = limit or 5
+        results = find_similar_files(project_id, file_path, top_k)
+        print(format_similar_results(results, file_path))
+    else:
+        # Search mode
+        query = ' '.join(args)
+        top_k = limit or 10
+        results = hybrid_search(project_id, query, top_k)
+        print(format_results(results, query))
 
 
 if __name__ == '__main__':

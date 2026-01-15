@@ -68,8 +68,15 @@ def search_errors(query: str = None, project_id: str = None, category: str = Non
         if not errors_file.exists():
             continue
 
-        with open(errors_file, 'r') as f:
-            errors = json.load(f)
+        try:
+            with open(errors_file, 'r') as f:
+                errors = json.load(f)
+        except json.JSONDecodeError:
+            print(f"Warning: Corrupt errors.json in {project_dir}, skipping", file=__import__('sys').stderr)
+            continue
+        except IOError as e:
+            print(f"Warning: Cannot read errors.json in {project_dir}: {e}", file=__import__('sys').stderr)
+            continue
 
         for error in errors:
             # Filter by category

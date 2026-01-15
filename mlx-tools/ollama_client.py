@@ -32,7 +32,12 @@ class OllamaClient:
         try:
             response = requests.get(f"{self.base_url}/api/tags", timeout=2)
             self._available = response.status_code == 200
-        except:
+        except requests.exceptions.ConnectionError:
+            self._available = False
+        except requests.exceptions.Timeout:
+            self._available = False
+        except requests.exceptions.RequestException as e:
+            print(f"Ollama health check failed: {type(e).__name__}: {e}", file=__import__('sys').stderr)
             self._available = False
 
         return self._available
@@ -102,7 +107,9 @@ class OllamaClient:
                 models = response.json().get("models", [])
                 return [m["name"] for m in models]
             return []
-        except:
+        except requests.exceptions.RequestException:
+            return []
+        except (json.JSONDecodeError, KeyError):
             return []
 
     def health(self) -> dict:

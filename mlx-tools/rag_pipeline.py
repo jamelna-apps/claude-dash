@@ -10,10 +10,13 @@ import sys
 from pathlib import Path
 from typing import List, Dict, Optional
 
-MEMORY_ROOT = Path.home() / '.claude-dash'
-OLLAMA_URL = 'http://localhost:11434'
-EMBEDDING_MODEL = 'nomic-embed-text'
-CHAT_MODEL = 'llama3.2:3b'
+try:
+    from config import OLLAMA_URL, OLLAMA_CHAT_MODEL as CHAT_MODEL, OLLAMA_EMBED_MODEL as EMBEDDING_MODEL, MEMORY_ROOT
+except ImportError:
+    MEMORY_ROOT = Path.home() / '.claude-dash'
+    OLLAMA_URL = 'http://localhost:11434'
+    EMBEDDING_MODEL = 'nomic-embed-text'
+    CHAT_MODEL = 'llama3.2:3b'
 
 
 class RAGPipeline:

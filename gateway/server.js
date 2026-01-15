@@ -55,17 +55,18 @@ function isPathAllowed(filePath) {
     return false;
   }
 
-  // Resolve to absolute path and normalize
+  // Resolve to absolute, normalized path (this neutralizes .. traversal)
   const resolved = path.resolve(filePath);
 
-  // Check for path traversal attempts
-  if (filePath.includes('..') && resolved !== path.normalize(filePath)) {
-    return false;
-  }
-
-  // Check against allowed base paths
+  // Check against allowed base paths using strict prefix matching
+  // Uses path.sep to prevent /home/user matching /home/username
   const allowed = getAllowedBasePaths();
-  return allowed.some(base => resolved.startsWith(path.resolve(base)));
+  return allowed.some(base => {
+    const resolvedBase = path.resolve(base);
+    // Exact match or proper directory prefix (with separator)
+    return resolved === resolvedBase ||
+           resolved.startsWith(resolvedBase + path.sep);
+  });
 }
 
 // Validate and sanitize file path
@@ -202,6 +203,15 @@ const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || '';
 const cache = new Cache();
 const metrics = new Metrics();
 
+// Periodic cache cleanup (every 5 minutes)
+const CACHE_CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+setInterval(() => {
+  const cleaned = cache.cleanupExpired();
+  if (cleaned > 0) {
+    console.error(`[cache] Cleaned ${cleaned} expired entries`);
+  }
+}, CACHE_CLEANUP_INTERVAL);
+
 // Load config
 function loadConfig() {
   try {
@@ -227,8 +237,10 @@ function detectProject(workingDir) {
   return null;
 }
 
-// Run Python script (for memory tools)
-function runPythonScript(scriptPath, args) {
+// Run Python script (for memory tools) with timeout
+const PYTHON_SCRIPT_TIMEOUT_MS = 30000;  // 30 second timeout
+
+function runPythonScript(scriptPath, args, timeoutMs = PYTHON_SCRIPT_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
     const venvPython = path.join(MEMORY_ROOT, 'mlx-env', 'bin', 'python3');
     const pythonCmd = fs.existsSync(venvPython) ? venvPython : 'python3';
@@ -240,11 +252,26 @@ function runPythonScript(scriptPath, args) {
 
     let stdout = '';
     let stderr = '';
+    let killed = false;
+
+    // Timeout handler - kill process if it takes too long
+    const timeoutHandle = setTimeout(() => {
+      killed = true;
+      try {
+        proc.kill('SIGTERM');
+        setTimeout(() => {
+          try { proc.kill('SIGKILL'); } catch (e) {}
+        }, 1000);
+      } catch (e) {}
+      reject(new Error(`Script timeout after ${timeoutMs}ms: ${path.basename(scriptPath)}`));
+    }, timeoutMs);
 
     proc.stdout.on('data', (data) => { stdout += data.toString(); });
     proc.stderr.on('data', (data) => { stderr += data.toString(); });
 
     proc.on('close', (code) => {
+      clearTimeout(timeoutHandle);
+      if (killed) return;  // Already rejected via timeout
       if (code === 0) {
         resolve(stdout.trim());
       } else {
@@ -252,7 +279,10 @@ function runPythonScript(scriptPath, args) {
       }
     });
 
-    proc.on('error', reject);
+    proc.on('error', (err) => {
+      clearTimeout(timeoutHandle);
+      if (!killed) reject(err);
+    });
   });
 }
 
@@ -896,15 +926,11 @@ async function handleMemorySearch(params, cwd) {
   const project = params.project || detectProject(cwd);
   if (!project) return { error: 'Could not detect project.' };
 
-  const embeddingsPath = path.join(MEMORY_ROOT, 'projects', project, 'embeddings_v2.json');
-  const scriptPath = fs.existsSync(embeddingsPath)
-    ? path.join(MLX_TOOLS, 'embeddings_v2.py')
-    : path.join(MLX_TOOLS, 'semantic_search.py');
-
-  const args = [project, 'search', params.query];
+  // Use hybrid_search.py for semantic + BM25 search
+  const args = [project, params.query];
   if (params.limit) args.push('--limit', String(params.limit));
 
-  const output = await runPythonScript(scriptPath, args);
+  const output = await runPythonScript(path.join(MLX_TOOLS, 'hybrid_search.py'), args);
   return { result: output };
 }
 
@@ -912,10 +938,11 @@ async function handleMemorySimilar(params, cwd) {
   const project = params.project || detectProject(cwd);
   if (!project) return { error: 'Could not detect project.' };
 
+  // Use hybrid_search.py with "similar" mode
   const args = [project, 'similar', params.file];
   if (params.limit) args.push('--limit', String(params.limit));
 
-  const output = await runPythonScript(path.join(MLX_TOOLS, 'semantic_search.py'), args);
+  const output = await runPythonScript(path.join(MLX_TOOLS, 'hybrid_search.py'), args);
   return { result: output };
 }
 

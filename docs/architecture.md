@@ -237,6 +237,55 @@ I call Task → Agent spawns → Works autonomously → Returns result → I sum
 
 ---
 
+## Hybrid Search Architecture (v2.0)
+
+```
+Query: "where is login?"
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  1. KEYWORD SEARCH (BM25)                                                   │
+│                                                                             │
+│  SQLite FTS5 with custom tokenizer:                                         │
+│  • CamelCase splitting: LoginScreen → login, screen                         │
+│  • kebab-case splitting: auth-service → auth, service                       │
+│  • Returns ranked results by term frequency                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  2. SEMANTIC SEARCH (Embeddings)                                            │
+│                                                                             │
+│  Embedding provider chain (fallback):                                       │
+│  • Ollama nomic-embed-text (768-dim) → preferred                            │
+│  • sentence-transformers → fallback                                         │
+│  • TF-IDF → last resort                                                     │
+│                                                                             │
+│  HNSW index for O(log n) approximate nearest neighbor                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  3. RECIPROCAL RANK FUSION (RRF)                                            │
+│                                                                             │
+│  Combines BM25 + semantic results:                                          │
+│  • score = Σ 1/(k + rank)  where k=60                                       │
+│  • Balances exact matches with semantic similarity                          │
+│  • Returns top-N fused results                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Data Flow: File Change → Index Update**
+```
+watcher.js detects change
+    │
+    ├──▶ summarizer.js → updates summaries.json
+    ├──▶ db_sync.py → syncs to SQLite (memory.db)
+    └──▶ embedding_sync.py → updates embeddings_v2.json
+```
+
+---
+
 ## File Locations Summary
 
 ```
@@ -256,9 +305,14 @@ I call Task → Agent spawns → Works autonomously → Returns result → I sum
 │   ├── patterns.json          # Mode definitions + learned patterns
 │   └── detector.py            # Pattern detection logic
 ├── mlx-tools/
-│   └── observation_extractor.py  # Session learning
+│   ├── observation_extractor.py  # Session learning
+│   ├── memory_db.py              # SQLite database
+│   ├── hybrid_search.py          # BM25 + semantic search
+│   └── embeddings.py             # Embedding provider
 ├── gateway/
-│   └── server.js              # MCP server (memory + doc_query)
+│   ├── server.js              # Unified MCP server
+│   ├── cache.js               # Query caching
+│   └── metrics.json           # Performance metrics
 ├── projects/
 │   └── {project}/             # Per-project memory
 └── sessions/

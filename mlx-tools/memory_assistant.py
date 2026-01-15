@@ -19,9 +19,12 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 
-MEMORY_ROOT = Path.home() / '.claude-dash'
-OLLAMA_URL = 'http://localhost:11434'
-CHAT_MODEL = 'llama3.2:3b'
+try:
+    from config import OLLAMA_URL, OLLAMA_CHAT_MODEL as CHAT_MODEL, MEMORY_ROOT
+except ImportError:
+    MEMORY_ROOT = Path.home() / '.claude-dash'
+    OLLAMA_URL = 'http://localhost:11434'
+    CHAT_MODEL = 'llama3.2:3b'
 
 # System context explaining the memory system to Ollama
 SYSTEM_CONTEXT = """You are an AI assistant with complete access to the Claude Memory system.

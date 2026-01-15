@@ -13,6 +13,20 @@
 const fs = require('fs');
 const path = require('path');
 
+/**
+ * Atomic JSON write - writes to temp file then renames
+ */
+function atomicWriteJSON(filePath, data) {
+  const tmpPath = filePath + '.tmp.' + process.pid + '.' + Date.now();
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
+    fs.renameSync(tmpPath, filePath);
+  } catch (e) {
+    try { fs.unlinkSync(tmpPath); } catch (e2) {}
+    throw e;
+  }
+}
+
 // Patterns to find collection references
 const COLLECTION_PATTERNS = [
   /collection\s*\(\s*db\s*,\s*['"](\w+)['"]\)/g,
@@ -303,8 +317,8 @@ function main() {
   // Ensure output directory exists
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 
-  // Write schema
-  fs.writeFileSync(outputPath, JSON.stringify(schema, null, 2));
+  // Write schema (atomic)
+  atomicWriteJSON(outputPath, schema);
 
   console.log(`Schema extracted: ${Object.keys(schema.collections).length} collections`);
   console.log(`Output: ${outputPath}`);

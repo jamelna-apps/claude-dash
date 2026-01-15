@@ -58,3 +58,4 @@ build/
 
 # Session markers
 .session-markers/
+backups/

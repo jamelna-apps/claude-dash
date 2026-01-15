@@ -58,6 +58,9 @@ IGNORE_DIRS = {
     '.turbo', '.cache', 'android', 'ios'
 }
 
+# Maximum directory depth to prevent runaway scanning
+MAX_SCAN_DEPTH = 15
+
 
 def log(message: str):
     """Log to file and stdout."""
@@ -101,18 +104,23 @@ def get_changed_files(project_path: Path, project_id: str) -> List[Path]:
         SELECT path, file_hash FROM files WHERE project_id = ?
     """, (project_id,))
     indexed = {row['path']: row['file_hash'] for row in cursor.fetchall()}
-    conn.close()
+    # Note: Don't close - using thread-local connection pooling from memory_db
 
     changed = []
-    for path in project_path.rglob('*'):
-        if not path.is_file() or not should_index(path):
+    for file_path in project_path.rglob('*'):
+        if not file_path.is_file() or not should_index(file_path):
             continue
 
-        rel_path = str(path.relative_to(project_path))
-        current_hash = file_hash(path)
+        # Check depth limit to prevent scanning too deeply
+        rel_path = str(file_path.relative_to(project_path))
+        depth = len(Path(rel_path).parts)
+        if depth > MAX_SCAN_DEPTH:
+            continue
+
+        current_hash = file_hash(file_path)
 
         if rel_path not in indexed or indexed[rel_path] != current_hash:
-            changed.append(path)
+            changed.append(file_path)
 
     return changed
 
@@ -228,11 +236,12 @@ def index_file(project_path: Path, project_id: str, file_path: Path,
         summaries_path = MEMORY_ROOT / 'projects' / project_id / 'summaries.json'
         if summaries_path.exists():
             try:
-                summaries = json.load(open(summaries_path))
+                with open(summaries_path) as f:
+                    summaries = json.load(f)
                 file_data = summaries.get('files', {}).get(rel_path, {})
                 summary = file_data.get('summary')
                 purpose = file_data.get('purpose')
-            except:
+            except (json.JSONDecodeError, IOError):
                 pass
 
         # Upsert to database
@@ -272,11 +281,20 @@ def index_project(project_id: str, project_path: str, full: bool = False):
     log(f"Indexing {project_id}...")
 
     if full:
-        # Index all files
-        files = [p for p in project_path.rglob('*')
-                 if p.is_file() and should_index(p)]
+        # Index all files (with depth limit)
+        files = []
+        for p in project_path.rglob('*'):
+            if not p.is_file() or not should_index(p):
+                continue
+            # Respect depth limit
+            try:
+                rel_path = p.relative_to(project_path)
+                if len(rel_path.parts) <= MAX_SCAN_DEPTH:
+                    files.append(p)
+            except ValueError:
+                continue
     else:
-        # Only changed files
+        # Only changed files (depth limit enforced in get_changed_files)
         files = get_changed_files(project_path, project_id)
 
     if not files:
@@ -299,7 +317,8 @@ def index_all_projects(full: bool = False):
         log("No config.json found")
         return
 
-    config = json.load(open(CONFIG_PATH))
+    with open(CONFIG_PATH) as f:
+        config = json.load(f)
 
     for project in config.get('projects', []):
         try:
@@ -339,7 +358,8 @@ class FileWatcher:
         if not CONFIG_PATH.exists():
             return
 
-        config = json.load(open(CONFIG_PATH))
+        with open(CONFIG_PATH) as f:
+            config = json.load(f)
         now = time.time()
 
         for project in config.get('projects', []):
@@ -351,14 +371,20 @@ class FileWatcher:
 
             # Get most recent modification time
             latest_mod = 0
-            for path in project_path.rglob('*'):
-                if path.is_file() and should_index(path):
-                    try:
-                        mtime = path.stat().st_mtime
-                        if mtime > latest_mod:
-                            latest_mod = mtime
-                    except:
-                        pass
+            for file_path in project_path.rglob('*'):
+                if not file_path.is_file() or not should_index(file_path):
+                    continue
+
+                # Check depth limit
+                try:
+                    rel_path = file_path.relative_to(project_path)
+                    if len(rel_path.parts) > MAX_SCAN_DEPTH:
+                        continue
+                    mtime = file_path.stat().st_mtime
+                    if mtime > latest_mod:
+                        latest_mod = mtime
+                except (OSError, ValueError):
+                    pass  # File may have been deleted or is inaccessible
 
             # Check if project has changes since last check
             last_check = self.last_check.get(project_id, 0)
@@ -471,7 +497,8 @@ def main():
         # One-shot indexing
         init_database()
         if args.project:
-            config = json.load(open(CONFIG_PATH))
+            with open(CONFIG_PATH) as f:
+                config = json.load(f)
             project = next((p for p in config['projects'] if p['id'] == args.project), None)
             if project:
                 index_project(project['id'], project['path'])
@@ -484,7 +511,8 @@ def main():
         # Full re-index
         init_database()
         if args.project:
-            config = json.load(open(CONFIG_PATH))
+            with open(CONFIG_PATH) as f:
+                config = json.load(f)
             project = next((p for p in config['projects'] if p['id'] == args.project), None)
             if project:
                 index_project(project['id'], project['path'], full=True)

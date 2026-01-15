@@ -72,3 +72,7 @@ fi
 
 echo ""
 echo "Log rotation complete."
+
+# Clean up orphan hook temp files (older than 1 hour)
+find /tmp -name "tmp.*" -user $USER -mmin +60 -delete 2>/dev/null
+

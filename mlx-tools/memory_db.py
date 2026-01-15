@@ -28,9 +28,41 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from contextlib import contextmanager
 import hashlib
+import re
 
 MEMORY_ROOT = Path.home() / '.claude-dash'
 DB_PATH = MEMORY_ROOT / 'memory.db'
+
+
+def split_camelcase(text: str) -> str:
+    """
+    Split CamelCase, snake_case, and kebab-case into searchable tokens.
+
+    Examples:
+        "LoginScreen" -> "login screen loginscreen"
+        "user_profile.js" -> "user profile userprofile js"
+        "my-component" -> "my component mycomponent"
+    """
+    if not text:
+        return ""
+
+    # Get filename without full path for cleaner tokens
+    basename = Path(text).stem if '/' in text else text
+
+    # Split CamelCase: insert space before uppercase letters
+    words = re.sub(r'([a-z])([A-Z])', r'\1 \2', basename)
+
+    # Split on underscores, dashes, dots
+    words = re.sub(r'[_\-./]', ' ', words)
+
+    # Lowercase and clean up
+    words = words.lower().strip()
+    words = re.sub(r'\s+', ' ', words)
+
+    # Also include the original lowercase basename for exact matching
+    original = basename.lower().replace('_', '').replace('-', '').replace('.', '')
+
+    return f"{words} {original}".strip()
 
 # =============================================================================
 # CONNECTION MANAGEMENT
@@ -46,7 +78,17 @@ def get_connection() -> sqlite3.Connection:
     FIXED: Uses connection pooling to avoid creating new connections
     for every function call. Each thread gets its own connection.
     """
-    if not hasattr(_local, 'connection') or _local.connection is None:
+    need_new = not hasattr(_local, 'connection') or _local.connection is None
+
+    # Also check if connection was closed
+    if not need_new:
+        try:
+            _local.connection.execute("SELECT 1")
+        except (sqlite3.ProgrammingError, sqlite3.DatabaseError):
+            need_new = True
+            _local.connection = None
+
+    if need_new:
         conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")  # Better concurrent access
@@ -112,6 +154,7 @@ def init_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             project_id TEXT NOT NULL REFERENCES projects(id),
             path TEXT NOT NULL,
+            path_tokens TEXT,  -- CamelCase-split tokens for FTS
             summary TEXT,
             purpose TEXT,
             component_name TEXT,
@@ -122,6 +165,12 @@ def init_database():
             UNIQUE(project_id, path)
         )
     """)
+
+    # Add path_tokens column if it doesn't exist (migration for existing DBs)
+    try:
+        conn.execute("ALTER TABLE files ADD COLUMN path_tokens TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
 
     # Functions table - replaces functions.json
     conn.execute("""
@@ -246,11 +295,16 @@ def init_database():
     conn.execute("CREATE INDEX IF NOT EXISTS idx_errors_project ON errors(project_id)")
 
     # Full-text search virtual tables
+    # Using unicode61 tokenizer with:
+    # - tokenchars for common code characters (underscore, dash)
+    # - case-insensitive matching via 'remove_diacritics' (implicit)
+    # CamelCase is handled by adding path variants in trigger
     conn.execute("""
         CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(
-            path, summary, purpose, component_name,
+            path, path_tokens, summary, purpose, component_name,
             content='files',
-            content_rowid='id'
+            content_rowid='id',
+            tokenize="unicode61 tokenchars '_-'"
         )
     """)
 
@@ -258,31 +312,37 @@ def init_database():
         CREATE VIRTUAL TABLE IF NOT EXISTS observations_fts USING fts5(
             title, content, category,
             content='observations',
-            content_rowid='id'
+            content_rowid='id',
+            tokenize='unicode61'
         )
     """)
 
     # Triggers to keep FTS in sync
+    # Drop old triggers first to ensure they're updated
+    conn.execute("DROP TRIGGER IF EXISTS files_ai")
+    conn.execute("DROP TRIGGER IF EXISTS files_ad")
+    conn.execute("DROP TRIGGER IF EXISTS files_au")
+
     conn.execute("""
-        CREATE TRIGGER IF NOT EXISTS files_ai AFTER INSERT ON files BEGIN
-            INSERT INTO files_fts(rowid, path, summary, purpose, component_name)
-            VALUES (new.id, new.path, new.summary, new.purpose, new.component_name);
+        CREATE TRIGGER files_ai AFTER INSERT ON files BEGIN
+            INSERT INTO files_fts(rowid, path, path_tokens, summary, purpose, component_name)
+            VALUES (new.id, new.path, new.path_tokens, new.summary, new.purpose, new.component_name);
         END
     """)
 
     conn.execute("""
-        CREATE TRIGGER IF NOT EXISTS files_ad AFTER DELETE ON files BEGIN
-            INSERT INTO files_fts(files_fts, rowid, path, summary, purpose, component_name)
-            VALUES ('delete', old.id, old.path, old.summary, old.purpose, old.component_name);
+        CREATE TRIGGER files_ad AFTER DELETE ON files BEGIN
+            INSERT INTO files_fts(files_fts, rowid, path, path_tokens, summary, purpose, component_name)
+            VALUES ('delete', old.id, old.path, old.path_tokens, old.summary, old.purpose, old.component_name);
         END
     """)
 
     conn.execute("""
-        CREATE TRIGGER IF NOT EXISTS files_au AFTER UPDATE ON files BEGIN
-            INSERT INTO files_fts(files_fts, rowid, path, summary, purpose, component_name)
-            VALUES ('delete', old.id, old.path, old.summary, old.purpose, old.component_name);
-            INSERT INTO files_fts(rowid, path, summary, purpose, component_name)
-            VALUES (new.id, new.path, new.summary, new.purpose, new.component_name);
+        CREATE TRIGGER files_au AFTER UPDATE ON files BEGIN
+            INSERT INTO files_fts(files_fts, rowid, path, path_tokens, summary, purpose, component_name)
+            VALUES ('delete', old.id, old.path, old.path_tokens, old.summary, old.purpose, old.component_name);
+            INSERT INTO files_fts(rowid, path, path_tokens, summary, purpose, component_name)
+            VALUES (new.id, new.path, new.path_tokens, new.summary, new.purpose, new.component_name);
         END
     """)
 
@@ -301,7 +361,7 @@ def init_database():
     """)
 
     conn.commit()
-    conn.close()
+    # Note: Don't close - using thread-local connection pooling
     print(f"Database initialized at {DB_PATH}")
 
 
@@ -313,11 +373,15 @@ def upsert_file(project_id: str, path: str, summary: str = None,
                 purpose: str = None, component_name: str = None,
                 is_component: bool = False, file_hash: str = None) -> int:
     """Insert or update a file record. Returns file ID."""
+    # Compute path_tokens for better FTS matching
+    path_tokens = split_camelcase(path)
+
     conn = get_connection()
     cursor = conn.execute("""
-        INSERT INTO files (project_id, path, summary, purpose, component_name, is_component, file_hash, indexed_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        INSERT INTO files (project_id, path, path_tokens, summary, purpose, component_name, is_component, file_hash, indexed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(project_id, path) DO UPDATE SET
+            path_tokens = excluded.path_tokens,
             summary = excluded.summary,
             purpose = excluded.purpose,
             component_name = excluded.component_name,
@@ -325,10 +389,12 @@ def upsert_file(project_id: str, path: str, summary: str = None,
             file_hash = excluded.file_hash,
             indexed_at = CURRENT_TIMESTAMP
         RETURNING id
-    """, (project_id, path, summary, purpose, component_name, is_component, file_hash))
-    file_id = cursor.fetchone()[0]
+    """, (project_id, path, path_tokens, summary, purpose, component_name, is_component, file_hash))
+    row = cursor.fetchone()
+    if row is None:
+        raise RuntimeError(f"Failed to upsert file: {project_id}/{path}")
+    file_id = row[0]
     conn.commit()
-    conn.close()
     return file_id
 
 
@@ -342,7 +408,6 @@ def upsert_function(file_id: int, name: str, line_number: int,
         ON CONFLICT DO NOTHING
     """, (file_id, name, line_number, func_type, signature))
     conn.commit()
-    conn.close()
 
 
 def search_files(query: str, project_id: str = None, limit: int = 20) -> List[Dict]:
@@ -369,7 +434,6 @@ def search_files(query: str, project_id: str = None, limit: int = 20) -> List[Di
         """, (query, limit))
 
     results = [dict(row) for row in cursor.fetchall()]
-    conn.close()
     return results
 
 
@@ -397,7 +461,6 @@ def search_functions(name: str, project_id: str = None, limit: int = 20) -> List
         """, (f'%{name}%', limit))
 
     results = [dict(row) for row in cursor.fetchall()]
-    conn.close()
     return results
 
 
@@ -419,7 +482,6 @@ def cross_project_search(query: str, limit: int = 20) -> List[Dict]:
     """, (query, limit))
 
     results = [dict(row) for row in cursor.fetchall()]
-    conn.close()
     return results
 
 
@@ -451,9 +513,11 @@ def log_error(project_id: str, error_type: str, message: str,
         VALUES (?, ?, ?, ?, ?, ?, ?)
         RETURNING id
     """, (project_id, error_type, message, stack_trace, file_path, line_number, signature))
-    error_id = cursor.fetchone()[0]
+    row = cursor.fetchone()
+    if row is None:
+        raise RuntimeError(f"Failed to log error: {error_type}")
+    error_id = row[0]
     conn.commit()
-    conn.close()
     return error_id
 
 
@@ -473,7 +537,6 @@ def find_similar_errors(error_type: str, message: str, limit: int = 5) -> List[D
     """, (signature, limit))
 
     results = [dict(row) for row in cursor.fetchall()]
-    conn.close()
     return results
 
 
@@ -485,7 +548,6 @@ def add_error_solution(error_id: int, solution: str, session_id: str = None):
         VALUES (?, ?, ?)
     """, (error_id, solution, session_id))
     conn.commit()
-    conn.close()
 
 
 # =============================================================================
@@ -501,7 +563,8 @@ def start_session(session_id: str, project_id: str = None) -> str:
 
     if project_id:
         try:
-            config = json.load(open(MEMORY_ROOT / 'config.json'))
+            with open(MEMORY_ROOT / 'config.json') as f:
+                config = json.load(f)
             project = next((p for p in config['projects'] if p['id'] == project_id), None)
             if project:
                 git_branch = subprocess.check_output(
@@ -512,8 +575,8 @@ def start_session(session_id: str, project_id: str = None) -> str:
                     ['git', 'rev-parse', 'HEAD'],
                     cwd=project['path'], stderr=subprocess.DEVNULL
                 ).decode().strip()[:8]
-        except:
-            pass
+        except (FileNotFoundError, json.JSONDecodeError, subprocess.CalledProcessError, OSError):
+            pass  # Git info is optional - continue without it
 
     conn = get_connection()
     conn.execute("""
@@ -521,7 +584,6 @@ def start_session(session_id: str, project_id: str = None) -> str:
         VALUES (?, ?, ?, ?)
     """, (session_id, project_id, git_branch, git_commit))
     conn.commit()
-    conn.close()
     return session_id
 
 
@@ -532,15 +594,16 @@ def end_session(session_id: str, project_id: str = None):
     git_commit = None
     if project_id:
         try:
-            config = json.load(open(MEMORY_ROOT / 'config.json'))
+            with open(MEMORY_ROOT / 'config.json') as f:
+                config = json.load(f)
             project = next((p for p in config['projects'] if p['id'] == project_id), None)
             if project:
                 git_commit = subprocess.check_output(
                     ['git', 'rev-parse', 'HEAD'],
                     cwd=project['path'], stderr=subprocess.DEVNULL
                 ).decode().strip()[:8]
-        except:
-            pass
+        except (FileNotFoundError, json.JSONDecodeError, subprocess.CalledProcessError, OSError):
+            pass  # Git info is optional - continue without it
 
     conn = get_connection()
     conn.execute("""
@@ -549,7 +612,6 @@ def end_session(session_id: str, project_id: str = None):
         WHERE id = ?
     """, (git_commit, session_id))
     conn.commit()
-    conn.close()
 
 
 def add_observation(session_id: str, project_id: str, category: str,
@@ -561,7 +623,6 @@ def add_observation(session_id: str, project_id: str, category: str,
         VALUES (?, ?, ?, ?, ?, ?)
     """, (session_id, project_id, category, title, content, json.dumps(context) if context else None))
     conn.commit()
-    conn.close()
 
 
 def search_observations(query: str, project_id: str = None,
@@ -591,7 +652,6 @@ def search_observations(query: str, project_id: str = None,
 
     cursor = conn.execute(sql, params)
     results = [dict(row) for row in cursor.fetchall()]
-    conn.close()
     return results
 
 
@@ -606,7 +666,8 @@ def migrate_from_json():
         print("No config.json found, skipping migration")
         return
 
-    config = json.load(open(config_path))
+    with open(config_path) as f:
+        config = json.load(f)
     conn = get_connection()
 
     # Migrate projects
@@ -632,7 +693,8 @@ def migrate_from_json():
         # Migrate summaries.json
         summaries_path = project_dir / 'summaries.json'
         if summaries_path.exists():
-            summaries = json.load(open(summaries_path))
+            with open(summaries_path) as f:
+                summaries = json.load(f)
             for path, data in summaries.get('files', {}).items():
                 file_id = upsert_file(
                     project_id=project_id,
@@ -655,7 +717,8 @@ def migrate_from_json():
         # Migrate schema.json
         schema_path = project_dir / 'schema.json'
         if schema_path.exists():
-            schema = json.load(open(schema_path))
+            with open(schema_path) as f:
+                schema = json.load(f)
             for name, data in schema.get('collections', {}).items():
                 conn.execute("""
                     INSERT OR REPLACE INTO collections (project_id, name, fields, description)
@@ -670,7 +733,8 @@ def migrate_from_json():
     if sessions_dir.exists():
         for session_file in sessions_dir.glob('*.json'):
             try:
-                session = json.load(open(session_file))
+                with open(session_file) as f:
+                    session = json.load(f)
                 session_id = session_file.stem
 
                 conn.execute("""
@@ -690,8 +754,102 @@ def migrate_from_json():
                 print(f"Error migrating session {session_file}: {e}")
 
     conn.commit()
-    conn.close()
     print("Migration complete!")
+
+
+def rebuild_fts_index():
+    """
+    Rebuild the FTS index with proper path_tokens.
+
+    Call this after updating the FTS schema or when search isn't working.
+    This will:
+    1. Update path_tokens for all existing files
+    2. Rebuild the FTS index from scratch
+    """
+    conn = get_connection()
+
+    # Drop triggers and FTS table FIRST to avoid sync issues during update
+    print("Dropping old triggers and FTS table...")
+    conn.execute("DROP TRIGGER IF EXISTS files_ai")
+    conn.execute("DROP TRIGGER IF EXISTS files_ad")
+    conn.execute("DROP TRIGGER IF EXISTS files_au")
+    conn.execute("DROP TABLE IF EXISTS files_fts")
+    conn.commit()
+
+    print("Updating path_tokens for all files...")
+    cursor = conn.execute("SELECT id, path FROM files")
+    files = cursor.fetchall()
+
+    updated = 0
+    for file_id, path in files:
+        tokens = split_camelcase(path)
+        conn.execute("UPDATE files SET path_tokens = ? WHERE id = ?", (tokens, file_id))
+        updated += 1
+        if updated % 100 == 0:
+            print(f"  Updated {updated} files...")
+
+    conn.commit()
+    print(f"Updated path_tokens for {updated} files")
+
+    print("Recreating FTS table...")
+    conn.execute("""
+        CREATE VIRTUAL TABLE files_fts USING fts5(
+            path, path_tokens, summary, purpose, component_name,
+            content='files',
+            content_rowid='id',
+            tokenize="unicode61 tokenchars '_-'"
+        )
+    """)
+
+    print("Rebuilding FTS index...")
+    conn.execute("""
+        INSERT INTO files_fts(rowid, path, path_tokens, summary, purpose, component_name)
+        SELECT id, path, path_tokens, summary, purpose, component_name FROM files
+    """)
+
+    # Recreate triggers
+    print("Recreating triggers...")
+    conn.execute("""
+        CREATE TRIGGER files_ai AFTER INSERT ON files BEGIN
+            INSERT INTO files_fts(rowid, path, path_tokens, summary, purpose, component_name)
+            VALUES (new.id, new.path, new.path_tokens, new.summary, new.purpose, new.component_name);
+        END
+    """)
+
+    conn.execute("""
+        CREATE TRIGGER files_ad AFTER DELETE ON files BEGIN
+            INSERT INTO files_fts(files_fts, rowid, path, path_tokens, summary, purpose, component_name)
+            VALUES ('delete', old.id, old.path, old.path_tokens, old.summary, old.purpose, old.component_name);
+        END
+    """)
+
+    conn.execute("""
+        CREATE TRIGGER files_au AFTER UPDATE ON files BEGIN
+            INSERT INTO files_fts(files_fts, rowid, path, path_tokens, summary, purpose, component_name)
+            VALUES ('delete', old.id, old.path, old.path_tokens, old.summary, old.purpose, old.component_name);
+            INSERT INTO files_fts(rowid, path, path_tokens, summary, purpose, component_name)
+            VALUES (new.id, new.path, new.path_tokens, new.summary, new.purpose, new.component_name);
+        END
+    """)
+
+    conn.commit()
+
+    # Verify
+    count = conn.execute("SELECT COUNT(*) FROM files_fts").fetchone()[0]
+    print(f"FTS index rebuilt with {count} entries")
+
+    # Test a search
+    test_results = conn.execute("""
+        SELECT path FROM files_fts WHERE files_fts MATCH 'login' LIMIT 5
+    """).fetchall()
+    if test_results:
+        print(f"Test search for 'login' found {len(test_results)} results:")
+        for r in test_results:
+            print(f"  - {r[0]}")
+    else:
+        print("Test search for 'login' found no results (may be expected)")
+
+    return updated
 
 
 # =============================================================================
@@ -719,7 +877,6 @@ def get_stats() -> Dict:
     """)
     stats['projects_detail'] = [dict(row) for row in cursor.fetchall()]
 
-    conn.close()
     return stats
 
 
@@ -735,6 +892,7 @@ def main():
         print("\nCommands:")
         print("  init          Initialize database")
         print("  migrate       Migrate from JSON files")
+        print("  rebuild_fts   Rebuild FTS index with path_tokens")
         print("  stats         Show database statistics")
         print("  search <q>    Cross-project search")
         print("  functions <n> Search functions by name")
@@ -747,6 +905,9 @@ def main():
     elif cmd == 'migrate':
         init_database()
         migrate_from_json()
+    elif cmd == 'rebuild_fts':
+        init_database()  # Ensure triggers are updated
+        rebuild_fts_index()
     elif cmd == 'stats':
         stats = get_stats()
         print(f"Projects: {stats['projects']}")

@@ -150,12 +150,27 @@ curl -fsSL https://raw.githubusercontent.com/jamelna-apps/claude-dash/main/insta
 - Preserves: synthesis, files changed, commands, key responses
 - Runs weekly automatically
 
+### Hybrid Search System
+
+**BM25 + Semantic Search** (v2.0)
+- Combines keyword matching (BM25) with semantic embeddings
+- Uses Reciprocal Rank Fusion (RRF) for optimal results
+- SQLite with FTS5 for fast full-text search
+- HNSW indexes for O(log n) approximate nearest neighbor
+- Falls back gracefully: Ollama → sentence-transformers → TF-IDF
+
+**Data Storage**
+- `memory.db` - SQLite database with indexed queries
+- `embeddings_v2.json` - File embeddings for semantic search
+- JSON files remain source of truth, SQLite for fast queries
+
 ### Project Indexing
 
 - Tracks files, functions, and generates summaries
 - Automatically re-indexes when files change
 - Extracts database schemas from Firestore/MongoDB code
 - Semantic search using embeddings
+- Incremental sync keeps SQLite in sync with JSON
 
 ### MCP Integration
 
@@ -235,12 +250,18 @@ Opens at `http://localhost:3847`.
 ├── patterns/
 │   ├── patterns.json           # Mode definitions
 │   └── detector.py             # Conversation mode detection
-├── mcp-server/
-│   └── server.js               # MCP protocol server
+├── gateway/
+│   ├── server.js               # Unified MCP server
+│   ├── cache.js                # Query caching
+│   └── metrics.json            # Performance tracking
 ├── watcher/
 │   └── watcher.js              # File change monitor
 ├── mlx-tools/
-│   └── mlx                     # Local AI CLI
+│   ├── mlx                     # Local AI CLI
+│   ├── memory_db.py            # SQLite database
+│   ├── hybrid_search.py        # BM25 + semantic search
+│   ├── embeddings.py           # Unified embedding provider
+│   └── indexing_daemon.py      # Background auto-indexer
 └── dashboard/
     └── server.js               # Web dashboard
 ```
@@ -283,6 +304,12 @@ python3 ~/.claude-dash/learning/preference_learner.py --get-preferences
 
 # Check git changes since last session
 python3 ~/.claude-dash/learning/git_awareness.py /path/to/project
+
+# Backup database
+~/.claude-dash/backup.sh
+
+# Restore database
+~/.claude-dash/restore.sh
 ```
 
 ## Performance

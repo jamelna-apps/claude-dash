@@ -16,6 +16,20 @@
 const fs = require('fs');
 const path = require('path');
 
+/**
+ * Atomic JSON write - writes to temp file then renames
+ */
+function atomicWriteJSON(filePath, data) {
+  const tmpPath = filePath + '.tmp.' + process.pid + '.' + Date.now();
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
+    fs.renameSync(tmpPath, filePath);
+  } catch (e) {
+    try { fs.unlinkSync(tmpPath); } catch (e2) {}
+    throw e;
+  }
+}
+
 // Patterns for extraction
 const PATTERNS = {
   // Function declarations
@@ -383,14 +397,14 @@ function main() {
   // Ensure output directory exists
   fs.mkdirSync(memoryPath, { recursive: true });
 
-  // Write functions index
+  // Write functions index (atomic)
   const functionsPath = path.join(memoryPath, 'functions.json');
-  fs.writeFileSync(functionsPath, JSON.stringify(functionsIndex, null, 2));
+  atomicWriteJSON(functionsPath, functionsIndex);
   console.log(`Functions index: ${functionsIndex.totalFunctions} functions in ${functionsIndex.totalFiles} files`);
 
-  // Write summaries (structural)
+  // Write summaries (atomic)
   const summariesPath = path.join(memoryPath, 'summaries.json');
-  fs.writeFileSync(summariesPath, JSON.stringify(summaries, null, 2));
+  atomicWriteJSON(summariesPath, summaries);
   console.log(`Summaries: ${Object.keys(summaries.files).length} files`);
 
   // Stats

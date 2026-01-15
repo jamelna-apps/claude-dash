@@ -12,6 +12,22 @@ const MLX_TOOLS = path.join(MEMORY_ROOT, 'mlx-tools');
 const PYTHON_PATH = path.join(MEMORY_ROOT, 'mlx-env', 'bin', 'python3');
 const DB_SYNC_LOG = path.join(MEMORY_ROOT, 'logs', 'db-sync.log');
 
+/**
+ * Atomic JSON write - writes to temp file then renames
+ * Prevents corruption from concurrent writes or crashes mid-write
+ */
+function atomicWriteJSON(filePath, data) {
+  const tmpPath = filePath + '.tmp.' + process.pid + '.' + Date.now();
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
+    fs.renameSync(tmpPath, filePath);
+  } catch (e) {
+    // Clean up temp file on error
+    try { fs.unlinkSync(tmpPath); } catch (e2) {}
+    throw e;
+  }
+}
+
 // Log DB sync events (append to log file)
 function logDbSync(message) {
   const timestamp = new Date().toISOString();
@@ -103,6 +119,71 @@ function syncToDatabase(projectId, filePath) {
     logDbSync(`SPAWN ERROR [${projectId}/${filePath}]: ${error.message}`);
   }
 }
+
+// Sync embeddings for a file (runs detached, non-blocking)
+// Rate limited to prevent spawning too many processes
+const MAX_CONCURRENT_EMBEDDING_SYNCS = 3;
+const MAX_EMBEDDING_QUEUE_SIZE = 100;  // Prevent memory leak from unbounded queue
+let activeEmbeddingSyncs = 0;
+const embeddingSyncQueue = [];
+
+function syncEmbeddings(projectId, filePath, isDelete = false) {
+  const script = path.join(MLX_TOOLS, 'embedding_sync.py');
+
+  if (!fs.existsSync(PYTHON_PATH) || !fs.existsSync(script)) {
+    return; // Silently skip if embedding sync not available
+  }
+
+  // Queue if too many active
+  if (activeEmbeddingSyncs >= MAX_CONCURRENT_EMBEDDING_SYNCS) {
+    // Prevent unbounded queue growth - could cause memory leak
+    if (embeddingSyncQueue.length >= MAX_EMBEDDING_QUEUE_SIZE) {
+      console.error(`[embedding-sync] Queue full (${MAX_EMBEDDING_QUEUE_SIZE}), dropping: ${filePath}`);
+      return;
+    }
+    embeddingSyncQueue.push({ projectId, filePath, isDelete });
+    return;
+  }
+
+  _runEmbeddingSync(projectId, filePath, isDelete);
+}
+
+function _runEmbeddingSync(projectId, filePath, isDelete) {
+  activeEmbeddingSyncs++;
+
+  try {
+    const args = [path.join(MLX_TOOLS, 'embedding_sync.py'), projectId, filePath];
+    if (isDelete) {
+      args.push('--delete');
+    }
+
+    const child = spawn(PYTHON_PATH, args, {
+      detached: true,
+      stdio: 'ignore',
+      cwd: MLX_TOOLS
+    });
+
+    // Track completion and process queue
+    child.on('close', () => {
+      activeEmbeddingSyncs--;
+      if (embeddingSyncQueue.length > 0) {
+        const next = embeddingSyncQueue.shift();
+        _runEmbeddingSync(next.projectId, next.filePath, next.isDelete);
+      }
+    });
+
+    // Timeout to kill hung processes
+    setTimeout(() => {
+      try { child.kill('SIGTERM'); } catch (e) {}
+    }, SYNC_TIMEOUT_MS);
+
+    child.unref();
+  } catch (error) {
+    activeEmbeddingSyncs--;
+    logDbSync(`EMBEDDING SYNC ERROR [${projectId}/${filePath}]: ${error.message}`);
+  }
+}
+
 const PID_FILE = path.join(MEMORY_ROOT, 'watcher', 'watcher.pid');
 
 // Check if another instance is already running
@@ -471,7 +552,7 @@ function updateFunctionsIndex(project, filePath, action) {
   }
 
   functionsIndex.lastUpdated = new Date().toISOString();
-  fs.writeFileSync(functionsPath, JSON.stringify(functionsIndex, null, 2));
+  atomicWriteJSON(functionsPath, functionsIndex);
 }
 
 // Update summaries.json structural data for a file change
@@ -528,7 +609,7 @@ function updateSummariesStructure(project, filePath, action) {
   }
 
   summaries.lastUpdated = new Date().toISOString();
-  fs.writeFileSync(summariesPath, JSON.stringify(summaries, null, 2));
+  atomicWriteJSON(summariesPath, summaries);
 }
 
 // Process a single file change
@@ -541,6 +622,9 @@ function processFileChange(project, filePath, action) {
   // Sync to SQLite database (async, non-blocking)
   const relativePath = path.relative(project.path, filePath);
   syncToDatabase(project.id, relativePath);
+
+  // Sync embeddings (async, non-blocking)
+  syncEmbeddings(project.id, relativePath, action === 'delete');
 }
 
 // Scan project and update index.json
@@ -628,8 +712,8 @@ function updateProjectIndex(project) {
   index.structure.languages = languageCount;
   index.fileIndex = fileIndex.slice(0, 500); // Limit to 500 files
 
-  // Write updated index
-  fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+  // Write updated index (atomic to prevent corruption)
+  atomicWriteJSON(indexPath, index);
   console.log(`Updated index for ${project.displayName}: ${totalFiles} files`);
 }
 
