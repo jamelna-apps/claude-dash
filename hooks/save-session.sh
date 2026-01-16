@@ -176,4 +176,36 @@ if [ -f "$COMPACTOR" ] && should_compact; then
   date +%s > "$LAST_COMPACT_FILE"
 fi
 
+# === BACKGROUND WORKERS - Session End Triggers ===
+# Run learning consolidation and health checks at session end
+
+WORKERS="$MEMORY_ROOT/workers/background_workers.py"
+
+if [ -f "$WORKERS" ]; then
+  # Run consolidation to merge learning trajectories into patterns
+  nohup "$PYTHON" "$WORKERS" consolidate \
+    >> "$MEMORY_ROOT/logs/workers.log" 2>&1 &
+
+  # Run freshness check to alert on stale indexes
+  nohup "$PYTHON" "$WORKERS" freshness --project "$PROJECT_ID" \
+    >> "$MEMORY_ROOT/logs/workers.log" 2>&1 &
+fi
+
+# === REASONING BANK - Record Session Learning ===
+# If there were corrections in this session, record them
+
+REASONING_BANK="$MEMORY_ROOT/learning/reasoning_bank.py"
+
+if [ -f "$REASONING_BANK" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+  # Extract any corrections/learnings from the session
+  nohup "$PYTHON" -c "
+import sys
+import json
+sys.path.insert(0, '$MEMORY_ROOT/learning')
+from reasoning_bank import consolidate_learning
+# Run consolidation at session end
+consolidate_learning(force=False)
+" >> "$MEMORY_ROOT/logs/reasoning.log" 2>&1 &
+fi
+
 exit 0

@@ -115,6 +115,23 @@ def record_correction(message, previous_context=None, topic=None, project_id=Non
         data["patterns"][topic]["examples"] = data["patterns"][topic]["examples"][-5:]
 
     save_corrections(data)
+
+    # === REASONING BANK INTEGRATION ===
+    # Also record to ReasoningBank for RETRIEVE→JUDGE→DISTILL cycle
+    try:
+        from reasoning_bank import record_trajectory
+        record_trajectory(
+            context=previous_context or "",
+            problem=message[:200],
+            solution=correction.get("correct", message[:100]),
+            domain=topic,
+            project_id=project_id
+        )
+    except ImportError:
+        pass  # ReasoningBank not available
+    except Exception:
+        pass  # Non-critical - don't fail correction recording
+
     return correction
 
 

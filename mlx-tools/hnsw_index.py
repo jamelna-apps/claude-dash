@@ -189,34 +189,65 @@ class HNSWIndex:
 
 
 def build_from_ollama_embeddings(project_id: str) -> HNSWIndex:
-    """Build HNSW index from existing Ollama embeddings."""
-    embeddings_path = MEMORY_ROOT / 'projects' / project_id / 'ollama_embeddings.json'
+    """Build HNSW index from existing embeddings (supports multiple formats)."""
+    project_dir = MEMORY_ROOT / 'projects' / project_id
 
-    if not embeddings_path.exists():
-        print(f"No Ollama embeddings found for {project_id}")
+    # Try multiple embedding file names
+    embeddings_path = None
+    for filename in ['ollama_embeddings.json', 'embeddings_v2.json', 'embeddings.json']:
+        candidate = project_dir / filename
+        if candidate.exists():
+            embeddings_path = candidate
+            break
+
+    if not embeddings_path:
+        print(f"No embeddings found for {project_id}")
         print(f"Run: mlx ollama-embed build {project_id}")
         return None
 
     embeddings_data = json.loads(embeddings_path.read_text())
 
-    # Handle both old format (files at root) and new format (under 'embeddings' key)
+    # Handle multiple formats:
+    # Format 1: { "embeddings": { file: embedding, ... }, "dim": 768 }
+    # Format 2: { "files": { file: { "embedding": [...] }, ... } }
+    # Format 3: { file: embedding, ... } (old format)
+
+    files_data = None
+    dim = 768  # Default
+
     if 'embeddings' in embeddings_data:
         files_data = embeddings_data['embeddings']
         dim = embeddings_data.get('dim', 768)
+    elif 'files' in embeddings_data:
+        files_data = embeddings_data['files']
+        # Detect dimension from first file
     else:
         # Old format: files directly at root level
-        files_data = embeddings_data
-        dim = 768  # Default dimension for nomic-embed-text
+        files_data = {k: v for k, v in embeddings_data.items()
+                      if k not in ('dim', 'model', 'created_at', 'version', 'project', 'lastUpdated')}
+        dim = embeddings_data.get('dim', 768)
+
+    if not files_data:
+        print(f"No file embeddings found in {embeddings_path}")
+        return None
+
+    # First pass: detect dimension from actual data
+    for file_path, data in files_data.items():
+        embedding = None
+        if isinstance(data, dict) and 'embedding' in data:
+            embedding = data['embedding']
+        elif isinstance(data, list):
+            embedding = data
+
+        if embedding and len(embedding) > 0:
+            dim = len(embedding)
+            break
 
     index = HNSWIndex(project_id, dim=dim)
     index.create()
 
     count = 0
     for file_path, data in files_data.items():
-        # Skip metadata keys
-        if file_path in ('dim', 'model', 'created_at'):
-            continue
-
         embedding = None
         if isinstance(data, dict) and 'embedding' in data:
             embedding = data['embedding']
@@ -225,12 +256,7 @@ def build_from_ollama_embeddings(project_id: str) -> HNSWIndex:
 
         if embedding:
             embedding = np.array(embedding, dtype=np.float32)
-            if len(embedding) > 0:
-                # Update dim if we see actual data
-                if count == 0:
-                    dim = len(embedding)
-                    index = HNSWIndex(project_id, dim=dim)
-                    index.create()
+            if len(embedding) == dim:
                 index.add(file_path, embedding)
                 count += 1
 
@@ -276,12 +302,50 @@ def search_project(project_id: str, query_embedding: List[float], k: int = 10) -
     return enhanced
 
 
+def build_all_indexes() -> Dict[str, str]:
+    """Build HNSW indexes for all projects with embeddings."""
+    config_path = MEMORY_ROOT / 'config.json'
+    if not config_path.exists():
+        print("No config.json found")
+        return {}
+
+    config = json.loads(config_path.read_text())
+    results = {}
+
+    for project in config.get('projects', []):
+        project_id = project.get('id')
+        if not project_id:
+            continue
+
+        print(f"\n{'='*50}")
+        print(f"Building index for: {project_id}")
+        print('='*50)
+
+        try:
+            index = build_from_ollama_embeddings(project_id)
+            if index:
+                results[project_id] = f"OK ({index.count()} vectors)"
+            else:
+                results[project_id] = "SKIP (no embeddings)"
+        except Exception as e:
+            results[project_id] = f"ERROR: {e}"
+            print(f"Error: {e}")
+
+    print(f"\n{'='*50}")
+    print("Summary:")
+    print('='*50)
+    for project_id, status in results.items():
+        print(f"  {project_id}: {status}")
+
+    return results
+
+
 def main():
     import argparse
 
     parser = argparse.ArgumentParser(description='HNSW Index Manager')
-    parser.add_argument('command', choices=['build', 'search', 'stats', 'rebuild'])
-    parser.add_argument('project', help='Project ID')
+    parser.add_argument('command', choices=['build', 'build-all', 'search', 'stats', 'rebuild'])
+    parser.add_argument('project', nargs='?', help='Project ID (not needed for build-all)')
     parser.add_argument('query', nargs='?', help='Search query (for search command)')
     parser.add_argument('--limit', '-k', type=int, default=10, help='Number of results')
 
@@ -292,7 +356,14 @@ def main():
         print("Install with: pip install hnswlib")
         sys.exit(1)
 
+    if args.command == 'build-all':
+        build_all_indexes()
+        return
+
     if args.command == 'build':
+        if not args.project:
+            print("Error: build requires a project ID")
+            sys.exit(1)
         build_from_ollama_embeddings(args.project)
 
     elif args.command == 'stats':

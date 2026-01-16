@@ -625,6 +625,50 @@ function processFileChange(project, filePath, action) {
 
   // Sync embeddings (async, non-blocking)
   syncEmbeddings(project.id, relativePath, action === 'delete');
+
+  // Mark HNSW index as needing rebuild (actual rebuild happens on next search or periodically)
+  markHnswStale(project.id);
+}
+
+// Track which projects have stale HNSW indexes
+const hnswStaleProjects = new Set();
+let hnswRebuildTimer = null;
+
+function markHnswStale(projectId) {
+  hnswStaleProjects.add(projectId);
+
+  // Debounce HNSW rebuilds - wait 30 seconds after last change
+  if (hnswRebuildTimer) {
+    clearTimeout(hnswRebuildTimer);
+  }
+
+  hnswRebuildTimer = setTimeout(() => {
+    rebuildStaleHnswIndexes();
+  }, 30000); // 30 second delay
+}
+
+function rebuildStaleHnswIndexes() {
+  if (hnswStaleProjects.size === 0) return;
+
+  const projects = Array.from(hnswStaleProjects);
+  hnswStaleProjects.clear();
+
+  console.log(`  🔍 Rebuilding HNSW indexes for: ${projects.join(', ')}`);
+
+  for (const projectId of projects) {
+    const script = path.join(MLX_TOOLS, 'hnsw_index.py');
+    if (!fs.existsSync(script)) continue;
+
+    try {
+      spawn(PYTHON_PATH, [script, 'build', projectId], {
+        detached: true,
+        stdio: ['ignore', 'ignore', 'pipe'],
+        cwd: MLX_TOOLS
+      }).unref();
+    } catch (e) {
+      console.error(`  ⚠ HNSW rebuild failed for ${projectId}:`, e.message);
+    }
+  }
 }
 
 // Scan project and update index.json

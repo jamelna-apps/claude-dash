@@ -14,6 +14,7 @@ const fs = require('fs');
 const readline = require('readline');
 const { Cache } = require(path.join(__dirname, 'cache'));
 const { Metrics } = require(path.join(__dirname, 'metrics'));
+const { routeRequest, TIERS, getRoutingStats, classifyQueryComplexity } = require(path.join(__dirname, 'router'));
 
 const MEMORY_ROOT = path.join(process.env.HOME, '.claude-dash');
 const MLX_TOOLS = path.join(MEMORY_ROOT, 'mlx-tools');
@@ -519,6 +520,71 @@ const TOOLS = [
       },
       required: ['query']
     }
+  },
+
+  // --- LEARNING TOOLS (new) ---
+  {
+    name: 'reasoning_query',
+    description: 'Query ReasoningBank for past learning trajectories. Finds applicable solutions from similar problems solved before.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        context: { type: 'string', description: 'Current problem context' },
+        domain: {
+          type: 'string',
+          enum: ['docker', 'auth', 'react', 'database', 'api', 'ui', 'performance', 'testing'],
+          description: 'Optional domain filter'
+        },
+        limit: { type: 'number', description: 'Max results (default: 5)' }
+      },
+      required: ['context']
+    }
+  },
+  {
+    name: 'learning_status',
+    description: 'Get learning system status: preferences, corrections, confidence calibration.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        component: {
+          type: 'string',
+          enum: ['all', 'preferences', 'corrections', 'confidence', 'reasoning'],
+          description: 'Which component to check (default: all)'
+        },
+        project: { type: 'string', description: 'Project ID for project-specific learning' }
+      }
+    }
+  },
+  {
+    name: 'workers_run',
+    description: 'Run background workers manually: consolidation, freshness check, health check.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        worker: {
+          type: 'string',
+          enum: ['consolidate', 'freshness', 'health', 'all'],
+          description: 'Which worker to run'
+        },
+        project: { type: 'string', description: 'Project ID (for freshness check)' }
+      },
+      required: ['worker']
+    }
+  },
+  {
+    name: 'hnsw_status',
+    description: 'Get HNSW index status for all projects or rebuild indexes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['status', 'rebuild', 'rebuild-all'],
+          description: 'Action to perform (default: status)'
+        },
+        project: { type: 'string', description: 'Project ID (for single project rebuild)' }
+      }
+    }
   }
 ];
 
@@ -762,6 +828,7 @@ async function handleGatewayMetrics(params) {
 
   const summary = metrics.getSummary();
   const cacheStats = cache.getStats();
+  const routingStats = getRoutingStats(metrics);
 
   if (format === 'detailed') {
     const trends = metrics.getDailyTrends(7);
@@ -1044,6 +1111,187 @@ async function handleMemorySearchAll(params) {
   return { result: output };
 }
 
+// --- Learning tool handlers ---
+
+async function handleReasoningQuery(params) {
+  const startTime = Date.now();
+
+  const args = [params.context];
+  if (params.domain) {
+    args.push('--domain', params.domain);
+  }
+  if (params.limit) {
+    args.push('--limit', String(params.limit));
+  }
+
+  try {
+    const reasoningBankPath = path.join(MEMORY_ROOT, 'learning', 'reasoning_bank.py');
+    if (!fs.existsSync(reasoningBankPath)) {
+      return { error: 'ReasoningBank not installed. Run learning system setup.' };
+    }
+
+    const output = await runPythonScript(reasoningBankPath, ['query', ...args]);
+
+    metrics.recordQuery({
+      tool: 'reasoning_query',
+      route: 'learning',
+      tokensUsed: metrics.estimateTokens(output),
+      tokensSaved: 0,
+      latencyMs: Date.now() - startTime,
+      cacheHit: false
+    });
+
+    return { result: output || 'No relevant learning trajectories found.' };
+  } catch (error) {
+    return { error: `ReasoningBank error: ${error.message}` };
+  }
+}
+
+async function handleLearningStatus(params, cwd) {
+  const component = params.component || 'all';
+  const project = params.project || detectProject(cwd);
+
+  const results = [];
+
+  try {
+    // Preferences status
+    if (component === 'all' || component === 'preferences') {
+      const prefsPath = path.join(MEMORY_ROOT, 'learning', 'preference_learner.py');
+      if (fs.existsSync(prefsPath)) {
+        try {
+          const output = await runPythonScript(prefsPath, ['--get-preferences']);
+          results.push(`=== Learned Preferences ===\n${output || 'None yet'}`);
+        } catch (e) {
+          results.push(`=== Preferences ===\nError: ${e.message}`);
+        }
+      }
+    }
+
+    // Corrections status
+    if (component === 'all' || component === 'corrections') {
+      const correctionsPath = path.join(MEMORY_ROOT, 'learning', 'corrections.json');
+      if (fs.existsSync(correctionsPath)) {
+        const data = JSON.parse(fs.readFileSync(correctionsPath, 'utf8'));
+        const count = data.corrections?.length || 0;
+        const patterns = Object.keys(data.patterns || {}).length;
+        results.push(`=== Corrections ===\nRecorded: ${count}\nPatterns: ${patterns}`);
+      } else {
+        results.push(`=== Corrections ===\nNo corrections recorded yet.`);
+      }
+    }
+
+    // Confidence calibration
+    if (component === 'all' || component === 'confidence') {
+      const confPath = path.join(MEMORY_ROOT, 'learning', 'confidence_calibration.py');
+      if (fs.existsSync(confPath)) {
+        try {
+          const output = await runPythonScript(confPath, ['--weak-areas']);
+          results.push(`=== Confidence Calibration ===\n${output || 'No weak areas identified'}`);
+        } catch (e) {
+          results.push(`=== Confidence ===\nError: ${e.message}`);
+        }
+      }
+    }
+
+    // ReasoningBank status
+    if (component === 'all' || component === 'reasoning') {
+      const reasoningPath = path.join(MEMORY_ROOT, 'learning', 'reasoning_bank.json');
+      if (fs.existsSync(reasoningPath)) {
+        const data = JSON.parse(fs.readFileSync(reasoningPath, 'utf8'));
+        const trajectories = data.trajectories?.length || 0;
+        const patterns = data.patterns?.length || 0;
+        results.push(`=== ReasoningBank ===\nTrajectories: ${trajectories}\nDistilled Patterns: ${patterns}`);
+      } else {
+        results.push(`=== ReasoningBank ===\nNo learning trajectories yet.`);
+      }
+    }
+
+    return { result: results.join('\n\n') };
+  } catch (error) {
+    return { error: `Learning status error: ${error.message}` };
+  }
+}
+
+async function handleWorkersRun(params, cwd) {
+  const worker = params.worker;
+  const project = params.project || detectProject(cwd);
+
+  const workersPath = path.join(MEMORY_ROOT, 'workers', 'background_workers.py');
+  if (!fs.existsSync(workersPath)) {
+    return { error: 'Background workers not installed.' };
+  }
+
+  const results = [];
+
+  try {
+    if (worker === 'all' || worker === 'consolidate') {
+      const output = await runPythonScript(workersPath, ['consolidate']);
+      results.push(`=== Consolidation ===\n${output}`);
+    }
+
+    if (worker === 'all' || worker === 'freshness') {
+      const args = ['freshness'];
+      if (project) args.push('--project', project);
+      const output = await runPythonScript(workersPath, args);
+      results.push(`=== Freshness Check ===\n${output}`);
+    }
+
+    if (worker === 'all' || worker === 'health') {
+      const output = await runPythonScript(workersPath, ['health']);
+      results.push(`=== Health Check ===\n${output}`);
+    }
+
+    return { result: results.join('\n\n') };
+  } catch (error) {
+    return { error: `Worker error: ${error.message}` };
+  }
+}
+
+async function handleHnswStatus(params) {
+  const action = params.action || 'status';
+  const hnswPath = path.join(MLX_TOOLS, 'hnsw_index.py');
+
+  if (!fs.existsSync(hnswPath)) {
+    return { error: 'HNSW index module not found.' };
+  }
+
+  try {
+    if (action === 'status') {
+      // Get status for all projects
+      const config = loadConfig();
+      const results = [];
+
+      for (const project of config.projects || []) {
+        const indexPath = path.join(MEMORY_ROOT, 'indexes', `${project.id}.hnsw`);
+        const metaPath = path.join(MEMORY_ROOT, 'indexes', `${project.id}.meta`);
+
+        if (fs.existsSync(indexPath) && fs.existsSync(metaPath)) {
+          const stats = fs.statSync(indexPath);
+          const age = Math.round((Date.now() - stats.mtimeMs) / 1000 / 60);
+          results.push(`${project.id}: ✓ (${Math.round(stats.size / 1024)}KB, ${age}m old)`);
+        } else {
+          results.push(`${project.id}: ✗ (no index)`);
+        }
+      }
+
+      return { result: `=== HNSW Index Status ===\n${results.join('\n')}` };
+    } else if (action === 'rebuild') {
+      if (!params.project) {
+        return { error: 'Project ID required for single rebuild. Use rebuild-all for all projects.' };
+      }
+      const output = await runPythonScript(hnswPath, ['build', params.project]);
+      return { result: output };
+    } else if (action === 'rebuild-all') {
+      const output = await runPythonScript(hnswPath, ['build-all']);
+      return { result: output };
+    }
+
+    return { error: `Unknown action: ${action}` };
+  } catch (error) {
+    return { error: `HNSW error: ${error.message}` };
+  }
+}
+
 // =============================================================================
 // MCP SERVER
 // =============================================================================
@@ -1157,6 +1405,20 @@ class MCPServer {
           break;
         case 'memory_search_all':
           result = await handleMemorySearchAll(args);
+          break;
+
+        // Learning tools
+        case 'reasoning_query':
+          result = await handleReasoningQuery(args);
+          break;
+        case 'learning_status':
+          result = await handleLearningStatus(args, this.currentCwd);
+          break;
+        case 'workers_run':
+          result = await handleWorkersRun(args, this.currentCwd);
+          break;
+        case 'hnsw_status':
+          result = await handleHnswStatus(args);
           break;
 
         default:

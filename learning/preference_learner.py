@@ -150,7 +150,16 @@ def infer_preference(original, modified):
 
 
 def update_inferred_preferences(data, inferences):
-    """Update inferred preferences based on observations."""
+    """
+    Update inferred preferences with EWC-style protection.
+
+    EWC (Elastic Weight Consolidation) prevents catastrophic forgetting by:
+    1. Tracking "importance" of each preference based on observation count
+    2. Requiring more evidence to change high-importance preferences
+    3. Protecting well-established patterns from being overwritten
+
+    This prevents a few recent observations from overriding well-established patterns.
+    """
     for inf in inferences:
         category = inf["category"]
         key = inf["key"]
@@ -160,21 +169,56 @@ def update_inferred_preferences(data, inferences):
             data["inferred"][category] = {}
 
         if key not in data["inferred"][category]:
-            data["inferred"][category][key] = {"counts": {}, "preferred": None}
+            data["inferred"][category][key] = {
+                "counts": {},
+                "preferred": None,
+                "importance": 0,       # EWC: How "locked in" is this preference
+                "first_observed": None,
+                "last_changed": None
+            }
 
         pref_data = data["inferred"][category][key]
+
+        # Track first observation time
+        if not pref_data.get("first_observed"):
+            pref_data["first_observed"] = datetime.now(timezone.utc).isoformat()
 
         if prefers not in pref_data["counts"]:
             pref_data["counts"][prefers] = 0
         pref_data["counts"][prefers] += 1
 
-        # Update preferred based on counts
+        # Calculate importance (EWC-style)
+        # Higher importance = more observations = harder to change
+        total_observations = sum(pref_data["counts"].values())
+        pref_data["importance"] = min(1.0, total_observations / 20)  # Max out at 20 observations
+
+        # Update preferred based on counts with EWC protection
         if pref_data["counts"]:
             max_pref = max(pref_data["counts"], key=pref_data["counts"].get)
             max_count = pref_data["counts"][max_pref]
             total = sum(pref_data["counts"].values())
 
-            if max_count >= 3 and max_count / total >= 0.6:
+            # EWC: Require higher threshold to CHANGE an established preference
+            current_preferred = pref_data.get("preferred")
+            importance = pref_data.get("importance", 0)
+
+            if current_preferred is None:
+                # No preference yet - standard threshold
+                required_ratio = 0.6
+                required_count = 3
+            elif max_pref == current_preferred:
+                # Reinforcing existing preference - easy
+                required_ratio = 0.5
+                required_count = 2
+            else:
+                # Trying to CHANGE preference - EWC protection kicks in
+                # Higher importance = need more evidence to change
+                required_ratio = 0.6 + (importance * 0.2)  # Up to 0.8 for established prefs
+                required_count = 3 + int(importance * 5)    # Up to 8 for established prefs
+
+            if max_count >= required_count and (max_count / total) >= required_ratio:
+                if pref_data["preferred"] != max_pref:
+                    pref_data["last_changed"] = datetime.now(timezone.utc).isoformat()
                 pref_data["preferred"] = max_pref
 
                 # Update confidence

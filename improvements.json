@@ -42,7 +42,26 @@
       ]
     }
   ],
-  "issues": [],
+  "issues": [
+    {
+      "id": "gateway-not-running-d9c5",
+      "title": "Gateway not running",
+      "description": "MCP gateway service is down",
+      "status": "resolved",
+      "source": "health_check",
+      "detectedAt": "2026-01-16T08:37:54.999102",
+      "resolvedAt": "2026-01-16T11:22:00.000000"
+    },
+    {
+      "id": "watcher-not-running-6d12",
+      "title": "Watcher not running",
+      "description": "File watcher service is down",
+      "status": "resolved",
+      "source": "health_check",
+      "detectedAt": "2026-01-16T08:52:34.980137",
+      "resolvedAt": "2026-01-16T11:22:00.000000"
+    }
+  ],
   "techDebt": [
     {
       "id": "conn-close-inconsistent",

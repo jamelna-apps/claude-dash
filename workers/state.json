@@ -1,0 +1,28 @@
+{
+  "last_run": {
+    "health": "2026-01-16T11:08:49.282560",
+    "consolidate": "2026-01-16T11:25:26.191340"
+  },
+  "results": {
+    "health": {
+      "timestamp": "2026-01-16T11:08:49.282568",
+      "services": {
+        "ollama": "running",
+        "memory_db": {
+          "size_mb": 2.41
+        }
+      },
+      "issues": [],
+      "_worker": "health",
+      "_duration_ms": 44.905
+    },
+    "consolidate": {
+      "trajectories_processed": 0,
+      "patterns_created": 0,
+      "patterns_updated": 0,
+      "skipped": true,
+      "_worker": "consolidate",
+      "_duration_ms": 3.053
+    }
+  }
+}

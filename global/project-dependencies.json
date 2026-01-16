@@ -1,0 +1,123 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2026-01-16",
+  "ecosystems": {
+    "gyst": {
+      "name": "GYST Ecosystem",
+      "description": "Wardrobe management and local fashion marketplace",
+      "projects": {
+        "WardrobeApp": {
+          "id": "gyst",
+          "path": "/Users/jmelendez/Documents/Projects/WardrobeApp",
+          "type": "React Native / Expo",
+          "deployment": {
+            "platform": "App Store / Play Store",
+            "method": "EAS Build"
+          },
+          "purpose": "Main mobile app for iOS and Android",
+          "contains": ["ai-backend/"]
+        },
+        "ai-backend": {
+          "path": "/Users/jmelendez/Documents/Projects/WardrobeApp/ai-backend",
+          "type": "Node.js / Express",
+          "deployment": {
+            "platform": "Railway",
+            "url": "https://gyst-ai-backend-production.up.railway.app"
+          },
+          "purpose": "AI API server for outfit suggestions, item detection"
+        },
+        "gyst-seller-portal": {
+          "id": "gyst-seller-portal",
+          "path": "/Users/jmelendez/Documents/Projects/gyst-seller-portal",
+          "type": "Next.js",
+          "deployment": {
+            "platform": "Vercel",
+            "url": "https://gyst.store"
+          },
+          "purpose": "Public website and seller dashboard",
+          "routes": {
+            "marketing": "app/(marketing)/ - Public pages including /privacy, /terms",
+            "portal": "app/(portal)/ - Seller dashboard"
+          }
+        }
+      },
+      "sharedResources": {
+        "firebase": "Shared Firebase project for Auth + Firestore",
+        "revenuecat": "Subscription management",
+        "claude": "AI provider via ai-backend"
+      },
+      "legalPages": {
+        "privacy": {
+          "url": "https://gyst.store/privacy",
+          "source": "gyst-seller-portal/app/(marketing)/privacy/page.tsx"
+        },
+        "terms": {
+          "url": "https://gyst.store/terms",
+          "source": "gyst-seller-portal/app/(marketing)/terms/page.tsx"
+        }
+      }
+    },
+    "jamelna": {
+      "name": "Jamelna Portfolio",
+      "description": "Personal portfolio website",
+      "projects": {
+        "jamelna-site": {
+          "id": "jamelna",
+          "path": "/Users/jmelendez/Documents/Projects/jamelna/jamelna-site",
+          "type": "Next.js",
+          "deployment": {
+            "platform": "Vercel",
+            "url": "https://jamelna.com"
+          },
+          "purpose": "Personal portfolio showcasing all projects",
+          "note": "Showcases GYST as portfolio item, different from gyst.store product site"
+        }
+      }
+    },
+    "standalone": {
+      "name": "Standalone Projects",
+      "projects": {
+        "smartiegoals": {
+          "id": "smartiegoals",
+          "path": "/Users/jmelendez/Documents/Projects/smartiegoals",
+          "type": "Next.js",
+          "deployment": {
+            "platform": "Vercel",
+            "url": "https://smartiegoals.org"
+          },
+          "purpose": "Goal tracking platform"
+        },
+        "codetale": {
+          "id": "codetale",
+          "path": "/Users/jmelendez/Documents/Projects/codetale",
+          "type": "Next.js",
+          "deployment": {
+            "platform": "Vercel",
+            "url": "https://codetale.jamelna.com"
+          },
+          "purpose": "Kids coding education platform"
+        },
+        "spread-your-ashes": {
+          "id": "spread-your-ashes",
+          "path": "/Users/jmelendez/Documents/Projects/spread-your-ashes",
+          "type": "Next.js",
+          "deployment": {
+            "platform": "Vercel",
+            "url": "https://spreadyourashes.com"
+          },
+          "purpose": "Digital art project"
+        }
+      }
+    }
+  },
+  "taskRouting": {
+    "gyst_app_features": "WardrobeApp",
+    "gyst_ai_endpoints": "WardrobeApp/ai-backend",
+    "gyst_website": "gyst-seller-portal/app/(marketing)",
+    "gyst_seller_portal": "gyst-seller-portal/app/(portal)",
+    "gyst_privacy_policy": "gyst-seller-portal/app/(marketing)/privacy",
+    "gyst_terms_of_service": "gyst-seller-portal/app/(marketing)/terms",
+    "gyst_app_store_prep": "WardrobeApp/docs",
+    "portfolio_updates": "jamelna/jamelna-site"
+  }
+}
