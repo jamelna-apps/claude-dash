@@ -141,7 +141,8 @@ if [ -f "$SUMMARIZER" ] && [ -f "$TRANSCRIPT_PATH" ]; then
 fi
 
 # Clean up temp tool results buffer
-TOOL_BUFFER_DIR="/tmp/claude-session-$SESSION_ID"
+# FIXED: Use private temp directory instead of world-writable /tmp
+TOOL_BUFFER_DIR="$MEMORY_ROOT/.tmp/claude-session-$SESSION_ID"
 if [ -d "$TOOL_BUFFER_DIR" ]; then
   rm -rf "$TOOL_BUFFER_DIR" 2>/dev/null
 fi
@@ -151,6 +152,7 @@ fi
 
 COMPACTOR="$MEMORY_ROOT/memory/transcript_compactor.py"
 LAST_COMPACT_FILE="$MEMORY_ROOT/.last_compaction"
+COMPACT_LOCK_FILE="$MEMORY_ROOT/.compaction.lock"
 COMPACT_INTERVAL_DAYS=7
 
 should_compact() {
@@ -158,7 +160,12 @@ should_compact() {
     return 0  # Never compacted
   fi
 
-  last_compact=$(cat "$LAST_COMPACT_FILE" 2>/dev/null)
+  last_compact=$(cat "$LAST_COMPACT_FILE" 2>/dev/null || echo "0")
+  # Validate last_compact is numeric
+  if ! [ "$last_compact" -eq "$last_compact" ] 2>/dev/null; then
+    last_compact=0
+  fi
+
   now=$(date +%s)
   interval=$((COMPACT_INTERVAL_DAYS * 86400))
 
@@ -169,11 +176,61 @@ should_compact() {
   return 1  # Not yet
 }
 
-if [ -f "$COMPACTOR" ] && should_compact; then
+# FIXED: Use mkdir-based lock (atomic on all filesystems)
+# More reliable than set -o noclobber on macOS
+COMPACT_LOCK_DIR="${COMPACT_LOCK_FILE}.d"
+
+acquire_compact_lock() {
+  # Try to create lock directory atomically
+  if mkdir "$COMPACT_LOCK_DIR" 2>/dev/null; then
+    # Got the lock - write PID for debugging
+    echo $$ > "$COMPACT_LOCK_DIR/pid"
+    trap 'rm -rf "$COMPACT_LOCK_DIR"' EXIT
+    return 0
+  fi
+
+  # Check if lock is stale (older than 1 hour)
+  if [ -d "$COMPACT_LOCK_DIR" ]; then
+    # Use Python for reliable cross-platform age calculation
+    lock_age=$(python3 -c "
+import os, time
+try:
+    mtime = os.path.getmtime('$COMPACT_LOCK_DIR')
+    print(int(time.time() - mtime))
+except:
+    print(0)
+" 2>/dev/null)
+
+    if [ "$lock_age" -gt 3600 ]; then
+      # Stale lock - try to remove and acquire
+      rm -rf "$COMPACT_LOCK_DIR"
+      if mkdir "$COMPACT_LOCK_DIR" 2>/dev/null; then
+        echo $$ > "$COMPACT_LOCK_DIR/pid"
+        trap 'rm -rf "$COMPACT_LOCK_DIR"' EXIT
+        return 0
+      fi
+    fi
+  fi
+
+  return 1  # Lock held by another process
+}
+
+if [ -f "$COMPACTOR" ] && should_compact && acquire_compact_lock; then
   echo "Running weekly transcript compaction..."
+  # Update timestamp FIRST to prevent other sessions from starting compaction
+  date +%s > "$LAST_COMPACT_FILE"
+
   nohup "$PYTHON" "$COMPACTOR" --compact-all --keep 10 \
     >> "$MEMORY_ROOT/logs/compaction.log" 2>&1 &
-  date +%s > "$LAST_COMPACT_FILE"
+
+  # Also run log rotation weekly
+  LOG_ROTATOR="$MEMORY_ROOT/rotate-logs.sh"
+  if [ -x "$LOG_ROTATOR" ]; then
+    echo "Running weekly log rotation..."
+    nohup "$LOG_ROTATOR" >> "$MEMORY_ROOT/logs/rotation.log" 2>&1 &
+  fi
+
+  # Lock will be released by trap on exit
 fi
 
 # === BACKGROUND WORKERS - Session End Triggers ===
@@ -191,19 +248,14 @@ if [ -f "$WORKERS" ]; then
     >> "$MEMORY_ROOT/logs/workers.log" 2>&1 &
 fi
 
-# === REASONING BANK - Record Session Learning ===
-# If there were corrections in this session, record them
-
+# === REASONING BANK - Consolidate Learning ===
 REASONING_BANK="$MEMORY_ROOT/learning/reasoning_bank.py"
 
-if [ -f "$REASONING_BANK" ] && [ -f "$TRANSCRIPT_PATH" ]; then
-  # Extract any corrections/learnings from the session
+if [ -f "$REASONING_BANK" ]; then
   nohup "$PYTHON" -c "
 import sys
-import json
 sys.path.insert(0, '$MEMORY_ROOT/learning')
 from reasoning_bank import consolidate_learning
-# Run consolidation at session end
 consolidate_learning(force=False)
 " >> "$MEMORY_ROOT/logs/reasoning.log" 2>&1 &
 fi
