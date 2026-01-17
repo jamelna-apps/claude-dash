@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "lastUpdated": "2026-01-13T23:30:00Z",
+  "lastUpdated": "2026-01-17T00:00:00Z",
 
   "use": [
     {
@@ -15,9 +15,16 @@
       "addedOn": "2026-01-13"
     },
     {
-      "item": "qwen2.5:7b for reasoning tasks",
-      "reason": "Better quality than 3b models, good multilingual support",
-      "addedOn": "2026-01-13"
+      "item": "Task-based model routing for optimal performance on M2 16GB",
+      "reason": "Specialized models for each task type: deepseek-coder (code), gemma3:4b (RAG/128K context), phi3:mini (speed), qwen3-vl (vision)",
+      "models": {
+        "code": "deepseek-coder:6.7b",
+        "rag": "gemma3:4b",
+        "quick": "phi3:mini",
+        "vision": "qwen3-vl:8b",
+        "embeddings": "nomic-embed-text"
+      },
+      "addedOn": "2026-01-17"
     }
   ],
 
@@ -38,11 +45,26 @@
 
   "conventions": [
     {
+      "topic": "role hierarchy and decision making",
+      "rule": "User is ultimate decision maker (Product Owner/Tech Lead). Claude Sonnet is Senior Developer (leads technical design, architecture, coding). Local Ollama models are SUPPORT TOOLS (research assistants, code reviewers, quick helpers). Claude makes confident technical recommendations and codes directly - local models assist but don't replace Claude's expertise.",
+      "roles": {
+        "user": "Final decision maker, product requirements, feature approval",
+        "claude_sonnet": "Senior developer - architecture, design, complex coding, technical leadership",
+        "deepseek_coder": "Code review assistant - second opinion on code quality",
+        "gemma3_4b": "Research assistant - RAG, codebase exploration (128K context)",
+        "phi3_mini": "Quick helper - commit messages, simple docs",
+        "qwen3_vl": "UI specialist - screenshot analysis, design review"
+      },
+      "workflow": "Claude designs and codes. Local models support with: research (gemma3 RAG), code review (deepseek), quick tasks (phi3), UI analysis (qwen3-vl). Claude remains senior developer - models are junior assistants.",
+      "priority": "critical",
+      "addedOn": "2026-01-17"
+    },
+    {
       "topic": "claude workflow",
-      "rule": "Use MCP memory tools (memory_query, memory_search, memory_functions) for instant lookups. Use MLX CLI (mlx rag, mlx review) for reasoning tasks that need local AI.",
+      "rule": "Use MCP memory tools (memory_query, memory_search, memory_functions) for instant lookups. Use MLX CLI (mlx rag, mlx review) as SUPPORT TOOLS - for research and code review assistance, not as replacement for Claude's technical leadership.",
       "priority": "critical",
       "addedOn": "2025-12-15",
-      "lastUpdated": "2026-01-10"
+      "lastUpdated": "2026-01-17"
     },
     {
       "topic": "model selection for agents",
@@ -68,8 +90,13 @@
     },
     {
       "topic": "ollama local ai tools",
-      "rule": "Use NATIVE Ollama (Metal GPU) with MLX tools PROACTIVELY to save tokens. Model: qwen2.5:7b. Use for RAG queries, code review, error analysis. Also use doc_query for personal document searches.",
-      "model": "qwen2.5:7b",
+      "rule": "Use NATIVE Ollama (Metal GPU) with MLX tools PROACTIVELY to save tokens. Automatic task routing: deepseek-coder (code), gemma3:4b (RAG/128K), phi3:mini (fast), qwen3-vl (vision). Use for RAG queries, code review, error analysis. Also use doc_query for personal document searches.",
+      "models": {
+        "code": "deepseek-coder:6.7b",
+        "rag": "gemma3:4b",
+        "docs": "phi3:mini",
+        "vision": "qwen3-vl:8b"
+      },
       "installation": "native (not Docker)",
       "port": 11434,
       "when_to_use": {
@@ -126,6 +153,38 @@
       "pattern": "Document infrastructure decisions",
       "rule": "Record system-wide decisions in ~/.claude-dash/global/infrastructure.json with reason, impact, and reversibility",
       "addedOn": "2026-01-13"
+    },
+    {
+      "pattern": "Common tool workflow",
+      "rule": "Typical sequence: Read → Edit → Bash (verify). Start with reading to understand context before editing.",
+      "source": "transcript_analysis",
+      "addedOn": "2026-01-16"
+    },
+    {
+      "pattern": "Track app versions carefully",
+      "rule": "For GYST mobile builds, always verify version and build numbers before EAS build. Past wasted resources from version mismatches.",
+      "projects": ["gyst"],
+      "priority": "high",
+      "source": "correction_history",
+      "addedOn": "2026-01-16"
+    },
+    {
+      "pattern": "Request type distribution",
+      "rule": "Most requests are add/create (40%), then search/find (22%), bug fixes (20%). Optimize for creation workflows.",
+      "source": "transcript_analysis",
+      "addedOn": "2026-01-16"
     }
-  ]
+  ],
+
+  "learned_from_transcripts": {
+    "extracted_on": "2026-01-16",
+    "work_hours": {
+      "peak_afternoon": "14:00-18:00",
+      "peak_night": "22:00-02:00",
+      "low_activity": "03:00-12:00"
+    },
+    "most_used_tools": ["Bash", "Edit", "Read", "TodoWrite"],
+    "common_file_types": [".py", ".js", ".json", ".sh"],
+    "most_active_projects": [".claude-dash", "WardrobeApp", "jamelna"]
+  }
 }

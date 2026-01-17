@@ -34,12 +34,20 @@ class Metrics {
         filesystem: 0,
         commander: 0,
         cached: 0,
-        anythingllm: 0
+        anythingllm: 0,
+        ollama: 0,
+        local_ai: 0,
+        api: 0
       },
       tokenEstimates: {
         saved: 0,
         actual: 0,
         wouldHaveBeen: 0
+      },
+      ollamaStats: {
+        totalQueries: 0,
+        totalTokens: 0,
+        estimatedSavings: 0  // In USD (based on Claude API pricing)
       },
       recentQueries: [],
       dailyStats: {},
@@ -62,11 +70,12 @@ class Metrics {
   recordQuery(query) {
     const {
       tool,
-      route,       // 'memory' | 'filesystem' | 'commander' | 'cached'
+      route,       // 'memory' | 'filesystem' | 'commander' | 'cached' | 'ollama' | 'local_ai' | 'api'
       tokensUsed,  // Actual tokens returned
       tokensSaved, // Estimated tokens saved vs full read
       latencyMs,
-      cacheHit
+      cacheHit,
+      isReadOnly   // Flag for read-only queries routed to Ollama
     } = query;
 
     this.data.totalQueries++;
@@ -74,6 +83,21 @@ class Metrics {
 
     if (tokensUsed) this.data.tokenEstimates.actual += tokensUsed;
     if (tokensSaved) this.data.tokenEstimates.saved += tokensSaved;
+
+    // Track Ollama-specific stats when query is routed to local AI
+    if (route === 'ollama' || route === 'local_ai') {
+      // Initialize ollamaStats if missing (for existing metrics files)
+      if (!this.data.ollamaStats) {
+        this.data.ollamaStats = { totalQueries: 0, totalTokens: 0, estimatedSavings: 0 };
+      }
+      this.data.ollamaStats.totalQueries++;
+      if (tokensUsed) {
+        this.data.ollamaStats.totalTokens += tokensUsed;
+        // Estimate cost savings: Claude API ~$3/1M input + $15/1M output tokens
+        // Using conservative average of $5/1M tokens
+        this.data.ollamaStats.estimatedSavings += this.estimateTokenCost(tokensUsed);
+      }
+    }
 
     // Track recent queries (keep last 100)
     this.data.recentQueries.unshift({
@@ -83,6 +107,7 @@ class Metrics {
       tokensSaved,
       latencyMs,
       cacheHit,
+      isReadOnly,
       timestamp: Date.now()
     });
     if (this.data.recentQueries.length > 100) {
@@ -92,16 +117,29 @@ class Metrics {
     // Daily stats
     const today = new Date().toISOString().split('T')[0];
     if (!this.data.dailyStats[today]) {
-      this.data.dailyStats[today] = { queries: 0, tokensSaved: 0, cacheHits: 0 };
+      this.data.dailyStats[today] = { queries: 0, tokensSaved: 0, cacheHits: 0, ollamaQueries: 0 };
     }
     this.data.dailyStats[today].queries++;
     if (tokensSaved) this.data.dailyStats[today].tokensSaved += tokensSaved;
     if (cacheHit) this.data.dailyStats[today].cacheHits++;
+    if (route === 'ollama' || route === 'local_ai') {
+      this.data.dailyStats[today].ollamaQueries = (this.data.dailyStats[today].ollamaQueries || 0) + 1;
+    }
 
     // Periodic save
     if (this.data.totalQueries % 10 === 0) {
       this.save();
     }
+  }
+
+  /**
+   * Estimate cost in USD for tokens if sent to Claude API
+   * Based on Claude 3.5 Sonnet pricing: ~$3/1M input, ~$15/1M output
+   * Using conservative average of $5/1M tokens
+   */
+  estimateTokenCost(tokens) {
+    const costPerMillionTokens = 5.0;  // $5 per 1M tokens (conservative average)
+    return (tokens / 1000000) * costPerMillionTokens;
   }
 
   /**
@@ -117,7 +155,7 @@ class Metrics {
    * Get summary statistics
    */
   getSummary() {
-    const { routingBreakdown, tokenEstimates, totalQueries, recentQueries } = this.data;
+    const { routingBreakdown, tokenEstimates, totalQueries, recentQueries, ollamaStats } = this.data;
 
     // Calculate percentages
     const total = totalQueries || 1;
@@ -138,6 +176,12 @@ class Metrics {
       ? ((tokenEstimates.saved / potentialTokens) * 100).toFixed(1) + '%'
       : '0%';
 
+    // Ollama stats with defaults
+    const ollamaData = ollamaStats || { totalQueries: 0, totalTokens: 0, estimatedSavings: 0 };
+    const ollamaPercentage = total > 0
+      ? ((ollamaData.totalQueries / total) * 100).toFixed(1) + '%'
+      : '0%';
+
     return {
       totalQueries,
       sessionDuration: this.formatDuration(Date.now() - this.sessionStart),
@@ -149,6 +193,12 @@ class Metrics {
         actualUsed: tokenEstimates.actual,
         saved: tokenEstimates.saved,
         savingsRate
+      },
+      ollama: {
+        queriesRouted: ollamaData.totalQueries,
+        percentageRouted: ollamaPercentage,
+        tokensProcessed: ollamaData.totalTokens,
+        estimatedSavingsUSD: '$' + ollamaData.estimatedSavings.toFixed(4)
       },
       performance: {
         avgLatencyMs: avgLatency

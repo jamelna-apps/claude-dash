@@ -263,6 +263,23 @@ case "$1" in
         shift
         python3 "$MLX_DIR/goals.py" "$@"
         ;;
+    # ===================
+    # MODEL ROUTING
+    # ===================
+    models|model|mr)
+        shift
+        python3 "$MLX_DIR/model_router.py" "$@"
+        ;;
+    hardware|hw)
+        python3 "$MLX_DIR/hardware_check.py"
+        ;;
+    # ===================
+    # UI ANALYSIS (Vision)
+    # ===================
+    ui|ui-analyze)
+        shift
+        python3 "$MLX_DIR/ui_analyzer.py" "$@"
+        ;;
     help|--help|-h|"")
         echo "MLX Tools for Claude-Dash"
         echo ""
@@ -321,6 +338,21 @@ case "$1" in
         echo "  mlx goal archive <project> <id>        # Archive/abandon goal"
         echo "  mlx goal note <project> <id> \"note\"    # Add note to goal"
         echo "  mlx goal all                           # Show all active goals"
+        echo ""
+        echo "MODEL ROUTING (Task-based model selection):"
+        echo "  mlx models list                        # Show task-to-model mappings"
+        echo "  mlx models status                      # Show routing system status"
+        echo "  mlx models available                   # List available Ollama models"
+        echo "  mlx models test <task>                 # Test routing for a task"
+        echo "  mlx models set <task> <model>          # Set model for a task (temp)"
+        echo "  mlx hardware                           # Hardware-specific recommendations"
+        echo ""
+        echo "UI ANALYSIS (Vision model - qwen3-vl:8b):"
+        echo "  mlx ui <image> [--mode review]         # Comprehensive UI/UX review"
+        echo "  mlx ui <image> --mode accessibility    # Accessibility audit (WCAG)"
+        echo "  mlx ui <image> --mode design           # Design quality assessment"
+        echo "  mlx ui <image> --project <id>          # Include project context"
+        echo "  mlx ui <image> --output report.md      # Save to file"
         echo ""
         echo "GIT HELPERS:"
         echo "  mlx commit                             # Generate commit message from staged changes"

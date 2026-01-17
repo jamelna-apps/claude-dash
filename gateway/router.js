@@ -27,12 +27,68 @@ const TIERS = {
 };
 
 /**
+ * Read-only patterns - ALWAYS route to Ollama (free)
+ * These queries don't modify anything and can be handled locally
+ */
+const READ_ONLY_PATTERNS = [
+  /\b(where|find|search|look\s?up|locate)\b/i,
+  /\b(what|explain|describe|summarize|tell\s+me\s+about)\b/i,
+  /\b(how\s+does|how\s+do|how\s+is|how\s+are)\b/i,
+  /\b(list|show|display|get)\b/i,
+  /\b(which\s+file|what\s+file)\b/i,
+  /\b(why\s+(is|does|did|are|do))\b/i,
+  /\b(compare|difference\s+between)\b/i,
+  /\b(overview|architecture|structure)\b/i,
+];
+
+/**
+ * Write patterns - ALWAYS route to Claude API
+ * These need Claude's full capabilities for safe code modification
+ */
+const WRITE_PATTERNS = [
+  /\b(change|edit|modify|update|fix|create|add|remove|delete|refactor)\b/i,
+  /\b(implement|write|build|make|generate)\b/i,
+  /\b(commit|push|deploy|release)\b/i,
+  /\b(rename|move|migrate)\b/i,
+  /\b(install|upgrade|downgrade)\b/i,
+];
+
+/**
  * Query complexity classifier
  * Determines which tier can handle a query
+ *
+ * Priority:
+ * 1. Write patterns → Claude API (always)
+ * 2. Read-only patterns → Ollama (free)
+ * 3. Default heuristics based on length
  */
 function classifyQueryComplexity(query, tool) {
   const queryLower = query?.toLowerCase() || '';
   const queryLen = query?.length || 0;
+
+  // FIRST: Check for write operations - these MUST go to Claude API
+  for (const pattern of WRITE_PATTERNS) {
+    if (pattern.test(queryLower)) {
+      return {
+        complexity: 'complex',
+        minTier: 'API',
+        reason: 'write operation',
+        isWriteOperation: true
+      };
+    }
+  }
+
+  // SECOND: Check for read-only queries - route to Ollama (free)
+  for (const pattern of READ_ONLY_PATTERNS) {
+    if (pattern.test(queryLower)) {
+      return {
+        complexity: 'moderate',
+        minTier: 'LOCAL_AI',
+        reason: 'read-only query',
+        isReadOnly: true
+      };
+    }
+  }
 
   // Simple lookups - Tier 1 (Memory/Index)
   const simpleLookupPatterns = [
@@ -65,20 +121,14 @@ function classifyQueryComplexity(query, tool) {
 
   for (const pattern of reasoningPatterns) {
     if (pattern.test(queryLower)) {
-      // Can be handled by local AI for simple reasoning
-      if (queryLen < 200) {
-        return { complexity: 'moderate', minTier: 'LOCAL_AI', reason: 'reasoning query' };
-      }
-      // Complex reasoning may need API
-      return { complexity: 'complex', minTier: 'API', reason: 'complex reasoning' };
+      // Route to local AI by default for reasoning
+      return { complexity: 'moderate', minTier: 'LOCAL_AI', reason: 'reasoning query' };
     }
   }
 
-  // Default based on query length
-  if (queryLen < 50) {
-    return { complexity: 'simple', minTier: 'MEMORY', reason: 'short query' };
-  } else if (queryLen < 200) {
-    return { complexity: 'moderate', minTier: 'LOCAL_AI', reason: 'medium query' };
+  // Default: shorter queries go to Ollama, longer to Claude
+  if (queryLen < 300) {
+    return { complexity: 'moderate', minTier: 'LOCAL_AI', reason: 'short/medium query' };
   } else {
     return { complexity: 'complex', minTier: 'API', reason: 'long query' };
   }
@@ -245,6 +295,8 @@ function getRoutingStats(metrics) {
 
 module.exports = {
   TIERS,
+  READ_ONLY_PATTERNS,
+  WRITE_PATTERNS,
   classifyQueryComplexity,
   canMemoryHandle,
   isOllamaAvailable,

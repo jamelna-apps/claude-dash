@@ -220,6 +220,52 @@ if [ ! -f "$FIRST_MESSAGE_MARKER" ]; then
   fi
 fi
 
+# === LEARNED PATTERNS INJECTION ===
+# Inject relevant learned patterns from transcript analysis and correction history
+
+CORRECTIONS_FILE="$MEMORY_ROOT/learning/corrections.json"
+EFFICIENCY_FILE="$MEMORY_ROOT/learning/efficiency_metrics.json"
+
+# Check for project-specific warnings
+if [ -n "$PROJECT_ID" ] && [ -f "$CORRECTIONS_FILE" ]; then
+  # GYST version tracking warning
+  if [[ "$PROJECT_ID" == "gyst" ]] && echo "$prompt_lower" | grep -qE "build|deploy|eas|version|release|submit"; then
+    echo "<learned-warning project=\"gyst\" priority=\"high\">"
+    echo "IMPORTANT: Track version and build numbers carefully before builds."
+    echo "Past issue: Wasted resources from version mismatches."
+    echo "Verify: Check app.json version, eas.json build numbers before 'eas build'"
+    echo "</learned-warning>"
+  fi
+
+  # Docker host warning
+  if echo "$prompt_lower" | grep -qE "docker|container|localhost"; then
+    echo "<learned-pattern source=\"corrections\">"
+    echo "Docker pattern: Use host.docker.internal instead of localhost for container-to-host communication on Mac."
+    echo "</learned-pattern>"
+  fi
+fi
+
+# Check for correction patterns based on keywords
+if [ -f "$CORRECTIONS_FILE" ]; then
+  # JavaScript const/let pattern
+  if echo "$prompt_lower" | grep -qE "const|let|variable|declaration"; then
+    if grep -q "const not let" "$CORRECTIONS_FILE" 2>/dev/null; then
+      echo "<learned-pattern source=\"corrections\">"
+      echo "JS style preference: Use const for variables that won't be reassigned."
+      echo "</learned-pattern>"
+    fi
+  fi
+
+  # Navigation/menu warning
+  if echo "$prompt_lower" | grep -qE "nav|menu|header|navigation"; then
+    if grep -q "navigation menu" "$CORRECTIONS_FILE" 2>/dev/null; then
+      echo "<learned-pattern source=\"corrections\">"
+      echo "UI pattern: Don't add items to top navigation menu without explicit approval."
+      echo "</learned-pattern>"
+    fi
+  fi
+fi
+
 # === CORRECTION DETECTION (with timeout) ===
 # Check if user is correcting Claude, and find relevant past corrections
 

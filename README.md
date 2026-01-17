@@ -58,8 +58,12 @@ curl -fsSL https://raw.githubusercontent.com/jamelna-apps/claude-dash/main/insta
 5. Install Ollama (required for learning features):
    ```bash
    brew install ollama
-   ollama pull qwen2.5:7b
-   ollama pull nomic-embed-text
+   # Task-optimized models for M2 16GB
+   ollama pull deepseek-coder:6.7b    # Code review & analysis
+   ollama pull gemma3:4b              # RAG queries (128K context!)
+   ollama pull phi3:mini              # Quick tasks (commit messages)
+   ollama pull qwen3-vl:8b            # UI/screenshot analysis
+   ollama pull nomic-embed-text       # Embeddings for semantic search
    ```
 
 6. Set up Claude Code hooks:
@@ -183,21 +187,41 @@ Tools available to Claude:
 - `memory_sessions` - Search past sessions
 - `memory_wireframe` - App navigation info
 
-### Local AI Tools
+### Local AI Tools (Task-Optimized)
+
+Claude-Dash uses **task-based model routing** for optimal performance on M2 16GB:
+- Code tasks → `deepseek-coder:6.7b` (best code quality)
+- RAG queries → `gemma3:4b` (128K context window!)
+- Quick tasks → `phi3:mini` (60-80 tok/s, ultra-fast)
+- UI analysis → `qwen3-vl:8b` (vision specialist)
 
 ```bash
-# Quick query
+# Quick query (uses gemma3:4b)
 mlx q my-app "where is the login screen?"
 
-# RAG-powered Q&A
+# RAG-powered Q&A (uses gemma3:4b with 128K context)
 mlx rag my-app "how does authentication work?"
 
-# Find similar files
+# Find similar files (semantic search)
 mlx similar my-app src/components/Button.js
 
-# Code review
+# Code review (uses deepseek-coder:6.7b)
 mlx review src/NewFeature.js
+
+# UI/screenshot analysis (uses qwen3-vl:8b)
+mlx ui screenshot.png
+mlx ui screenshot.png --mode accessibility
+
+# Model management
+mlx models list      # Show task routing
+mlx models status    # Show model status
+mlx hardware         # M2-specific recommendations
 ```
+
+**See also:**
+- `mlx-tools/ARCHITECTURE_OVERVIEW.md` - Complete system design
+- `mlx-tools/FINAL_SETUP_M2_16GB.md` - Optimal M2 16GB configuration
+- `mlx-tools/ROLE_HIERARCHY.md` - Claude as senior developer, local models as assistants
 
 ### Web Dashboard
 
@@ -209,11 +233,11 @@ Opens at `http://localhost:3847`.
 
 ## Requirements
 
-- macOS (Apple Silicon recommended)
+- macOS (Apple Silicon recommended, optimized for M2 16GB)
 - Node.js 18+
 - Python 3.10+
 - Claude Code CLI
-- Ollama with qwen2.5:7b model
+- Ollama with task-optimized models (see installation above)
 
 ## Directory Structure
 

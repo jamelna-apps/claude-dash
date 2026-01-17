@@ -1,28 +1,21 @@
 {
   "last_run": {
-    "health": "2026-01-16T11:08:49.282560",
-    "consolidate": "2026-01-16T11:25:26.191340"
+    "consolidate": "2026-01-17T18:21:16.288809",
+    "freshness": "2026-01-17T18:21:16.286494"
   },
   "results": {
-    "health": {
-      "timestamp": "2026-01-16T11:08:49.282568",
-      "services": {
-        "ollama": "running",
-        "memory_db": {
-          "size_mb": 2.41
-        }
-      },
-      "issues": [],
-      "_worker": "health",
-      "_duration_ms": 44.905
-    },
     "consolidate": {
-      "trajectories_processed": 0,
+      "trajectories_processed": 17,
       "patterns_created": 0,
       "patterns_updated": 0,
-      "skipped": true,
       "_worker": "consolidate",
-      "_duration_ms": 3.053
+      "_duration_ms": 2.7560000000000002
+    },
+    "freshness": {
+      "stale": [],
+      "needs_attention": false,
+      "_worker": "freshness",
+      "_duration_ms": 0.07200000000000001
     }
   }
 }

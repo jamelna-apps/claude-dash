@@ -115,7 +115,52 @@
         <button onclick="generateReport()" class="zoom-btn">Generate This Week's Report</button>
       </div>
       <div id="reports-list" class="reports-list">
-        <div class="loading">Loading...</div>
+        <div class="loading">Loading reports...</div>
+      </div>
+
+      <!-- Ollama Routing Stats Section -->
+      <div class="efficiency-section ollama-section">
+        <div class="efficiency-header">
+          <h3>Ollama Routing Stats</h3>
+          <button onclick="refreshGatewayMetrics()" class="zoom-btn">Refresh</button>
+        </div>
+
+        <div class="efficiency-cards">
+          <div class="efficiency-card ollama-card">
+            <div class="efficiency-card-label">Ollama Queries</div>
+            <div class="efficiency-card-value" id="gw-ollama-queries">-</div>
+            <div class="efficiency-card-sub" id="gw-ollama-percent">- of total</div>
+          </div>
+          <div class="efficiency-card api-card">
+            <div class="efficiency-card-label">Claude API</div>
+            <div class="efficiency-card-value" id="gw-api-queries">-</div>
+            <div class="efficiency-card-sub" id="gw-api-percent">- of total</div>
+          </div>
+          <div class="efficiency-card savings-card">
+            <div class="efficiency-card-label">Est. Savings</div>
+            <div class="efficiency-card-value" id="gw-savings">$0.00</div>
+            <div class="efficiency-card-sub">from local routing</div>
+          </div>
+          <div class="efficiency-card">
+            <div class="efficiency-card-label">Total Queries</div>
+            <div class="efficiency-card-value" id="gw-total-queries">-</div>
+            <div class="efficiency-card-sub">all time</div>
+          </div>
+        </div>
+
+        <div class="efficiency-progress-section">
+          <h4>Routing Distribution</h4>
+          <div class="efficiency-progress-item">
+            <div class="efficiency-progress-header">
+              <span class="efficiency-progress-label">Local (Ollama + Memory + Cache)</span>
+              <span class="efficiency-progress-value" id="gw-local-percent">-</span>
+            </div>
+            <div class="efficiency-progress-bar">
+              <div class="efficiency-progress-fill ollama-fill" id="gw-local-bar" style="width: 0%"></div>
+            </div>
+            <div class="efficiency-progress-hint">Free queries handled locally</div>
+          </div>
+        </div>
       </div>
 
       <!-- Efficiency Metrics Section -->
@@ -202,6 +247,70 @@
             <div class="efficiency-domain-empty">No domain data yet. Use Claude more to build calibration.</div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Activity Heatmap Section -->
+    <div class="efficiency-section activity-section">
+      <div class="efficiency-header">
+        <h3>Activity by Project</h3>
+        <button onclick="refreshActivityHeatmap()" class="zoom-btn">Refresh</button>
+      </div>
+      <div class="activity-heatmap" id="activity-heatmap">
+        <div class="loading">Loading activity data...</div>
+      </div>
+      <div class="activity-total" id="activity-total"></div>
+    </div>
+
+    <!-- Recent Session Summaries Section -->
+    <div class="efficiency-section sessions-section">
+      <div class="efficiency-header">
+        <h3>Recent Session Summaries</h3>
+        <button onclick="refreshSessionSummaries()" class="zoom-btn">Refresh</button>
+      </div>
+      <div class="session-summaries" id="session-summaries">
+        <div class="loading">Loading session summaries...</div>
+      </div>
+    </div>
+
+    <!-- Transcript Stats Section -->
+    <div class="efficiency-section transcripts-section">
+      <div class="efficiency-header">
+        <h3>Transcript Stats</h3>
+        <button onclick="refreshTranscriptStats()" class="zoom-btn">Refresh</button>
+      </div>
+      <div class="efficiency-cards">
+        <div class="efficiency-card">
+          <div class="efficiency-card-label">Total Transcripts</div>
+          <div class="efficiency-card-value" id="ts-total">-</div>
+          <div class="efficiency-card-sub">conversations logged</div>
+        </div>
+        <div class="efficiency-card">
+          <div class="efficiency-card-label">Total Size</div>
+          <div class="efficiency-card-value" id="ts-size">-</div>
+          <div class="efficiency-card-sub">MB stored</div>
+        </div>
+        <div class="efficiency-card">
+          <div class="efficiency-card-label">Est. Tokens</div>
+          <div class="efficiency-card-value" id="ts-tokens">-</div>
+          <div class="efficiency-card-sub">processed</div>
+        </div>
+        <div class="efficiency-card">
+          <div class="efficiency-card-label">Largest Session</div>
+          <div class="efficiency-card-value" id="ts-largest">-</div>
+          <div class="efficiency-card-sub" id="ts-largest-id">-</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Project Activity Timeline Section -->
+    <div class="efficiency-section timeline-section">
+      <div class="efficiency-header">
+        <h3>Activity Timeline</h3>
+        <button onclick="refreshActivityTimeline()" class="zoom-btn">Refresh</button>
+      </div>
+      <div class="activity-timeline" id="activity-timeline">
+        <div class="loading">Loading timeline...</div>
       </div>
     </div>
 

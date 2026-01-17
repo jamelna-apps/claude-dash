@@ -11,12 +11,18 @@ from pathlib import Path
 from typing import List, Dict, Optional
 
 try:
-    from config import OLLAMA_URL, OLLAMA_CHAT_MODEL as CHAT_MODEL, OLLAMA_EMBED_MODEL as EMBEDDING_MODEL, MEMORY_ROOT
+    from config import OLLAMA_URL, OLLAMA_EMBED_MODEL as EMBEDDING_MODEL, MEMORY_ROOT
+    from ollama_client import OllamaClient
 except ImportError:
     MEMORY_ROOT = Path.home() / '.claude-dash'
     OLLAMA_URL = 'http://localhost:11434'
     EMBEDDING_MODEL = 'nomic-embed-text'
-    CHAT_MODEL = 'llama3.2:3b'
+    # Fallback if imports fail
+    class OllamaClient:
+        def __init__(self, **kwargs):
+            pass
+        def generate(self, prompt, system=None):
+            return "Error: OllamaClient not available"
 
 
 class RAGPipeline:
@@ -282,12 +288,13 @@ class RAGPipeline:
         return '\n'.join(context_parts)
 
     def generate(self, query: str, context: str) -> str:
-        """Generate answer using LLM"""
-        prompt = f"""You are a helpful assistant answering questions about a codebase.
+        """Generate answer using LLM with task-based routing"""
+        # Initialize client with task='rag' for automatic model selection
+        client = OllamaClient(task='rag')
 
-Use ONLY the context provided below to answer. If the answer isn't in the context, say so.
+        system_prompt = "You are a helpful assistant answering questions about a codebase. Use ONLY the context provided below to answer. If the answer isn't in the context, say so."
 
-{context}
+        prompt = f"""{context}
 
 ---
 
@@ -295,22 +302,9 @@ Question: {query}
 
 Answer concisely and specifically. Reference file paths when relevant."""
 
-        data = json.dumps({
-            'model': CHAT_MODEL,
-            'prompt': prompt,
-            'stream': False
-        }).encode()
-
-        req = urllib.request.Request(
-            f'{OLLAMA_URL}/api/generate',
-            data=data,
-            headers={'Content-Type': 'application/json'}
-        )
-
         try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                result = json.loads(resp.read().decode())
-                return result.get('response', 'No response generated')
+            response = client.generate(prompt, system=system_prompt)
+            return response if response else "No response generated"
         except Exception as e:
             return f"Error: {e}"
 

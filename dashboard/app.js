@@ -1306,6 +1306,279 @@ function refreshEfficiency() {
 // Load efficiency when reports tab is shown
 function onReportsTabShown() {
   loadEfficiencyData();
+  loadGatewayMetrics();
+  loadReports();
+  loadActivityHeatmap();
+  loadSessionSummaries();
+  loadTranscriptStats();
+  loadActivityTimeline();
+}
+
+// Load gateway metrics for Ollama routing stats
+async function loadGatewayMetrics() {
+  try {
+    const response = await fetch('/api/gateway/metrics');
+    const data = await response.json();
+
+    // Update Ollama stats cards
+    document.getElementById('gw-ollama-queries').textContent = data.routing.ollama || 0;
+    document.getElementById('gw-ollama-percent').textContent = `${data.routing.ollamaPercent}% of total`;
+    document.getElementById('gw-api-queries').textContent = data.routing.api || 0;
+    document.getElementById('gw-api-percent').textContent = `${data.routing.apiPercent}% of total`;
+    document.getElementById('gw-savings').textContent = `$${data.ollamaStats.estimatedSavingsUSD}`;
+    document.getElementById('gw-total-queries').textContent = data.totalQueries || 0;
+
+    // Calculate local percentage (ollama + memory + cached)
+    const total = data.totalQueries || 1;
+    const localQueries = (data.routing.ollama || 0) + (data.routing.memory || 0) + (data.routing.cached || 0);
+    const localPercent = ((localQueries / total) * 100).toFixed(1);
+
+    document.getElementById('gw-local-percent').textContent = `${localPercent}%`;
+    document.getElementById('gw-local-bar').style.width = `${localPercent}%`;
+  } catch (e) {
+    console.error('Failed to load gateway metrics:', e);
+  }
+}
+
+function refreshGatewayMetrics() {
+  loadGatewayMetrics();
+}
+
+// Load reports list
+async function loadReports() {
+  const container = document.getElementById('reports-list');
+  if (!container) return;
+
+  try {
+    const response = await fetch('/api/reports');
+    const reports = await response.json();
+
+    if (reports.length === 0) {
+      container.innerHTML = '<div class="no-reports">No reports yet. Generate your first weekly report!</div>';
+      return;
+    }
+
+    container.innerHTML = reports.map(report => `
+      <div class="report-card">
+        <div class="report-header">
+          <span class="report-week">${report.weekKey}</span>
+          <span class="report-date">${report.dateRange.start} to ${report.dateRange.end}</span>
+        </div>
+        <div class="report-stats">
+          <div class="report-stat">
+            <span class="report-stat-value">${report.summary.sessions}</span>
+            <span class="report-stat-label">sessions</span>
+          </div>
+          <div class="report-stat">
+            <span class="report-stat-value">${report.summary.queries}</span>
+            <span class="report-stat-label">queries</span>
+          </div>
+          <div class="report-stat">
+            <span class="report-stat-value">${report.summary.ollamaPercent}%</span>
+            <span class="report-stat-label">local</span>
+          </div>
+          <div class="report-stat">
+            <span class="report-stat-value">$${report.summary.estimatedSavingsUSD}</span>
+            <span class="report-stat-label">saved</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error('Failed to load reports:', e);
+    container.innerHTML = '<div class="error">Failed to load reports</div>';
+  }
+}
+
+// Generate weekly report
+async function generateReport() {
+  const btn = document.querySelector('.reports-header .zoom-btn');
+  const originalText = btn?.textContent;
+  if (btn) {
+    btn.textContent = 'Generating...';
+    btn.disabled = true;
+  }
+
+  try {
+    const response = await fetch('/api/reports/generate', { method: 'POST' });
+    const report = await response.json();
+
+    if (report.error) {
+      alert('Error generating report: ' + report.error);
+      return;
+    }
+
+    // Reload reports list
+    await loadReports();
+
+    // Show success
+    if (btn) btn.textContent = 'Generated!';
+    setTimeout(() => {
+      if (btn) btn.textContent = originalText;
+    }, 2000);
+  } catch (e) {
+    console.error('Failed to generate report:', e);
+    alert('Failed to generate report: ' + e.message);
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btn && btn.textContent === 'Generating...') btn.textContent = originalText;
+  }
+}
+
+// Load Activity Heatmap
+async function loadActivityHeatmap() {
+  const container = document.getElementById('activity-heatmap');
+  const totalEl = document.getElementById('activity-total');
+  if (!container) return;
+
+  try {
+    const response = await fetch('/api/activity/heatmap');
+    const data = await response.json();
+
+    if (!data.projects || data.projects.length === 0) {
+      container.innerHTML = '<div class="no-data">No activity data yet</div>';
+      return;
+    }
+
+    const maxCount = data.projects[0]?.count || 1;
+    container.innerHTML = data.projects.slice(0, 12).map(p => {
+      const intensity = Math.min(100, Math.round((p.count / maxCount) * 100));
+      return `
+        <div class="heatmap-item" style="--intensity: ${intensity}%">
+          <div class="heatmap-name">${p.name}</div>
+          <div class="heatmap-bar">
+            <div class="heatmap-fill" style="width: ${intensity}%"></div>
+          </div>
+          <div class="heatmap-count">${p.count}</div>
+        </div>
+      `;
+    }).join('');
+
+    if (totalEl) {
+      totalEl.textContent = `${data.total} total observations tracked`;
+    }
+  } catch (e) {
+    console.error('Failed to load activity heatmap:', e);
+    container.innerHTML = '<div class="error">Failed to load activity data</div>';
+  }
+}
+
+function refreshActivityHeatmap() {
+  loadActivityHeatmap();
+}
+
+// Load Session Summaries
+async function loadSessionSummaries() {
+  const container = document.getElementById('session-summaries');
+  if (!container) return;
+
+  try {
+    const response = await fetch('/api/sessions/recent');
+    const digests = await response.json();
+
+    if (!digests || digests.length === 0) {
+      container.innerHTML = '<div class="no-data">No session summaries yet</div>';
+      return;
+    }
+
+    container.innerHTML = digests.map(d => {
+      const date = d.compactedAt ? new Date(d.compactedAt).toLocaleDateString() : 'Unknown';
+      return `
+        <div class="session-summary-card">
+          <div class="session-summary-header">
+            <span class="session-date">${date}</span>
+            <span class="session-messages">${d.messageCount || 0} messages</span>
+          </div>
+          <div class="session-synthesis">${d.synthesis || 'No summary available'}</div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    console.error('Failed to load session summaries:', e);
+    container.innerHTML = '<div class="error">Failed to load session summaries</div>';
+  }
+}
+
+function refreshSessionSummaries() {
+  loadSessionSummaries();
+}
+
+// Load Transcript Stats
+async function loadTranscriptStats() {
+  try {
+    const response = await fetch('/api/transcripts/stats');
+    const data = await response.json();
+
+    document.getElementById('ts-total').textContent = data.total || 0;
+    document.getElementById('ts-size').textContent = data.totalSizeMB || '0';
+
+    // Format tokens (e.g., 42M, 1.5M, 500K)
+    const tokens = data.totalTokens || 0;
+    let tokenStr;
+    if (tokens >= 1000000) {
+      tokenStr = (tokens / 1000000).toFixed(1) + 'M';
+    } else if (tokens >= 1000) {
+      tokenStr = (tokens / 1000).toFixed(0) + 'K';
+    } else {
+      tokenStr = tokens.toString();
+    }
+    document.getElementById('ts-tokens').textContent = tokenStr;
+
+    if (data.largestSession) {
+      document.getElementById('ts-largest').textContent = data.largestSession.sizeMB + ' MB';
+      document.getElementById('ts-largest-id').textContent = data.largestSession.id.substring(0, 8) + '...';
+    }
+  } catch (e) {
+    console.error('Failed to load transcript stats:', e);
+  }
+}
+
+function refreshTranscriptStats() {
+  loadTranscriptStats();
+}
+
+// Load Activity Timeline
+async function loadActivityTimeline() {
+  const container = document.getElementById('activity-timeline');
+  if (!container) return;
+
+  try {
+    const response = await fetch('/api/activity/timeline');
+    const timeline = await response.json();
+
+    if (!timeline || timeline.length === 0) {
+      container.innerHTML = '<div class="no-data">No timeline data yet</div>';
+      return;
+    }
+
+    container.innerHTML = timeline.slice(0, 14).map(day => {
+      const date = new Date(day.date);
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const projects = day.projectList.map(p => `<span class="timeline-project">${p.name}</span>`).join('');
+
+      return `
+        <div class="timeline-day">
+          <div class="timeline-date">
+            <span class="timeline-day-name">${dayName}</span>
+            <span class="timeline-date-str">${dateStr}</span>
+          </div>
+          <div class="timeline-activity">
+            <div class="timeline-bar" style="width: ${Math.min(100, day.total * 2)}%"></div>
+          </div>
+          <div class="timeline-count">${day.total}</div>
+          <div class="timeline-projects">${projects}</div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    console.error('Failed to load activity timeline:', e);
+    container.innerHTML = '<div class="error">Failed to load timeline</div>';
+  }
+}
+
+function refreshActivityTimeline() {
+  loadActivityTimeline();
 }
 
 // Global functions for onclick handlers in HTML
@@ -1329,9 +1602,12 @@ window.addKnowledgeBaseSource = () => {
     input.value = '';
   }
 };
-window.generateReport = () => {
-  alert('Report generation coming soon');
-};
+window.generateReport = generateReport;
+window.refreshGatewayMetrics = refreshGatewayMetrics;
+window.refreshActivityHeatmap = refreshActivityHeatmap;
+window.refreshSessionSummaries = refreshSessionSummaries;
+window.refreshTranscriptStats = refreshTranscriptStats;
+window.refreshActivityTimeline = refreshActivityTimeline;
 window.saveKey = () => window.hideSettingsModal();
 window.askOllama = sendMessage;
 window.handleOllamaKeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(); };

@@ -7,15 +7,19 @@ Uses project conventions and past commits for style matching
 import sys
 import json
 import subprocess
-import urllib.request
 from pathlib import Path
 
 try:
-    from config import OLLAMA_URL, OLLAMA_CHAT_MODEL as MODEL, MEMORY_ROOT
+    from config import MEMORY_ROOT
+    from ollama_client import OllamaClient
 except ImportError:
     MEMORY_ROOT = Path.home() / '.claude-dash'
-    OLLAMA_URL = 'http://localhost:11434'
-    MODEL = 'llama3.2:3b'
+    # Fallback if imports fail
+    class OllamaClient:
+        def __init__(self, **kwargs):
+            pass
+        def generate(self, prompt, system=None):
+            return "Error: OllamaClient not available"
 
 
 def get_project_context():
@@ -77,7 +81,10 @@ def get_project_conventions(project_id):
 
 
 def generate_message(diff, recent_commits, conventions):
-    """Generate commit message using Ollama"""
+    """Generate commit message using Ollama with task-based routing"""
+    # Initialize client with task='commit_message' for automatic model selection
+    client = OllamaClient(task='commit_message')
+
     prompt = f"""Generate a git commit message for this diff.
 
 Requirements:
@@ -96,22 +103,9 @@ Diff:
 
 Output only the commit message, nothing else."""
 
-    data = json.dumps({
-        'model': MODEL,
-        'prompt': prompt,
-        'stream': False
-    }).encode()
-
-    req = urllib.request.Request(
-        f'{OLLAMA_URL}/api/generate',
-        data=data,
-        headers={'Content-Type': 'application/json'}
-    )
-
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read().decode())
-            return result.get('response', '').strip()
+        response = client.generate(prompt)
+        return response.strip() if response else None
     except Exception as e:
         print(f"Error: {e}")
         return None

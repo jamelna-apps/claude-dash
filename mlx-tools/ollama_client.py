@@ -17,10 +17,41 @@ import requests
 from typing import Optional, List
 import os
 
+# Import config for task-based routing
+try:
+    from config import get_model_for_task, OLLAMA_URL, OLLAMA_CHAT_MODEL
+except ImportError:
+    # Fallback if config.py not available
+    def get_model_for_task(task: str, fallback_to_default: bool = True) -> str:
+        return os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+    OLLAMA_URL = "http://localhost:11434"
+    OLLAMA_CHAT_MODEL = "qwen2.5:7b"
+
 class OllamaClient:
-    def __init__(self, base_url: str = None, model: str = None):
-        self.base_url = base_url or os.environ.get("OLLAMA_URL", "http://localhost:11434")
-        self.model = model or os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+    def __init__(self, base_url: str = None, model: str = None, task: str = None):
+        """
+        Initialize Ollama client.
+
+        Args:
+            base_url: Ollama API base URL (default: http://localhost:11434)
+            model: Explicit model to use (overrides task-based routing)
+            task: Task identifier for automatic model selection (e.g., 'code_review', 'ui_analysis')
+        """
+        self.base_url = base_url or os.environ.get("OLLAMA_URL", OLLAMA_URL)
+
+        # Model selection priority:
+        # 1. Explicit model parameter
+        # 2. Task-based routing
+        # 3. Environment variable
+        # 4. Default from config
+        if model:
+            self.model = model
+        elif task:
+            self.model = get_model_for_task(task)
+        else:
+            self.model = os.environ.get("OLLAMA_MODEL", OLLAMA_CHAT_MODEL)
+
+        self.task = task
         self._available = None
 
     @property
@@ -42,8 +73,16 @@ class OllamaClient:
 
         return self._available
 
-    def generate(self, prompt: str, system: str = None, stream: bool = False) -> Optional[str]:
-        """Generate text using Ollama LLM."""
+    def generate(self, prompt: str, system: str = None, stream: bool = False, images: List[str] = None) -> Optional[str]:
+        """
+        Generate text using Ollama LLM.
+
+        Args:
+            prompt: The text prompt
+            system: Optional system message
+            stream: Whether to stream the response
+            images: Optional list of base64-encoded images (for vision models)
+        """
         if not self.available:
             return None
 
@@ -55,6 +94,9 @@ class OllamaClient:
 
         if system:
             payload["system"] = system
+
+        if images:
+            payload["images"] = images
 
         try:
             response = requests.post(

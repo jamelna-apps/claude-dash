@@ -119,8 +119,16 @@ class DuplicateFinder:
             for j, file2 in enumerate(files[i+1:], i+1):
                 vec2 = np.array(embeddings[file2])
 
+                # Skip if dimensions don't match (mixed embedding models)
+                if vec1.shape != vec2.shape:
+                    continue
+
                 # Cosine similarity
-                similarity = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+                norm1 = np.linalg.norm(vec1)
+                norm2 = np.linalg.norm(vec2)
+                if norm1 == 0 or norm2 == 0:
+                    continue
+                similarity = np.dot(vec1, vec2) / (norm1 * norm2)
 
                 if similarity >= threshold:
                     is_ignored, ignore_reason = self._is_ignored_pair(file1, file2)

@@ -30,8 +30,9 @@ DB_PATH = MEMORY_ROOT / 'memory.db'
 OLLAMA_URL = os.environ.get('OLLAMA_URL', 'http://localhost:11434')
 
 # Models
-OLLAMA_CHAT_MODEL = os.environ.get('OLLAMA_MODEL', 'qwen2.5:7b')
+OLLAMA_CHAT_MODEL = os.environ.get('OLLAMA_MODEL', 'gemma3:4b')
 OLLAMA_EMBED_MODEL = os.environ.get('OLLAMA_EMBED_MODEL', 'nomic-embed-text')
+OLLAMA_VLM_MODEL = os.environ.get('OLLAMA_VLM_MODEL', 'qwen3-vl:8b')  # Visual Language Model
 
 # Timeouts (in seconds)
 OLLAMA_TIMEOUT = int(os.environ.get('OLLAMA_TIMEOUT', '60'))
@@ -63,6 +64,99 @@ EMBEDDING_BATCH_SIZE = 32
 MAX_CODE_LENGTH = 6000  # Max characters for code review
 REVIEW_TEMPERATURE = 0.1
 REVIEW_NUM_PREDICT = 1000
+
+# =============================================================================
+# TASK-BASED MODEL ROUTING
+# =============================================================================
+
+# Task categories and their preferred models
+# Optimized for M2 16GB Mac Mini
+TASK_MODEL_MAP = {
+    # Code analysis tasks - use deepseek-coder (specialized for code)
+    'code_review': 'deepseek-coder:6.7b',
+    'code_analysis': 'deepseek-coder:6.7b',
+    'code_explanation': 'deepseek-coder:6.7b',
+    'static_analysis': 'deepseek-coder:6.7b',
+    'test_generation': 'deepseek-coder:6.7b',
+
+    # Documentation tasks - use phi3:mini (fast for simple text)
+    'documentation': 'phi3:mini',
+    'summarization': 'phi3:mini',
+    'commit_message': 'phi3:mini',
+    'pr_description': 'phi3:mini',
+
+    # Reasoning/RAG tasks - use gemma3:4b (128K context + multimodal)
+    'rag': 'gemma3:4b',
+    'query': 'gemma3:4b',
+    'ask': 'gemma3:4b',
+    'planning': 'gemma3:4b',
+    'architecture': 'gemma3:4b',
+
+    # Error analysis - use deepseek-coder (code context matters)
+    'error_analysis': 'deepseek-coder:6.7b',
+
+    # Visual tasks - use qwen3-vl (specialized vision model)
+    'ui_analysis': OLLAMA_VLM_MODEL,
+    'screenshot_review': OLLAMA_VLM_MODEL,
+    'design_assessment': OLLAMA_VLM_MODEL,
+    'wireframe_analysis': OLLAMA_VLM_MODEL,
+}
+
+def get_model_for_task(task: str, fallback_to_default: bool = True) -> str:
+    """
+    Get the appropriate Ollama model for a given task.
+
+    Args:
+        task: Task identifier (e.g., 'code_review', 'ui_analysis')
+        fallback_to_default: If True, falls back to OLLAMA_CHAT_MODEL if task not found
+
+    Returns:
+        Model name to use for the task
+
+    Examples:
+        >>> get_model_for_task('code_review')
+        'qwen2.5:7b'
+        >>> get_model_for_task('ui_analysis')  # When VLM is set
+        'llava:13b'
+        >>> get_model_for_task('unknown_task')
+        'qwen2.5:7b'  # Falls back to default
+    """
+    model = TASK_MODEL_MAP.get(task)
+
+    # If model is None (e.g., VLM not configured), fallback to default chat model
+    if model is None and fallback_to_default:
+        return OLLAMA_CHAT_MODEL
+
+    # If task not found, return default if fallback enabled
+    if model is None:
+        return OLLAMA_CHAT_MODEL if fallback_to_default else None
+
+    return model
+
+def list_task_models() -> dict:
+    """
+    Get a summary of all task-to-model mappings.
+
+    Returns:
+        Dictionary of task categories to their assigned models
+    """
+    return {
+        task: get_model_for_task(task)
+        for task in TASK_MODEL_MAP.keys()
+    }
+
+def update_task_model(task: str, model: str) -> None:
+    """
+    Dynamically update a task's model assignment.
+
+    Args:
+        task: Task identifier
+        model: Model name to assign
+
+    Example:
+        >>> update_task_model('code_review', 'deepseek-coder:33b')
+    """
+    TASK_MODEL_MAP[task] = model
 
 # =============================================================================
 # DATABASE CONNECTION

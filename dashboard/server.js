@@ -16,6 +16,8 @@ const CONFIG_PATH = path.join(MEMORY_ROOT, 'config.json');
 const MLX_TOOLS = path.join(MEMORY_ROOT, 'mlx-tools');
 const LEARNING_DIR = path.join(MEMORY_ROOT, 'learning');
 const SESSIONS_DIR = path.join(MEMORY_ROOT, 'sessions');
+const GATEWAY_DIR = path.join(MEMORY_ROOT, 'gateway');
+const REPORTS_DIR = path.join(MEMORY_ROOT, 'reports');
 
 // MIME types
 const MIME_TYPES = {
@@ -522,6 +524,366 @@ const apiHandlers = {
       const projection = calculateProjection(data, weeks);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(projection));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  },
+
+  '/api/gateway/metrics': (req, res) => {
+    try {
+      const metricsPath = path.join(GATEWAY_DIR, 'metrics.json');
+      if (fs.existsSync(metricsPath)) {
+        const metrics = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
+
+        // Calculate summary stats
+        const total = metrics.totalQueries || 1;
+        const ollamaStats = metrics.ollamaStats || { totalQueries: 0, totalTokens: 0, estimatedSavings: 0 };
+        const routing = metrics.routingBreakdown || {};
+
+        const ollamaQueries = (routing.ollama || 0) + (routing.local_ai || 0);
+        const apiQueries = routing.api || 0;
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          totalQueries: total,
+          routing: {
+            ollama: ollamaQueries,
+            api: apiQueries,
+            memory: routing.memory || 0,
+            cached: routing.cached || 0,
+            ollamaPercent: ((ollamaQueries / total) * 100).toFixed(1),
+            apiPercent: ((apiQueries / total) * 100).toFixed(1)
+          },
+          ollamaStats: {
+            queriesRouted: ollamaStats.totalQueries,
+            tokensProcessed: ollamaStats.totalTokens,
+            estimatedSavingsUSD: ollamaStats.estimatedSavings.toFixed(4)
+          },
+          dailyStats: metrics.dailyStats || {},
+          recentQueries: (metrics.recentQueries || []).slice(0, 20)
+        }));
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          totalQueries: 0,
+          routing: { ollama: 0, api: 0, memory: 0, cached: 0, ollamaPercent: '0.0', apiPercent: '0.0' },
+          ollamaStats: { queriesRouted: 0, tokensProcessed: 0, estimatedSavingsUSD: '0.0000' },
+          dailyStats: {},
+          recentQueries: []
+        }));
+      }
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  },
+
+  '/api/reports/generate': async (req, res) => {
+    try {
+      // Ensure reports directory exists
+      if (!fs.existsSync(REPORTS_DIR)) {
+        fs.mkdirSync(REPORTS_DIR, { recursive: true });
+      }
+
+      // Gather data for the report
+      const efficiency = loadEfficiencyData();
+      const config = loadConfig();
+
+      // Load gateway metrics
+      const metricsPath = path.join(GATEWAY_DIR, 'metrics.json');
+      let gatewayMetrics = { totalQueries: 0, routingBreakdown: {}, ollamaStats: { totalQueries: 0, estimatedSavings: 0 } };
+      if (fs.existsSync(metricsPath)) {
+        gatewayMetrics = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
+      }
+
+      // Get this week's date range
+      const now = new Date();
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+
+      const weekKey = getWeekString(now);
+
+      // Count this week's sessions
+      const thisWeekSessions = efficiency.sessions.byWeek[weekKey] || 0;
+      const thisWeekCorrections = efficiency.corrections.byWeek[weekKey] || 0;
+
+      // Count this week's queries from daily stats
+      let thisWeekQueries = 0;
+      let thisWeekOllamaQueries = 0;
+      const dailyStats = gatewayMetrics.dailyStats || {};
+      for (const [date, stats] of Object.entries(dailyStats)) {
+        const d = new Date(date);
+        if (d >= weekStart && d <= weekEnd) {
+          thisWeekQueries += stats.queries || 0;
+          thisWeekOllamaQueries += stats.ollamaQueries || 0;
+        }
+      }
+
+      // Generate report
+      const report = {
+        id: `report-${weekKey}`,
+        weekKey,
+        generated: new Date().toISOString(),
+        dateRange: {
+          start: weekStart.toISOString().split('T')[0],
+          end: weekEnd.toISOString().split('T')[0]
+        },
+        summary: {
+          sessions: thisWeekSessions,
+          corrections: thisWeekCorrections,
+          correctionsPerSession: thisWeekSessions > 0 ? (thisWeekCorrections / thisWeekSessions).toFixed(2) : '0.00',
+          queries: thisWeekQueries,
+          ollamaQueries: thisWeekOllamaQueries,
+          ollamaPercent: thisWeekQueries > 0 ? ((thisWeekOllamaQueries / thisWeekQueries) * 100).toFixed(1) : '0.0',
+          estimatedSavingsUSD: (gatewayMetrics.ollamaStats?.estimatedSavings || 0).toFixed(4)
+        },
+        efficiency: {
+          totalSessions: efficiency.sessions.total,
+          totalCorrections: efficiency.corrections.total,
+          preferencesLearned: efficiency.preferences.learned,
+          highConfidencePrefs: efficiency.preferences.highConfidence,
+          tokensSaved: efficiency.tokenSavings.estimated
+        },
+        projects: config.projects.map(p => ({
+          id: p.id,
+          name: p.name
+        }))
+      };
+
+      // Save report
+      const reportPath = path.join(REPORTS_DIR, `${report.id}.json`);
+      fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(report));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  },
+
+  '/api/reports': (req, res) => {
+    try {
+      if (!fs.existsSync(REPORTS_DIR)) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+        return;
+      }
+
+      const reports = fs.readdirSync(REPORTS_DIR)
+        .filter(f => f.endsWith('.json'))
+        .map(f => {
+          try {
+            const content = JSON.parse(fs.readFileSync(path.join(REPORTS_DIR, f), 'utf8'));
+
+            // Normalize old format to new format
+            if (content.weekOf && !content.weekKey) {
+              const weekDate = new Date(content.weekOf);
+              return {
+                id: `report-${content.weekOf}`,
+                weekKey: content.weekOf,
+                generated: content.generatedAt,
+                dateRange: {
+                  start: content.weekOf,
+                  end: new Date(weekDate.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                },
+                summary: {
+                  sessions: '-',
+                  queries: '-',
+                  ollamaPercent: '-',
+                  estimatedSavingsUSD: '-'
+                },
+                isLegacy: true,
+                content: content.content
+              };
+            }
+            return content;
+          } catch (e) {
+            return null;
+          }
+        })
+        .filter(r => r !== null)
+        .sort((a, b) => new Date(b.generated) - new Date(a.generated));
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(reports));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  },
+
+  '/api/activity/heatmap': (req, res) => {
+    try {
+      const obsPath = path.join(SESSIONS_DIR, 'observations.json');
+      if (!fs.existsSync(obsPath)) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ projects: [], total: 0 }));
+        return;
+      }
+
+      const data = JSON.parse(fs.readFileSync(obsPath, 'utf8'));
+      const observations = data.observations || [];
+
+      // Count by project
+      const projectCounts = {};
+      const categoryCounts = {};
+      observations.forEach(obs => {
+        const project = obs.projectId || 'unknown';
+        const category = obs.category || 'other';
+        projectCounts[project] = (projectCounts[project] || 0) + 1;
+        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      });
+
+      // Sort by count
+      const projects = Object.entries(projectCounts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        projects,
+        categories: categoryCounts,
+        total: observations.length,
+        lastUpdated: data.lastUpdated
+      }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  },
+
+  '/api/sessions/recent': (req, res) => {
+    try {
+      const digestsDir = path.join(SESSIONS_DIR, 'digests');
+      if (!fs.existsSync(digestsDir)) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+        return;
+      }
+
+      const digests = fs.readdirSync(digestsDir)
+        .filter(f => f.endsWith('.json'))
+        .map(f => {
+          try {
+            const content = JSON.parse(fs.readFileSync(path.join(digestsDir, f), 'utf8'));
+            return {
+              id: f.replace('.json', ''),
+              compactedAt: content.compacted_at,
+              messageCount: content.message_count,
+              synthesis: content.synthesis ? content.synthesis.substring(0, 500) + '...' : null,
+              sourceTranscript: content.source_transcript
+            };
+          } catch (e) {
+            return null;
+          }
+        })
+        .filter(d => d !== null)
+        .sort((a, b) => new Date(b.compactedAt) - new Date(a.compactedAt))
+        .slice(0, 10);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(digests));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  },
+
+  '/api/transcripts/stats': (req, res) => {
+    try {
+      const transcriptsDir = path.join(SESSIONS_DIR, 'transcripts');
+      if (!fs.existsSync(transcriptsDir)) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ total: 0, totalSizeMB: 0, transcripts: [] }));
+        return;
+      }
+
+      const transcripts = fs.readdirSync(transcriptsDir)
+        .filter(f => f.endsWith('.jsonl'))
+        .map(f => {
+          const filePath = path.join(transcriptsDir, f);
+          const stat = fs.statSync(filePath);
+          return {
+            id: f.replace('.jsonl', ''),
+            sizeMB: (stat.size / 1024 / 1024).toFixed(2),
+            sizeBytes: stat.size,
+            modified: stat.mtime.toISOString(),
+            estimatedTokens: Math.round(stat.size / 4) // ~4 bytes per token
+          };
+        })
+        .sort((a, b) => b.sizeBytes - a.sizeBytes);
+
+      const totalSize = transcripts.reduce((sum, t) => sum + t.sizeBytes, 0);
+      const totalTokens = transcripts.reduce((sum, t) => sum + t.estimatedTokens, 0);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        total: transcripts.length,
+        totalSizeMB: (totalSize / 1024 / 1024).toFixed(2),
+        totalTokens,
+        largestSession: transcripts[0] || null,
+        transcripts: transcripts.slice(0, 10)
+      }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  },
+
+  '/api/activity/timeline': (req, res) => {
+    try {
+      const obsPath = path.join(SESSIONS_DIR, 'observations.json');
+      const indexPath = path.join(SESSIONS_DIR, 'index.json');
+
+      const timeline = {};
+
+      // Get observations by date
+      if (fs.existsSync(obsPath)) {
+        const obsData = JSON.parse(fs.readFileSync(obsPath, 'utf8'));
+        (obsData.observations || []).forEach(obs => {
+          if (obs.timestamp) {
+            const date = obs.timestamp.split('T')[0];
+            const project = obs.projectId || 'unknown';
+            if (!timeline[date]) timeline[date] = { projects: {}, total: 0 };
+            timeline[date].projects[project] = (timeline[date].projects[project] || 0) + 1;
+            timeline[date].total++;
+          }
+        });
+      }
+
+      // Get sessions by date
+      if (fs.existsSync(indexPath)) {
+        const indexData = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+        (indexData.sessions || []).forEach(session => {
+          if (session.startTime) {
+            const date = session.startTime.split('T')[0];
+            if (!timeline[date]) timeline[date] = { projects: {}, total: 0, sessions: 0 };
+            timeline[date].sessions = (timeline[date].sessions || 0) + 1;
+          }
+        });
+      }
+
+      // Convert to array and sort by date
+      const timelineArray = Object.entries(timeline)
+        .map(([date, data]) => ({
+          date,
+          ...data,
+          projectList: Object.entries(data.projects)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, count]) => ({ name, count }))
+        }))
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 30); // Last 30 days
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(timelineArray));
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: e.message }));

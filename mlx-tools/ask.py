@@ -149,16 +149,19 @@ def main():
     parser.add_argument("project", help="Project ID")
     parser.add_argument("question", nargs="?", help="Question to ask (omit for interactive mode)")
     parser.add_argument("--chat", "-c", action="store_true", help="Interactive chat mode")
-    parser.add_argument("--model", "-m", default="llama3.2:3b", help="Ollama model to use")
+    parser.add_argument("--model", "-m", help="Ollama model to use (overrides task-based routing)")
     args = parser.parse_args()
 
-    # Initialize Ollama client
-    client = OllamaClient(model=args.model)
+    # Initialize Ollama client with task-based routing
+    # If explicit model provided, use it; otherwise use task='ask' for automatic selection
+    if args.model:
+        client = OllamaClient(model=args.model)
+    else:
+        client = OllamaClient(task='ask')
 
     if not client.available:
         print("Error: Ollama is not running.")
-        print("Start it with: docker start ollama")
-        print("Or: ./dev-env.sh start")
+        print("Start it with: ollama serve")
         sys.exit(1)
 
     # Interactive or single question mode

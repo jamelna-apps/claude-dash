@@ -7,17 +7,21 @@ Can be used standalone or as a pre-commit hook
 import sys
 import json
 import subprocess
-import urllib.request
 from pathlib import Path
 
 # Use centralized config
 try:
-    from config import OLLAMA_URL, OLLAMA_CHAT_MODEL as MODEL, MEMORY_ROOT, MAX_CODE_LENGTH
+    from config import MEMORY_ROOT, MAX_CODE_LENGTH
+    from ollama_client import OllamaClient
 except ImportError:
     MEMORY_ROOT = Path.home() / '.claude-dash'
-    OLLAMA_URL = 'http://localhost:11434'
-    MODEL = 'qwen2.5:7b'
     MAX_CODE_LENGTH = 6000
+    # Fallback if imports fail
+    class OllamaClient:
+        def __init__(self, **kwargs):
+            pass
+        def generate(self, prompt, system=None):
+            return "Error: OllamaClient not available"
 
 
 def get_project_context():
@@ -60,7 +64,10 @@ def read_file(filepath):
 
 
 def review_code(code, context=""):
-    """Review code using Ollama"""
+    """Review code using Ollama with task-based routing"""
+    # Initialize client with task='code_review' for automatic model selection
+    client = OllamaClient(task='code_review')
+
     prompt = f"""Review this code for:
 
 1. **Bugs** - Logic errors, null/undefined issues, off-by-one errors
@@ -72,7 +79,7 @@ def review_code(code, context=""):
 
 Code to review:
 ```
-{code[:6000]}
+{code[:MAX_CODE_LENGTH]}
 ```
 
 Format your response as:
@@ -85,22 +92,9 @@ Format your response as:
 If no issues found, say "No issues found - code looks good!"
 """
 
-    data = json.dumps({
-        'model': MODEL,
-        'prompt': prompt,
-        'stream': False
-    }).encode()
-
-    req = urllib.request.Request(
-        f'{OLLAMA_URL}/api/generate',
-        data=data,
-        headers={'Content-Type': 'application/json'}
-    )
-
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            result = json.loads(resp.read().decode())
-            return result.get('response', '').strip()
+        response = client.generate(prompt)
+        return response.strip() if response else "Error: No response from Ollama"
     except Exception as e:
         return f"Error: {e}"
 

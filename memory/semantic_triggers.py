@@ -167,6 +167,56 @@ def search_patterns(search_terms):
     return results[:3]
 
 
+def search_correction_patterns(search_terms):
+    """Search learned correction patterns from transcript analysis."""
+    results = []
+
+    corrections_path = MEMORY_ROOT / "learning" / "corrections.json"
+    if corrections_path.exists():
+        try:
+            data = json.loads(corrections_path.read_text())
+            patterns = data.get("patterns", {})
+
+            for key, pattern_data in patterns.items():
+                if key in ["extracted_from_transcripts", "recurring_errors"]:
+                    continue
+
+                pattern_text = pattern_data.get("pattern", "")
+                projects = pattern_data.get("projects", [])
+                priority = pattern_data.get("priority", "normal")
+
+                for term in search_terms:
+                    if term.lower() in pattern_text.lower() or term.lower() in key.lower():
+                        results.append({
+                            "type": "correction_pattern",
+                            "key": key,
+                            "pattern": pattern_text,
+                            "projects": projects,
+                            "priority": priority
+                        })
+                        break
+
+            # Also check recurring errors
+            recurring = patterns.get("recurring_errors", {})
+            for error_key, error_data in recurring.items():
+                error_text = error_data.get("error", "")
+                fix = error_data.get("fix", error_data.get("possible_cause", ""))
+
+                for term in search_terms:
+                    if term.lower() in error_text.lower() or term.lower() in error_key.lower():
+                        results.append({
+                            "type": "recurring_error",
+                            "error": error_text,
+                            "fix": fix
+                        })
+                        break
+
+        except (json.JSONDecodeError, IOError, KeyError) as e:
+            pass
+
+    return results[:3]
+
+
 def get_topic_memory(topics, project_id=None):
     """Get all relevant memory for detected topics."""
     all_results = defaultdict(list)
@@ -188,6 +238,10 @@ def get_topic_memory(topics, project_id=None):
             patterns = search_patterns(search_terms)
             all_results["patterns"].extend(patterns)
 
+        # Always check correction patterns for relevant topics
+        correction_patterns = search_correction_patterns(search_terms)
+        all_results["correction_patterns"].extend(correction_patterns)
+
     return dict(all_results)
 
 
@@ -208,6 +262,28 @@ def format_memory_context(topics, memory):
             if text not in seen:
                 seen.add(text)
                 lines.append(f"  • {text}")
+
+    # Correction patterns (learned from past corrections)
+    correction_patterns = memory.get("correction_patterns", [])
+    if correction_patterns:
+        lines.append("\nLearned from corrections:")
+        seen = set()
+        for cp in correction_patterns[:3]:
+            if cp.get("type") == "correction_pattern":
+                text = cp.get("pattern", "")[:100]
+                priority = cp.get("priority", "")
+                if text not in seen:
+                    seen.add(text)
+                    prefix = "⚠️ " if priority == "high" else "• "
+                    lines.append(f"  {prefix}{text}")
+            elif cp.get("type") == "recurring_error":
+                error = cp.get("error", "")[:60]
+                fix = cp.get("fix", "")[:60]
+                if error not in seen:
+                    seen.add(error)
+                    lines.append(f"  • Error: {error}")
+                    if fix:
+                        lines.append(f"    Fix: {fix}")
 
     # Observations
     observations = memory.get("observations", [])
