@@ -32,7 +32,7 @@ try:
 except ImportError:
     MEMORY_ROOT = Path.home() / ".claude-dash"
     OLLAMA_URL = "http://localhost:11434"
-    OLLAMA_MODEL = "qwen2.5:7b"
+    OLLAMA_MODEL = "gemma3:4b"
 
 # Import pattern detector for learning
 sys.path.insert(0, str(MEMORY_ROOT / "patterns"))
@@ -86,11 +86,20 @@ def extract_session_summary(messages):
     for i, msg in enumerate(messages):
         msg_type = msg.get("type", "")
 
-        if msg_type == "human":
+        # Handle both "human" (old format) and "user" (current format)
+        if msg_type in ("human", "user"):
             content = msg.get("message", {}).get("content", "")
             if isinstance(content, str) and content.strip():
                 if not content.startswith("<system"):
                     summary["user_requests"].append(content[:300])
+            # Handle list content (newer transcript format)
+            elif isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text = block.get("text", "")
+                        if text and not text.startswith("<system"):
+                            summary["user_requests"].append(text[:300])
+                            break  # Only take first text block per message
 
         elif msg_type == "assistant":
             content = msg.get("message", {}).get("content", [])
@@ -431,9 +440,15 @@ def main():
     parser.add_argument("project_id", help="Project ID")
     parser.add_argument("--session-id", default="unknown", help="Session ID")
     parser.add_argument("--no-mlx", action="store_true", help="Legacy flag, ignored")
+    parser.add_argument("--lightweight", action="store_true",
+                        help="Use simple extraction only (skip Ollama for speed)")
+    parser.add_argument("--output", "-o", type=str,
+                        help="Output checkpoint to specific file instead of observations.json")
     args = parser.parse_args()
 
     print(f"[Observation Extractor] Session: {args.session_id}")
+    if args.lightweight:
+        print("  Mode: lightweight (skipping Ollama)")
 
     # Load transcript
     messages = load_transcript(args.transcript_path)
@@ -441,24 +456,54 @@ def main():
 
     if len(messages) < 3:
         print("  Too few messages, skipping extraction")
+        # If output file specified, write empty checkpoint
+        if args.output:
+            Path(args.output).write_text(json.dumps({
+                "observations": [],
+                "files_modified": [],
+                "message_count": len(messages)
+            }, indent=2))
         return
 
     # Build summary
     summary = extract_session_summary(messages)
     print(f"  Found {len(summary['user_requests'])} user requests, {len(summary['files_modified'])} files modified")
 
-    # Try Ollama extraction first
-    observations = extract_with_ollama(summary)
-
-    if observations:
-        print(f"  Ollama extracted {len(observations)} observations")
-    else:
-        print("  Ollama extraction failed, using simple extraction")
+    # Extract observations
+    if args.lightweight:
+        # Lightweight mode: skip Ollama, use simple extraction only
         observations = extract_simple(summary)
         print(f"  Simple extraction: {len(observations)} observations")
+    else:
+        # Full mode: try Ollama extraction first
+        observations = extract_with_ollama(summary)
+        if observations:
+            print(f"  Ollama extracted {len(observations)} observations")
+        else:
+            print("  Ollama extraction failed, using simple extraction")
+            observations = extract_simple(summary)
+            print(f"  Simple extraction: {len(observations)} observations")
 
-    # Save
-    if observations:
+    # Handle output
+    if args.output:
+        # Write to checkpoint file instead of observations.json
+        checkpoint_data = {
+            "observations": observations,
+            "files_modified": summary.get("files_modified", []),
+            "files_created": summary.get("files_created", []),
+            "commands_run": summary.get("commands_run", [])[:10],
+            "user_requests": [r[:150] for r in summary.get("user_requests", [])[:5]],
+            "message_count": len(messages)
+        }
+        Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.output).write_text(json.dumps(checkpoint_data, indent=2))
+        print(f"  Wrote checkpoint to: {args.output}")
+
+        # Print observations for log
+        for obs in observations:
+            print(f"    [{obs['category']}] {obs['observation'][:80]}")
+    elif observations:
+        # Normal mode: save to observations.json
         saved = save_observations(observations, args.project_id, args.session_id, summary)
         print(f"  Saved {saved} observations")
 
@@ -466,8 +511,9 @@ def main():
         for obs in observations:
             print(f"    [{obs['category']}] {obs['observation'][:80]}")
 
-        # Learn patterns from this session
-        learn_patterns_from_session(messages, observations, args.project_id)
+        # Learn patterns from this session (skip in lightweight mode)
+        if not args.lightweight:
+            learn_patterns_from_session(messages, observations, args.project_id)
     else:
         print("  No observations to save")
 

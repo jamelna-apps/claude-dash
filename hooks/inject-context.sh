@@ -402,4 +402,24 @@ PYEOF
   fi
 fi
 
+# === INCREMENTAL CHECKPOINT (crash protection) ===
+# Checkpoint every 5 messages to protect against crashes/unexpected termination
+
+CHECKPOINT_INTERVAL=5
+COUNTER_FILE="$MEMORY_ROOT/sessions/message_counter"
+CHECKPOINT_SCRIPT="$MEMORY_ROOT/hooks/checkpoint-learnings.sh"
+
+# Ensure sessions directory exists
+mkdir -p "$MEMORY_ROOT/sessions" 2>/dev/null
+
+# Read and increment message counter
+MESSAGE_COUNT=$(($(cat "$COUNTER_FILE" 2>/dev/null || echo 0) + 1))
+echo "$MESSAGE_COUNT" > "$COUNTER_FILE"
+
+# Checkpoint every N messages (run in background to avoid blocking)
+if [ $((MESSAGE_COUNT % CHECKPOINT_INTERVAL)) -eq 0 ] && [ -f "$CHECKPOINT_SCRIPT" ]; then
+  # Run checkpoint in background with low priority
+  (nice -n 19 "$CHECKPOINT_SCRIPT" &) 2>/dev/null
+fi
+
 exit 0

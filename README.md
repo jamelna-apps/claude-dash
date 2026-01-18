@@ -81,6 +81,10 @@ curl -fsSL https://raw.githubusercontent.com/jamelna-apps/claude-dash/main/insta
          "matcher": "",
          "hooks": [{"type": "command", "command": "~/.claude/hooks/inject-context.sh"}]
        }],
+       "PreCompact": [{
+         "matcher": "",
+         "hooks": [{"type": "command", "command": "~/.claude/hooks/pre-compact-capture.sh"}]
+       }],
        "Stop": [{
          "matcher": "",
          "hooks": [{"type": "command", "command": "~/.claude/hooks/save-session.sh"}]
@@ -153,6 +157,14 @@ curl -fsSL https://raw.githubusercontent.com/jamelna-apps/claude-dash/main/insta
 - Compresses old session transcripts by 99%
 - Preserves: synthesis, files changed, commands, key responses
 - Runs weekly automatically
+
+**Crash-Resilient Learning Capture** (v2.1)
+Three-layer protection ensures learnings are never lost:
+- **PreCompact Hook** - Captures learnings before context summarization
+- **Incremental Checkpoints** - Saves state every 5 messages (background)
+- **Stop Hook** - Final consolidation at session end
+
+Even if your terminal crashes or is force-quit, recent learnings are preserved in `sessions/checkpoints/`.
 
 ### Hybrid Search System
 
@@ -237,7 +249,11 @@ Opens at `http://localhost:3847`.
 - Node.js 18+
 - Python 3.10+
 - Claude Code CLI
-- Ollama with task-optimized models (see installation above)
+- Ollama with task-optimized models:
+  - `gemma3:4b` - Default model for RAG, general tasks (128K context)
+  - `deepseek-coder:6.7b` - Code review and analysis
+  - `phi3:mini` - Fast tasks (commit messages, quick summaries)
+  - `nomic-embed-text` - Embeddings for semantic search
 
 ## Directory Structure
 
@@ -258,6 +274,7 @@ Opens at `http://localhost:3847`.
 │   ├── observations.json       # Patterns, gotchas, learnings
 │   ├── summaries/              # Session summaries by project
 │   ├── digests/                # Compacted old transcripts
+│   ├── checkpoints/            # Incremental learning checkpoints
 │   └── transcripts/            # Recent full transcripts
 ├── learning/
 │   ├── correction_tracker.py   # Learns from corrections
@@ -274,6 +291,11 @@ Opens at `http://localhost:3847`.
 ├── patterns/
 │   ├── patterns.json           # Mode definitions
 │   └── detector.py             # Conversation mode detection
+├── hooks/
+│   ├── inject-context.sh       # UserPromptSubmit hook
+│   ├── save-session.sh         # Stop hook
+│   ├── pre-compact-capture.sh  # PreCompact hook (context summarization)
+│   └── checkpoint-learnings.sh # Incremental checkpoint (every 5 msgs)
 ├── gateway/
 │   ├── server.js               # Unified MCP server
 │   ├── cache.js                # Query caching

@@ -172,6 +172,7 @@ mkdir -p "$CLAUDE_DASH_DIR/projects"
 mkdir -p "$CLAUDE_DASH_DIR/sessions/transcripts"
 mkdir -p "$CLAUDE_DASH_DIR/sessions/digests"
 mkdir -p "$CLAUDE_DASH_DIR/sessions/summaries"
+mkdir -p "$CLAUDE_DASH_DIR/sessions/checkpoints"
 mkdir -p "$CLAUDE_DASH_DIR/logs"
 mkdir -p "$CLAUDE_DASH_DIR/indexes"
 mkdir -p "$CLAUDE_DASH_DIR/patterns"
@@ -247,7 +248,7 @@ if [ "$OLLAMA_INSTALLED" = true ]; then
     fi
 
     # Pull required models
-    MODELS=("qwen2.5:7b" "nomic-embed-text")
+    MODELS=("gemma3:4b" "nomic-embed-text")
     for model in "${MODELS[@]}"; do
         if ollama list 2>/dev/null | grep -q "$model"; then
             success "Model $model already installed"
@@ -260,7 +261,7 @@ else
     warn "Skipping Ollama setup (not installed)"
     echo "    To enable learning features, install Ollama:"
     echo "    brew install ollama"
-    echo "    ollama pull qwen2.5:7b"
+    echo "    ollama pull gemma3:4b"
     echo "    ollama pull nomic-embed-text"
 fi
 
@@ -277,6 +278,8 @@ mkdir -p "$CLAUDE_DIR/hooks"
 if [ -d "$CLAUDE_DASH_DIR/hooks" ]; then
     cp "$CLAUDE_DASH_DIR/hooks/inject-context.sh" "$CLAUDE_DIR/hooks/" 2>/dev/null || true
     cp "$CLAUDE_DASH_DIR/hooks/save-session.sh" "$CLAUDE_DIR/hooks/" 2>/dev/null || true
+    cp "$CLAUDE_DASH_DIR/hooks/pre-compact-capture.sh" "$CLAUDE_DIR/hooks/" 2>/dev/null || true
+    cp "$CLAUDE_DASH_DIR/hooks/checkpoint-learnings.sh" "$CLAUDE_DIR/hooks/" 2>/dev/null || true
     chmod +x "$CLAUDE_DIR/hooks/"*.sh 2>/dev/null || true
     success "Installed hooks to $CLAUDE_DIR/hooks/"
 fi
@@ -298,6 +301,10 @@ if [ -f "$SETTINGS_FILE" ]; then
       "matcher": "",
       "hooks": [{"type": "command", "command": "~/.claude/hooks/inject-context.sh"}]
     }],
+    "PreCompact": [{
+      "matcher": "",
+      "hooks": [{"type": "command", "command": "~/.claude/hooks/pre-compact-capture.sh"}]
+    }],
     "Stop": [{
       "matcher": "",
       "hooks": [{"type": "command", "command": "~/.claude/hooks/save-session.sh"}]
@@ -318,6 +325,17 @@ else
           {
             "type": "command",
             "command": "~/.claude/hooks/inject-context.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pre-compact-capture.sh"
           }
         ]
       }

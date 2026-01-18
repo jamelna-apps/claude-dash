@@ -24,20 +24,42 @@ CORRECTIONS_FILE = MEMORY_ROOT / "learning" / "corrections.json"
 
 # Patterns that indicate user is correcting Claude
 CORRECTION_PATTERNS = [
+    # Explicit corrections
     r"\bno[,.]?\s+(i\s+)?(meant|want|need|said)",
     r"\bthat'?s\s+(wrong|incorrect|not\s+right|not\s+what)",
     r"\bactually[,.]?\s+(i\s+)?(want|need|meant)",
-    r"\bnot\s+(\w+)[,.]?\s+(but\s+)?(\w+)",
+    r"\bactually[,.]?\s+(the|it'?s|it\s+is)",
     r"\bi\s+said\s+(\w+)\s+not\s+(\w+)",
     r"\bno[,.]?\s+not\s+",
     r"\bwrong[,.]?\s+",
     r"\bthat'?s\s+not\s+",
     r"\bi\s+didn'?t\s+(mean|want|ask)",
-    r"\bdon'?t\s+(do|use|add)\s+that",
-    r"\bremove\s+(that|this|the)",
+
+    # Imperative corrections: "no, use X", "use X not Y", "use X instead"
+    r"\bno[,.]?\s+use\s+",
+    r"\bno[,.]?\s+it\s+should\s+be\s+",
+    r"\buse\s+(\w+)\s+not\s+(\w+)",
+    r"\buse\s+(\w+)\s+instead(\s+of)?",
+    r"\bshould\s+be\s+(\w+)\s+not\s+(\w+)",
+    r"\bit'?s\s+(\w+)\s+not\s+(\w+)",
+
+    # "not X, Y" and "not X but Y" patterns (order matters - more specific first)
+    r"\bnot\s+['\"]?(\w+)['\"]?\s*,\s*['\"]?(\w+)['\"]?",
+    r"\bnot\s+(\w+)[,.]?\s+but\s+(\w+)",
+
+    # Action corrections
+    r"\bdon'?t\s+(do|use|add|make|create)\s+",
+    r"\bremove\s+(that|this|the|it)",
     r"\bundo\s+",
     r"\brevert\s+",
     r"\bgo\s+back\s+to",
+    r"\bchange\s+(it|that|this)\s+(back\s+)?to\s+",
+
+    # Preference expressions
+    r"\bprefer\s+(\w+)\s+(over|to|instead)",
+    r"\balways\s+use\s+",
+    r"\bnever\s+use\s+",
+    r"\bstop\s+using\s+",
 ]
 
 

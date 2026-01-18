@@ -39,10 +39,11 @@ def check_ollama():
                 warnings.append("Ollama running but no models installed")
                 return False, "no_models"
 
-            # Check for required model
-            if not any('qwen' in m for m in models):
-                warnings.append(f"qwen2.5:7b not found. Available: {models}")
-                return True, "missing_qwen"
+            # Check for recommended models (gemma3 or phi3 for general tasks)
+            has_chat_model = any(m.startswith(('gemma', 'phi3', 'qwen')) for m in models)
+            if not has_chat_model:
+                warnings.append(f"No chat model found. Available: {models}. Recommended: gemma3:4b")
+                return True, "missing_chat_model"
 
             return True, "ok"
     except urllib.error.URLError:
@@ -72,11 +73,11 @@ def fix_ollama(status):
             return False
 
     elif status == "no_models":
-        issues.append("Ollama has no models. Run: ollama pull qwen2.5:7b")
+        issues.append("Ollama has no models. Run: ollama pull gemma3:4b")
         return False
 
-    elif status == "missing_qwen":
-        warnings.append("Consider running: ollama pull qwen2.5:7b")
+    elif status == "missing_chat_model":
+        warnings.append("Consider running: ollama pull gemma3:4b")
         return True  # Not critical
 
     return True

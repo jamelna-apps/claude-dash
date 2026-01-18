@@ -19,8 +19,16 @@ import os
 
 MEMORY_ROOT = Path.home() / ".claude-dash"
 PATTERNS_FILE = MEMORY_ROOT / "patterns" / "patterns.json"
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+
+# Use centralized config if available
+try:
+    sys.path.insert(0, str(MEMORY_ROOT / "mlx-tools"))
+    from config import OLLAMA_URL as _URL, OLLAMA_CHAT_MODEL as _MODEL
+    OLLAMA_URL = os.environ.get("OLLAMA_URL", _URL)
+    OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", _MODEL)
+except ImportError:
+    OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+    OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma3:4b")
 
 
 def load_patterns():

@@ -111,10 +111,10 @@ def main():
 
     print("\n✅ WILL RUN WELL (Recommended):")
     recommendations = [
-        ("qwen2.5:7b", "~5GB", "General tasks, good quality", "Already installed" if "qwen2.5:7b" in installed else "ollama pull qwen2.5:7b"),
-        ("llava:7b", "~5GB", "UI/screenshot analysis", "Already installed" if "llava:7b" in installed else "ollama pull llava:7b"),
+        ("gemma3:4b", "~3GB", "General tasks, 128K context", "Already installed" if "gemma3:4b" in installed else "ollama pull gemma3:4b"),
         ("deepseek-coder:6.7b", "~4GB", "Code-focused tasks", "Already installed" if "deepseek-coder:6.7b" in installed else "ollama pull deepseek-coder:6.7b"),
-        ("qwen2.5:3b", "~2GB", "Fast, simple tasks", "Already installed" if "qwen2.5:3b" in installed else "ollama pull qwen2.5:3b"),
+        ("phi3:mini", "~2GB", "Fast, simple tasks", "Already installed" if "phi3:mini" in installed else "ollama pull phi3:mini"),
+        ("qwen3-vl:8b", "~5GB", "Vision/UI analysis", "Already installed" if "qwen3-vl:8b" in installed else "ollama pull qwen3-vl:8b"),
     ]
 
     for model, size, purpose, install_cmd in recommendations:
@@ -147,9 +147,9 @@ def main():
     print("Expected Performance on M2 16GB")
     print("=" * 70)
 
-    print("\n7B models (qwen2.5:7b, llava:7b):")
+    print("\n4-7B models (gemma3:4b, deepseek-coder:6.7b):")
     print("  • Speed: 30-50 tokens/sec")
-    print("  • RAM: 4-5GB while running")
+    print("  • RAM: 3-5GB while running")
     print("  • Quality: ⭐⭐⭐⭐ Very good")
     print("  • Verdict: ✅ Perfect for your hardware")
 
@@ -171,9 +171,9 @@ def main():
     print("=" * 70)
 
     print("\n🎯 Recommended (Start Here):")
-    print("   • qwen2.5:7b → All text tasks")
+    print("   • gemma3:4b → All text tasks (128K context)")
     print("   • nomic-embed-text → Embeddings")
-    print("   Total: ~5GB disk, ~5GB RAM when running")
+    print("   Total: ~4GB disk, ~4GB RAM when running")
 
     print("\n🎨 Add for UI Analysis:")
     print("   • llava:7b → Screenshot/UI analysis")

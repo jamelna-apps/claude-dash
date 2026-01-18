@@ -16,8 +16,14 @@ from datetime import datetime, timezone
 
 MEMORY_ROOT = Path.home() / ".claude-dash"
 SUMMARIES_DIR = MEMORY_ROOT / "sessions" / "summaries"
-OLLAMA_URL = "http://localhost:11434"
-OLLAMA_MODEL = "qwen2.5:7b"
+
+# Use centralized config if available
+try:
+    sys.path.insert(0, str(MEMORY_ROOT / "mlx-tools"))
+    from config import OLLAMA_URL, OLLAMA_CHAT_MODEL as OLLAMA_MODEL
+except ImportError:
+    OLLAMA_URL = "http://localhost:11434"
+    OLLAMA_MODEL = "phi3:mini"  # Fast model for summarization tasks
 
 
 def load_transcript(transcript_path):
@@ -49,11 +55,19 @@ def extract_conversation_content(messages):
     for msg in messages:
         msg_type = msg.get("type", "")
 
-        if msg_type == "human":
+        # Handle both "human" (old format) and "user" (current format)
+        if msg_type in ("human", "user"):
             content = msg.get("message", {}).get("content", "")
             if isinstance(content, str) and content.strip():
                 if not content.startswith("<system"):
                     user_messages.append(content[:300])
+            elif isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text = block.get("text", "")
+                        if text and not text.startswith("<system"):
+                            user_messages.append(text[:300])
+                            break
 
         elif msg_type == "assistant":
             content = msg.get("message", {}).get("content", [])

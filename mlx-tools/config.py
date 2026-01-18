@@ -115,11 +115,11 @@ def get_model_for_task(task: str, fallback_to_default: bool = True) -> str:
 
     Examples:
         >>> get_model_for_task('code_review')
-        'qwen2.5:7b'
+        'gemma3:4b'
         >>> get_model_for_task('ui_analysis')  # When VLM is set
         'llava:13b'
         >>> get_model_for_task('unknown_task')
-        'qwen2.5:7b'  # Falls back to default
+        'gemma3:4b'  # Falls back to default
     """
     model = TASK_MODEL_MAP.get(task)
 

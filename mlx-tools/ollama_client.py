@@ -23,9 +23,9 @@ try:
 except ImportError:
     # Fallback if config.py not available
     def get_model_for_task(task: str, fallback_to_default: bool = True) -> str:
-        return os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+        return os.environ.get("OLLAMA_MODEL", "gemma3:4b")
     OLLAMA_URL = "http://localhost:11434"
-    OLLAMA_CHAT_MODEL = "qwen2.5:7b"
+    OLLAMA_CHAT_MODEL = "gemma3:4b"
 
 class OllamaClient:
     def __init__(self, base_url: str = None, model: str = None, task: str = None):

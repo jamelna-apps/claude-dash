@@ -18,60 +18,104 @@ from collections import defaultdict
 MEMORY_ROOT = Path.home() / ".claude-dash"
 
 # Topic keywords and their related search terms
+# Keywords support both exact matches and prefix matches (e.g., "auth" matches "authenticate")
 TOPIC_TRIGGERS = {
     "docker": {
         "keywords": ["docker", "container", "dockerfile", "compose", "image"],
+        "prefixes": ["docker", "contain"],  # Prefix matching for word variations
         "search_terms": ["docker", "container", "compose"],
         "memory_types": ["decisions", "observations", "infrastructure"]
     },
     "ollama": {
         "keywords": ["ollama", "llm", "local ai", "metal gpu", "inference"],
+        "prefixes": ["ollama", "infer"],
         "search_terms": ["ollama", "llm", "model", "inference"],
         "memory_types": ["decisions", "infrastructure"]
     },
     "database": {
-        "keywords": ["database", "postgres", "sql", "firestore", "mongodb", "db"],
+        "keywords": ["database", "postgres", "sql", "firestore", "mongodb", "db", "prisma", "sqlite", "query"],
+        "prefixes": ["datab", "postgr", "firest", "mongo", "query"],
         "search_terms": ["database", "postgres", "sql", "db", "query"],
         "memory_types": ["decisions", "schema"]
     },
     "auth": {
-        "keywords": ["auth", "login", "authentication", "password", "token", "session"],
+        "keywords": ["auth", "login", "authentication", "password", "token", "session", "jwt", "oauth", "firebase auth"],
+        "prefixes": ["auth", "login", "passw", "token", "session", "jwt", "oauth"],  # "auth" matches "authenticate"
         "search_terms": ["auth", "login", "token", "session"],
         "memory_types": ["decisions", "observations"]
     },
     "performance": {
-        "keywords": ["slow", "fast", "optimize", "performance", "speed", "memory", "cpu"],
+        "keywords": ["slow", "fast", "optimize", "performance", "speed", "memory", "cpu", "latency", "cache"],
+        "prefixes": ["optim", "perform", "latenc", "cache"],
         "search_terms": ["performance", "optimize", "speed", "slow"],
         "memory_types": ["decisions", "observations"]
     },
     "api": {
-        "keywords": ["api", "endpoint", "rest", "graphql", "request", "response"],
+        "keywords": ["api", "endpoint", "rest", "graphql", "request", "response", "fetch", "axios"],
+        "prefixes": ["endpoin", "graphql", "axios"],
         "search_terms": ["api", "endpoint", "request"],
         "memory_types": ["decisions", "observations"]
     },
     "testing": {
-        "keywords": ["test", "testing", "jest", "pytest", "spec", "coverage"],
+        "keywords": ["test", "testing", "jest", "pytest", "spec", "coverage", "mock", "unit test", "e2e"],
+        "prefixes": ["test", "jest", "pytest", "mock", "coverag"],
         "search_terms": ["test", "testing", "spec"],
         "memory_types": ["decisions", "patterns"]
     },
     "deployment": {
-        "keywords": ["deploy", "production", "staging", "ci", "cd", "pipeline"],
+        "keywords": ["deploy", "production", "staging", "ci", "cd", "pipeline", "vercel", "netlify", "aws"],
+        "prefixes": ["deploy", "product", "staging", "pipelin"],
         "search_terms": ["deploy", "production", "pipeline"],
         "memory_types": ["decisions", "infrastructure"]
+    },
+    "react": {
+        "keywords": ["react", "component", "hook", "usestate", "useeffect", "props", "jsx", "tsx"],
+        "prefixes": ["react", "compon", "usestat", "useeff"],
+        "search_terms": ["react", "component", "hook"],
+        "memory_types": ["decisions", "patterns"]
+    },
+    "ui": {
+        "keywords": ["ui", "css", "style", "tailwind", "design", "layout", "responsive", "button", "modal"],
+        "prefixes": ["tailwind", "style", "layout", "respon"],
+        "search_terms": ["ui", "style", "design"],
+        "memory_types": ["decisions", "patterns"]
     }
 }
 
 
 def detect_topics(message):
-    """Detect which topics are mentioned in the message."""
+    """Detect which topics are mentioned in the message.
+
+    Uses two matching strategies:
+    1. Exact keyword matching (e.g., "auth" matches "auth")
+    2. Prefix matching (e.g., "auth" prefix matches "authenticate", "authorization")
+    """
     message_lower = message.lower()
+    # Extract words from message for prefix matching
+    words = re.findall(r'\b\w+\b', message_lower)
     detected = []
 
     for topic, config in TOPIC_TRIGGERS.items():
+        found = False
+
+        # Strategy 1: Exact keyword matching
         for keyword in config["keywords"]:
             if re.search(r'\b' + re.escape(keyword) + r'\b', message_lower):
-                detected.append(topic)
-                break  # Only count topic once
+                found = True
+                break
+
+        # Strategy 2: Prefix matching (if not already found)
+        if not found and "prefixes" in config:
+            for prefix in config["prefixes"]:
+                for word in words:
+                    if word.startswith(prefix) and len(word) >= len(prefix):
+                        found = True
+                        break
+                if found:
+                    break
+
+        if found:
+            detected.append(topic)
 
     return detected
 

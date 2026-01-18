@@ -21,8 +21,14 @@ from collections import defaultdict
 MEMORY_ROOT = Path.home() / ".claude-dash"
 TRANSCRIPTS_DIR = MEMORY_ROOT / "sessions" / "transcripts"
 DIGESTS_DIR = MEMORY_ROOT / "sessions" / "digests"
-OLLAMA_URL = "http://localhost:11434"
-OLLAMA_MODEL = "qwen2.5:7b"
+
+# Use centralized config if available
+try:
+    sys.path.insert(0, str(MEMORY_ROOT / "mlx-tools"))
+    from config import OLLAMA_URL, OLLAMA_CHAT_MODEL as OLLAMA_MODEL
+except ImportError:
+    OLLAMA_URL = "http://localhost:11434"
+    OLLAMA_MODEL = "phi3:mini"  # Fast model for compaction tasks
 
 # Target compression: ~50KB per digest (vs ~10MB+ per transcript)
 MAX_DIGEST_SIZE = 50000
@@ -45,14 +51,27 @@ def extract_user_requests(messages):
     """Extract user messages (the actual requests)."""
     requests = []
     for msg in messages:
-        if msg.get("type") == "human":
+        # Handle both "human" (old format) and "user" (current format)
+        if msg.get("type") in ("human", "user"):
             content = msg.get("message", {}).get("content", "")
+            text_to_add = None
+
             if isinstance(content, str) and content.strip():
                 # Skip system injections
                 if not content.startswith("<") and len(content) > 5:
-                    requests.append({
-                        "text": content[:500],  # Truncate long messages
-                        "timestamp": msg.get("timestamp", "")
+                    text_to_add = content[:500]
+            elif isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text = block.get("text", "")
+                        if text and not text.startswith("<") and len(text) > 5:
+                            text_to_add = text[:500]
+                            break
+
+            if text_to_add:
+                requests.append({
+                    "text": text_to_add,
+                    "timestamp": msg.get("timestamp", "")
                     })
     return requests
 
