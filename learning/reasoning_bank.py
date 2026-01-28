@@ -120,11 +120,18 @@ def distill_pattern(trajectories: List[Dict]) -> Optional[Dict]:
     if len(trajectories) < 2:
         return None
 
-    all_context_terms = [extract_key_terms(t.get("context", "")) for t in trajectories]
-    common_context = set.intersection(*all_context_terms) if all_context_terms else set()
+    # Use context OR problem text for trigger terms (fallback when context is empty)
+    all_trigger_terms = []
+    for t in trajectories:
+        terms = extract_key_terms(t.get("context", ""))
+        if not terms:  # Fallback to problem text
+            terms = extract_key_terms(t.get("problem", ""))
+        all_trigger_terms.append(terms)
+
+    common_context = set.intersection(*all_trigger_terms) if all_trigger_terms and all(all_trigger_terms) else set()
 
     all_solution_terms = [extract_key_terms(t.get("solution", "")) for t in trajectories]
-    common_solution = set.intersection(*all_solution_terms) if all_solution_terms else set()
+    common_solution = set.intersection(*all_solution_terms) if all_solution_terms and all(all_solution_terms) else set()
 
     if not common_context or not common_solution:
         return None
@@ -175,7 +182,10 @@ def consolidate_learning(force: bool = False) -> Dict:
             for j, other in enumerate(domain_trajs):
                 if j in used:
                     continue
-                if compute_similarity(traj.get("context", ""), other.get("context", "")) > 0.4:
+                # Use context for similarity, fallback to problem text when context is empty
+                traj_text = traj.get("context", "") or traj.get("problem", "")
+                other_text = other.get("context", "") or other.get("problem", "")
+                if compute_similarity(traj_text, other_text) > 0.3:  # Lowered threshold
                     cluster.append(other)
                     used.add(j)
             if len(cluster) >= 2:

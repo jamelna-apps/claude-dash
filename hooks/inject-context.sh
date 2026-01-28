@@ -17,6 +17,9 @@ CORRECTION_TRACKER="$MEMORY_ROOT/learning/correction_tracker.py"
 PREFERENCE_LEARNER="$MEMORY_ROOT/learning/preference_learner.py"
 CONFIDENCE_CAL="$MEMORY_ROOT/learning/confidence_calibration.py"
 
+# Roadmap system
+ROADMAP_LOADER="$MEMORY_ROOT/memory/roadmap_loader.py"
+
 # Load JSON helper if available
 JSON_HELPER="$MEMORY_ROOT/hooks/json-helper.sh"
 if [ -f "$JSON_HELPER" ]; then
@@ -188,6 +191,29 @@ if [ ! -f "$FIRST_MESSAGE_MARKER" ]; then
     fi
   fi
 
+  # === PROJECT ROADMAP (first message only, with timeout) ===
+  # Load project roadmap to provide task context and priorities
+  if [ -f "$ROADMAP_LOADER" ] && [ -f "$PROJECT_MEMORY/roadmap.json" ]; then
+    ROADMAP_CTX=$(timeout_run $SUBPROCESS_TIMEOUT python3 "$ROADMAP_LOADER" "$PROJECT_ID" inject)
+    if [ -n "$ROADMAP_CTX" ]; then
+      echo "<project-roadmap project=\"$PROJECT_ID\">"
+      echo "$ROADMAP_CTX"
+      echo "</project-roadmap>"
+    fi
+  fi
+
+  # === PM AGENT (first message only, with timeout) ===
+  # Proactive PM questions based on portfolio analysis
+  PM_AGENT="$MEMORY_ROOT/pm/pm_agent.py"
+  if [ -f "$PM_AGENT" ]; then
+    PM_CTX=$(timeout_run $SUBPROCESS_TIMEOUT python3 "$PM_AGENT" "$PROJECT_ID" inject 2>/dev/null)
+    if [ -n "$PM_CTX" ]; then
+      echo "<pm-agent>"
+      echo "$PM_CTX"
+      echo "</pm-agent>"
+    fi
+  fi
+
   # === GIT AWARENESS (first message only, with timeout) ===
   # Show what changed since last session
   if [ -f "$GIT_AWARENESS" ] && [ -d "$PROJECT_ROOT/.git" ]; then
@@ -197,6 +223,15 @@ if [ ! -f "$FIRST_MESSAGE_MARKER" ]; then
       echo "$GIT_CTX"
       echo "</git-changes>"
     fi
+  fi
+
+  # === GIT-ROADMAP SYNC (first message only) ===
+  # Check recent commits for completed tasks and sync to roadmap
+  GIT_ROADMAP_SYNC="$MEMORY_ROOT/memory/git_roadmap_sync.py"
+  if [ -f "$GIT_ROADMAP_SYNC" ] && [ -d "$PROJECT_ROOT/.git" ] && [ -f "$PROJECT_MEMORY/roadmap.json" ]; then
+    # Run in background to not block session start
+    (python3 "$GIT_ROADMAP_SYNC" --repo "$PROJECT_ROOT" --project "$PROJECT_ID" --since-days 7 \
+      >> "$MEMORY_ROOT/logs/git-roadmap-sync.log" 2>&1 &)
   fi
 
   # === LEARNED PREFERENCES (first message only, with timeout) ===
@@ -353,6 +388,31 @@ if [ -f "$SEMANTIC_TRIGGER" ] && [ -n "$prompt" ]; then
     echo "<semantic-memory>"
     echo "$SEMANTIC_CTX"
     echo "</semantic-memory>"
+  fi
+fi
+
+# === SKILLS INJECTION (with timeout) ===
+# Activate domain skills based on prompt keywords
+# Skills provide structured expertise for specific topics
+
+SKILLS_LOADER="$MEMORY_ROOT/skills/skills_loader.py"
+
+if [ -f "$SKILLS_LOADER" ] && [ -n "$prompt" ] && [ ${#prompt} -gt 15 ]; then
+  # Skip slash commands
+  if [[ "$prompt" != /* ]]; then
+    SKILLS_OUTPUT=$(timeout_run $SUBPROCESS_TIMEOUT python3 "$SKILLS_LOADER" "$prompt" "$PROJECT_ID")
+
+    if [ -n "$SKILLS_OUTPUT" ]; then
+      echo "<activated-skills>"
+      echo "$SKILLS_OUTPUT"
+      echo "</activated-skills>"
+
+      # Log skill activation
+      SKILL_NAMES=$(echo "$SKILLS_OUTPUT" | grep -o 'name="[^"]*"' | sed 's/name="//g' | sed 's/"//g' | tr '\n' ',' | sed 's/,$//')
+      if [ -n "$SKILL_NAMES" ]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Skills: $SKILL_NAMES - ${prompt:0:50}" >> "$MEMORY_ROOT/logs/skills-activation.log" 2>/dev/null
+      fi
+    fi
   fi
 fi
 

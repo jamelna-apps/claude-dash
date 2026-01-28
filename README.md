@@ -9,10 +9,13 @@ Claude-Dash gives Claude Code persistent memory across sessions. It indexes your
 **Key capabilities:**
 - **Session Continuity** - Remembers what you worked on last session
 - **Learning from Corrections** - "No, I meant X" gets recorded and recalled
+- **Reasoning Chains** - Captures the full cognitive journey (observations → discoveries → conclusions)
 - **Git Awareness** - Shows what changed since your last session
 - **Preference Inference** - Learns your coding style from your edits
 - **Confidence Calibration** - Tracks accuracy by domain to know when to be more careful
 - **Semantic Memory** - Auto-fetches relevant context when you mention topics like "docker" or "auth"
+- **Skills System** - 25+ auto-activating skills based on conversation keywords
+- **Project Roadmaps** - Track tasks, sprints, and project status
 
 ## Quick Start
 
@@ -60,7 +63,7 @@ curl -fsSL https://raw.githubusercontent.com/jamelna-apps/claude-dash/main/insta
    brew install ollama
    # Task-optimized models for M2 16GB
    ollama pull deepseek-coder:6.7b    # Code review & analysis
-   ollama pull gemma3:4b              # RAG queries (128K context!)
+   ollama pull gemma3:4b-it-qat       # RAG queries (128K context, QAT quality!)
    ollama pull phi3:mini              # Quick tasks (commit messages)
    ollama pull qwen3-vl:8b            # UI/screenshot analysis
    ollama pull nomic-embed-text       # Embeddings for semantic search
@@ -121,10 +124,22 @@ curl -fsSL https://raw.githubusercontent.com/jamelna-apps/claude-dash/main/insta
 
 ### Learning Systems
 
+**Reasoning Chains** (`learning/reasoning_chains.py`) *(NEW)*
+- Captures the full cognitive journey: trigger → steps → conclusion
+- Records observations, interpretations, and actions at each step
+- Tracks alternatives considered and why they were rejected
+- Stores "revisit when" conditions for future reference
+- Auto-injects relevant chains during debugging/investigation prompts
+
 **Correction Tracking** (`learning/correction_tracker.py`)
 - Detects "no, I meant...", "that's wrong", "actually..."
 - Records corrections with context
 - Surfaces relevant past mistakes when similar context arises
+
+**Reasoning Bank** (`learning/reasoning_bank.py`)
+- RETRIEVE → JUDGE → DISTILL → CONSOLIDATE cycle
+- Finds similar past situations and assesses applicability
+- Extracts generalizable patterns from specific instances
 
 **Outcome Tracking** (`learning/outcome_tracker.py`)
 - Records success/failure of approaches
@@ -190,28 +205,50 @@ Even if your terminal crashes or is force-quit, recent learnings are preserved i
 
 ### MCP Integration
 
-Tools available to Claude:
-- `memory_query` - Natural language queries
-- `memory_search` - Semantic search
+**28 MCP Tools** available to Claude:
+
+**Smart Tools (Memory-First)**
+- `smart_read` - Memory-first file reading with cached summaries (60-95% token savings)
+- `smart_search` - Memory-first code search with summaries
+- `smart_exec` - Cached command execution
+- `smart_edit` - Edit files with auto-reindexing
+
+**Memory Tools**
+- `memory_query` - Natural language hybrid search (BM25 + semantic)
+- `memory_search` - Semantic search across files
 - `memory_similar` - Find related files
 - `memory_functions` - Look up function definitions
-- `memory_health` - Code health status
-- `memory_sessions` - Search past sessions
+- `memory_health` - Code health status with auto-repair
+- `memory_sessions` - Search past session observations
 - `memory_wireframe` - App navigation info
+- `memory_roadmap` - Query/update project roadmaps
+
+**Learning Tools**
+- `reasoning_capture` - Record a reasoning chain during conversation
+- `reasoning_recall` - Find past reasoning chains for similar situations
+- `reasoning_query` - Query the reasoning bank for applicable solutions
+- `learning_status` - Check learning system status
+
+**Cross-Project Tools**
+- `project_query` - Query another project's memory without switching contexts
+
+**Code Quality**
+- `context_budget` - HOT/WARM/COLD tier breakdown with token costs
+- `pattern_review` - LLM-powered code validation against patterns
 
 ### Local AI Tools (Task-Optimized)
 
 Claude-Dash uses **task-based model routing** for optimal performance on M2 16GB:
 - Code tasks → `deepseek-coder:6.7b` (best code quality)
-- RAG queries → `gemma3:4b` (128K context window!)
+- RAG queries → `gemma3:4b-it-qat` (128K context, QAT quality!)
 - Quick tasks → `phi3:mini` (60-80 tok/s, ultra-fast)
 - UI analysis → `qwen3-vl:8b` (vision specialist)
 
 ```bash
-# Quick query (uses gemma3:4b)
+# Quick query (uses gemma3:4b-it-qat)
 mlx q my-app "where is the login screen?"
 
-# RAG-powered Q&A (uses gemma3:4b with 128K context)
+# RAG-powered Q&A (uses gemma3:4b-it-qat with 128K context)
 mlx rag my-app "how does authentication work?"
 
 # Find similar files (semantic search)
@@ -250,7 +287,7 @@ Opens at `http://localhost:3847`.
 - Python 3.10+
 - Claude Code CLI
 - Ollama with task-optimized models:
-  - `gemma3:4b` - Default model for RAG, general tasks (128K context)
+  - `gemma3:4b-it-qat` - Default model for RAG, general tasks (128K context, QAT quality)
   - `deepseek-coder:6.7b` - Code review and analysis
   - `phi3:mini` - Fast tasks (commit messages, quick summaries)
   - `nomic-embed-text` - Embeddings for semantic search
@@ -277,6 +314,8 @@ Opens at `http://localhost:3847`.
 │   ├── checkpoints/            # Incremental learning checkpoints
 │   └── transcripts/            # Recent full transcripts
 ├── learning/
+│   ├── reasoning_chains.py     # Cognitive journey capture (NEW)
+│   ├── reasoning_bank.py       # RETRIEVE→JUDGE→DISTILL cycle
 │   ├── correction_tracker.py   # Learns from corrections
 │   ├── outcome_tracker.py      # Tracks approach outcomes
 │   ├── git_awareness.py        # Git change detection
@@ -292,7 +331,10 @@ Opens at `http://localhost:3847`.
 │   ├── patterns.json           # Mode definitions
 │   └── detector.py             # Conversation mode detection
 ├── hooks/
-│   ├── inject-context.sh       # UserPromptSubmit hook
+│   ├── inject-context.sh       # UserPromptSubmit hook (shell wrapper)
+│   ├── inject_all_context.py   # Consolidated context injector (~500ms)
+│   ├── injection_adapters.py   # Adapters for various injection types
+│   ├── agent_context_builder.py # Sub-agent context builder
 │   ├── save-session.sh         # Stop hook
 │   ├── pre-compact-capture.sh  # PreCompact hook (context summarization)
 │   └── checkpoint-learnings.sh # Incremental checkpoint (every 5 msgs)
@@ -315,18 +357,39 @@ Opens at `http://localhost:3847`.
 ## How Context Injection Works
 
 **On first message of session:**
-```
-<session-continuity>    Last session summary, recent decisions
-<git-changes>           Your commits since last session
-<learned-preferences>   Inferred style preferences
-<confidence-calibration> Weak areas to be careful about
+```xml
+<session-continuity>       Last session summary, recent decisions
+<project-roadmap>          Current sprint items and backlog
+<git-changes>              Your commits since last session
+<learned-preferences>      Inferred style preferences
+<confidence-calibration>   Weak areas to be careful about
 ```
 
 **On every message:**
+```xml
+<memory-context>           Keyword-triggered project memory
+<past-corrections>         If correcting, shows similar past mistakes
+<reasoning-bank>           Applicable past problem→solution pairs
+<past-reasoning-chains>    Full cognitive journeys for similar problems
+<semantic-memory>          Topic-triggered relevant memory
+<pattern-context>          Detected conversation mode guidance
+<activated-skill>          Auto-activated skills (top 2 by keyword match)
 ```
-<past-corrections>      If correcting, shows similar past mistakes
-<semantic-memory>       Topic-triggered relevant memory
-<pattern-context>       Detected conversation mode guidance
+
+**Reasoning Chains Auto-Injection:**
+
+When your prompt contains investigation keywords (debug, fix, error, why, broken, wrong), relevant past reasoning chains are automatically injected:
+
+```xml
+<past-reasoning-chains>
+## Token tracking showed wrong values
+**Conclusion:** Added deduplication check to tokens.repo.ts
+**Journey:**
+  1. Today's Spend showed $387 → Values were being doubled
+  2. cli-watcher processes on startup → App restarts re-importing data
+  3. No deduplication check → Duplicates accumulating
+**Revisit if:** Database schema changes, New token sources added
+</past-reasoning-chains>
 ```
 
 ## Manual Commands

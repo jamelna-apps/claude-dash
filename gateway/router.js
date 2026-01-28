@@ -42,6 +42,42 @@ const READ_ONLY_PATTERNS = [
 ];
 
 /**
+ * Ollama-specific enhancement patterns
+ * Tasks that don't require Claude's full capabilities
+ */
+const OLLAMA_ENHANCEMENT_PATTERNS = [
+  // Language translation
+  /\b(translate|translation|convert\s+to|in\s+(spanish|french|german|italian|portuguese|chinese|japanese|korean))\b/i,
+
+  // Code comments and documentation
+  /\b(add\s+comment|comment\s+this|explain\s+this\s+(function|code|snippet)|what\s+does\s+this\s+code)\b/i,
+
+  // Commit message generation
+  /\b(generate\s+commit\s+message|commit\s+message\s+for|suggest\s+commit|draft\s+commit)\b/i,
+
+  // Error explanations
+  /\b(explain\s+(this\s+)?error|what\s+does.*error\s+mean|why.*error|interpret\s+error)\b/i,
+
+  // Naming suggestions
+  /\b(name\s+for|suggest\s+(a\s+)?name|rename|what\s+should\s+i\s+call|naming\s+convention)\b/i,
+
+  // Documentation summarization
+  /\b(summarize|tldr|tl;dr|key\s+points|brief\s+overview).*\b(documentation|readme|docs|guide)\b/i,
+
+  // Test descriptions
+  /\b(test\s+description|describe\s+(this\s+)?test|test\s+for|test\s+case)\b/i,
+
+  // Simple code quality checks
+  /\b(lint|code\s+quality|best\s+practices\s+for|improve\s+this\s+code|code\s+style)\b/i,
+
+  // Log message formatting
+  /\b(format\s+log|log\s+message|logging\s+format|standardize\s+log)\b/i,
+
+  // Simple code explanations
+  /\b(what\s+is\s+this\s+doing|walk\s+me\s+through|step\s+by\s+step|explain\s+line\s+by\s+line)\b/i,
+];
+
+/**
  * Write patterns - ALWAYS route to Claude API
  * These need Claude's full capabilities for safe code modification
  */
@@ -78,7 +114,19 @@ function classifyQueryComplexity(query, tool) {
     }
   }
 
-  // SECOND: Check for read-only queries - route to Ollama (free)
+  // SECOND: Check for Ollama enhancement patterns - specific tasks best suited for local AI
+  for (const pattern of OLLAMA_ENHANCEMENT_PATTERNS) {
+    if (pattern.test(queryLower)) {
+      return {
+        complexity: 'moderate',
+        minTier: 'LOCAL_AI',
+        reason: 'ollama enhancement task',
+        isOllamaEnhancement: true
+      };
+    }
+  }
+
+  // THIRD: Check for read-only queries - route to Ollama (free)
   for (const pattern of READ_ONLY_PATTERNS) {
     if (pattern.test(queryLower)) {
       return {
@@ -297,6 +345,7 @@ module.exports = {
   TIERS,
   READ_ONLY_PATTERNS,
   WRITE_PATTERNS,
+  OLLAMA_ENHANCEMENT_PATTERNS,
   classifyQueryComplexity,
   canMemoryHandle,
   isOllamaAvailable,

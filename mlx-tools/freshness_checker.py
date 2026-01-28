@@ -45,7 +45,7 @@ class FreshnessChecker:
         """Get files modified since timestamp."""
         changed = []
         extensions = {'.js', '.jsx', '.ts', '.tsx', '.py'}
-        exclude_dirs = {'node_modules', '.git', 'dist', 'build', '.next', '.worktrees', '_archived'}
+        exclude_dirs = {'node_modules', '.git', 'dist', 'build', '.next', '.worktrees', '_archived', '.venv', 'venv', 'env'}
 
         def scan_dir(directory: Path):
             try:

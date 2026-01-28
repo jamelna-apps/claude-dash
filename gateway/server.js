@@ -196,10 +196,6 @@ function validateQuery(query) {
   return { valid: true, query: query.trim() };
 }
 
-// AnythingLLM Configuration
-const ANYTHINGLLM_URL = process.env.ANYTHINGLLM_URL || 'http://localhost:3001';
-const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || '';
-
 // Initialize cache and metrics
 const cache = new Cache();
 const metrics = new Metrics();
@@ -372,6 +368,41 @@ const TOOLS = [
     }
   },
 
+  // --- LOCAL LLM (Ollama) - NON-CRITICAL ONLY ---
+  {
+    name: 'local_ask',
+    description: 'NON-CRITICAL USE ONLY: commit messages, Enchanted API, personal queries. DO NOT use for code generation, debugging, or development work - use Claude (Sonnet) instead. Returns in 5-15s.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        question: { type: 'string', description: 'Question to ask the local LLM' },
+        project: { type: 'string', description: 'Project ID for context (auto-detected if omitted)' },
+        mode: {
+          type: 'string',
+          enum: ['rag', 'ask', 'explain', 'commit'],
+          description: 'Mode: rag (with retrieval, default), ask (direct), explain (code), commit (message)'
+        }
+      },
+      required: ['question']
+    }
+  },
+  {
+    name: 'local_review',
+    description: 'NON-CRITICAL USE ONLY: NOT recommended for code review. Use Claude (Sonnet) for quality code reviews. This tool is only for personal experimentation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path to review' },
+        diff: { type: 'string', description: 'Git diff to review (alternative to file)' },
+        focus: {
+          type: 'string',
+          enum: ['bugs', 'security', 'performance', 'style', 'all'],
+          description: 'Review focus (default: all)'
+        }
+      }
+    }
+  },
+
   // --- GATEWAY INFO ---
   {
     name: 'gateway_metrics',
@@ -387,31 +418,36 @@ const TOOLS = [
       }
     }
   },
-
-  // --- DOCUMENT RAG (AnythingLLM) ---
   {
-    name: 'doc_query',
-    description: 'Query your personal documents (PDFs, research, guides) using RAG. Uses AnythingLLM to search and answer from indexed documents.',
+    name: 'context_budget',
+    description: 'Show HOT/WARM/COLD context tier breakdown with token counts and cost estimates.',
     inputSchema: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Question to ask about your documents' },
-        workspace: { type: 'string', description: 'AnythingLLM workspace name (default: TERRA)' },
-        mode: {
+        project: { type: 'string', description: 'Project ID (shows all projects if omitted)' },
+        format: {
           type: 'string',
-          enum: ['query', 'chat'],
-          description: 'query = RAG only, chat = conversational with RAG context'
+          enum: ['summary', 'detailed'],
+          description: 'Output format (default: detailed)'
         }
-      },
-      required: ['query']
+      }
     }
   },
   {
-    name: 'doc_list_workspaces',
-    description: 'List available AnythingLLM workspaces (document collections).',
+    name: 'pattern_review',
+    description: 'LLM-powered code validation against documented patterns (PATTERNS.md, decisions.json). Guardian-style semantic review.',
     inputSchema: {
       type: 'object',
-      properties: {}
+      properties: {
+        file: { type: 'string', description: 'File path to review (relative to project root)' },
+        project: { type: 'string', description: 'Project ID (auto-detected if omitted)' },
+        mode: {
+          type: 'string',
+          enum: ['normal', 'safe'],
+          description: 'Mode: normal (all issues) or safe (high confidence >=70% only)'
+        }
+      },
+      required: ['file']
     }
   },
 
@@ -473,7 +509,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         project: { type: 'string', description: 'Project ID' },
-        action: { type: 'string', enum: ['status', 'scan'], description: 'Action type' }
+        action: { type: 'string', enum: ['status', 'scan', 'repair'], description: 'Action type: status (current health), scan (run analysis), repair (auto-fix issues)' }
       }
     }
   },
@@ -522,6 +558,30 @@ const TOOLS = [
     }
   },
 
+  // --- ROADMAP TOOLS ---
+  {
+    name: 'memory_roadmap',
+    description: 'Query or update project roadmap. Actions: status (view roadmap), next (get next tasks), complete (mark task done), add (add new task).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        project: { type: 'string', description: 'Project ID (auto-detected if omitted)' },
+        action: {
+          type: 'string',
+          enum: ['status', 'next', 'complete', 'add'],
+          description: 'Action to perform (default: status)'
+        },
+        id: { type: 'string', description: 'Task ID (for complete action)' },
+        title: { type: 'string', description: 'Task title (for add action)' },
+        priority: {
+          type: 'string',
+          enum: ['high', 'medium', 'low'],
+          description: 'Task priority (for add action, default: medium)'
+        }
+      }
+    }
+  },
+
   // --- LEARNING TOOLS (new) ---
   {
     name: 'reasoning_query',
@@ -535,6 +595,70 @@ const TOOLS = [
           enum: ['docker', 'auth', 'react', 'database', 'api', 'ui', 'performance', 'testing'],
           description: 'Optional domain filter'
         },
+        limit: { type: 'number', description: 'Max results (default: 5)' }
+      },
+      required: ['context']
+    }
+  },
+  {
+    name: 'reasoning_capture',
+    description: 'Capture a reasoning chain during conversation for future learning. Records the full cognitive journey: trigger → steps → conclusion.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        trigger: { type: 'string', description: 'What started this investigation' },
+        steps: {
+          type: 'array',
+          description: 'The thinking process steps',
+          items: {
+            type: 'object',
+            properties: {
+              observation: { type: 'string', description: 'What was noticed/tried' },
+              interpretation: { type: 'string', description: 'What it meant' },
+              action: { type: 'string', description: 'What was done next (optional)' }
+            },
+            required: ['observation', 'interpretation']
+          }
+        },
+        conclusion: { type: 'string', description: 'Final decision/solution' },
+        outcome: { type: 'string', enum: ['success', 'partial', 'failure'], description: 'How it turned out' },
+        domain: {
+          type: 'string',
+          enum: ['docker', 'auth', 'react', 'database', 'api', 'ui', 'performance', 'testing'],
+          description: 'Problem domain (optional)'
+        },
+        project: { type: 'string', description: 'Project ID (optional, auto-detected)' },
+        alternatives: {
+          type: 'array',
+          description: 'Options considered but rejected',
+          items: {
+            type: 'object',
+            properties: {
+              option: { type: 'string' },
+              rejectedBecause: { type: 'string' }
+            }
+          }
+        },
+        constraints: { type: 'array', items: { type: 'string' }, description: 'What limited the choices' },
+        revisitWhen: { type: 'array', items: { type: 'string' }, description: 'Conditions that would change this decision' },
+        confidence: { type: 'number', minimum: 0, maximum: 1, description: 'Confidence level (0-1)' }
+      },
+      required: ['trigger', 'steps', 'conclusion', 'outcome']
+    }
+  },
+  {
+    name: 'reasoning_recall',
+    description: 'Find past reasoning chains relevant to current problem. Returns the full cognitive journey with steps, alternatives, and revisit conditions.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        context: { type: 'string', description: 'Current problem description' },
+        domain: {
+          type: 'string',
+          enum: ['docker', 'auth', 'react', 'database', 'api', 'ui', 'performance', 'testing'],
+          description: 'Filter by domain'
+        },
+        project: { type: 'string', description: 'Filter by project' },
         limit: { type: 'number', description: 'Max results (default: 5)' }
       },
       required: ['context']
@@ -585,6 +709,60 @@ const TOOLS = [
         project: { type: 'string', description: 'Project ID (for single project rebuild)' }
       }
     }
+  },
+
+  // --- CROSS-PROJECT QUERY TOOL ---
+  {
+    name: 'project_query',
+    description: 'Query another project\'s memory without switching contexts. Ask about auth patterns in GYST while working on CoachDesk, etc.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        project: {
+          type: 'string',
+          description: 'Target project ID to query (e.g., "gyst", "coachdesk")'
+        },
+        query: {
+          type: 'string',
+          description: 'Natural language question about the target project'
+        },
+        type: {
+          type: 'string',
+          enum: ['memory', 'functions', 'similar', 'decisions', 'patterns'],
+          description: 'Query type: memory (hybrid search, default), functions (find functions), similar (find similar code), decisions (past decisions), patterns (code patterns)'
+        }
+      },
+      required: ['project', 'query']
+    }
+  },
+
+  // --- PM AGENT TOOLS ---
+  {
+    name: 'pm_portfolio',
+    description: 'Get portfolio overview - project health, priorities, milestones across all projects.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        detail: {
+          type: 'string',
+          enum: ['summary', 'full'],
+          description: 'Level of detail (default: full)'
+        },
+        project: { type: 'string', description: 'Optional: focus on specific project context' }
+      }
+    }
+  },
+  {
+    name: 'pm_ask',
+    description: 'Ask PM agent about priorities, what to work on, project status, or portfolio health.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        question: { type: 'string', description: 'Question about priorities, projects, or what to work on' },
+        project: { type: 'string', description: 'Optional: current project context' }
+      },
+      required: ['question']
+    }
   }
 ];
 
@@ -631,7 +809,7 @@ async function handleSmartRead(params, cwd) {
         ? filePath.replace(projectConfig.path + '/', '')
         : filePath;
 
-      const summary = summaries[relativePath] || summaries[filePath];
+      const summary = summaries.files?.[relativePath] || summaries.files?.[filePath];
 
       if (summary) {
         let result;
@@ -815,6 +993,169 @@ async function handleSmartEdit(params, cwd) {
   return { result: `File written: ${filePath}\nCache invalidated. Re-index triggered.` };
 }
 
+// --- LOCAL LLM HANDLERS ---
+
+async function handleLocalAsk(params, cwd) {
+  const startTime = Date.now();
+  const project = params.project || detectProject(cwd);
+  const mode = params.mode || 'rag';
+  const question = params.question;
+
+  if (!question) {
+    return { error: 'Question is required' };
+  }
+
+  try {
+    let scriptPath;
+    let args;
+
+    switch (mode) {
+      case 'rag':
+        // Use RAG pipeline for context-aware answers
+        scriptPath = path.join(MLX_TOOLS, 'rag_pipeline.py');
+        args = project ? [project, question] : ['general', question];
+        break;
+      case 'ask':
+        // Direct ask without RAG
+        scriptPath = path.join(MLX_TOOLS, 'ask.py');
+        args = project ? [project, question] : [question];
+        break;
+      case 'explain':
+        // Code explanation mode
+        scriptPath = path.join(MLX_TOOLS, 'code_analyzer.py');
+        args = project ? [project, question, 'explain'] : [question, 'explain'];
+        break;
+      case 'commit':
+        // Commit message generation
+        scriptPath = path.join(MLX_TOOLS, 'commit_helper.py');
+        args = [];
+        break;
+      default:
+        scriptPath = path.join(MLX_TOOLS, 'rag_pipeline.py');
+        args = project ? [project, question] : ['general', question];
+    }
+
+    const output = await runPythonScript(scriptPath, args, 60000); // 60s timeout for LLM
+
+    const tokensUsed = metrics.estimateTokens(output);
+
+    metrics.recordQuery({
+      tool: 'local_ask',
+      route: 'ollama',
+      tokensUsed,
+      tokensSaved: tokensUsed * 10, // Estimate: local is ~10x cheaper
+      latencyMs: Date.now() - startTime,
+      cacheHit: false
+    });
+
+    return { result: `[Local LLM - FREE]\n\n${output}` };
+  } catch (error) {
+    return { error: `Local LLM error: ${error.message}` };
+  }
+}
+
+async function handleLocalReview(params, cwd) {
+  const startTime = Date.now();
+  const focus = params.focus || 'all';
+
+  try {
+    let args = [];
+
+    if (params.file) {
+      // SECURITY: Validate file path
+      const pathCheck = validateFilePath(params.file, 'read');
+      if (!pathCheck.valid) {
+        return { error: pathCheck.error };
+      }
+      args = [pathCheck.path];
+    } else if (params.diff) {
+      // Review a diff string - write to temp file
+      const tempPath = path.join('/tmp', `review-${Date.now()}.diff`);
+      fs.writeFileSync(tempPath, params.diff);
+      args = ['--diff', tempPath];
+    } else {
+      // Review staged changes
+      args = [];
+    }
+
+    if (focus !== 'all') {
+      args.push('--focus', focus);
+    }
+
+    const output = await runPythonScript(
+      path.join(MLX_TOOLS, 'smart_reviewer.py'),
+      args,
+      60000 // 60s timeout
+    );
+
+    metrics.recordQuery({
+      tool: 'local_review',
+      route: 'ollama',
+      tokensUsed: metrics.estimateTokens(output),
+      tokensSaved: metrics.estimateTokens(output) * 5,
+      latencyMs: Date.now() - startTime,
+      cacheHit: false
+    });
+
+    return { result: `[Local Review - FREE]\n\n${output}` };
+  } catch (error) {
+    return { error: `Local review error: ${error.message}` };
+  }
+}
+
+async function handlePatternReview(params, cwd) {
+  const project = params?.project || detectProject(cwd);
+  if (!project) {
+    return { error: 'Could not detect project. Please specify project ID.' };
+  }
+
+  const file = params?.file;
+  if (!file) {
+    return { error: 'File path is required.' };
+  }
+
+  const mode = params?.mode || 'normal';
+
+  try {
+    const output = await runPythonScript(
+      path.join(MLX_TOOLS, 'pattern_review.py'),
+      [project, file, mode],
+      60000  // 60s timeout for LLM
+    );
+    return { result: output };
+  } catch (error) {
+    return { error: `Pattern review error: ${error.message}` };
+  }
+}
+
+async function handleContextBudget(params, cwd) {
+  const project = params?.project || detectProject(cwd);
+  const format = params?.format || 'detailed';
+
+  try {
+    const args = project ? [project] : [];
+    const output = await runPythonScript(path.join(MLX_TOOLS, 'context_budget.py'), args);
+
+    if (format === 'summary' && project) {
+      // Parse and return compact summary
+      const data = JSON.parse(output);
+      const summary = data.summary || {};
+      return {
+        result: `Context Budget for ${project}:
+  HOT:  ${summary.hotTokens || 0} tokens (always loaded)
+  WARM: ${summary.warmTokens || 0} tokens (on-demand)
+  COLD: ${summary.coldTokens || 0} tokens (full files)
+  Savings: ${summary.savingsPercentage || '0%'}
+  Est. cost: ${data.costs?.perSession || '$0'}/session`
+      };
+    }
+
+    return { result: output };
+  } catch (error) {
+    return { error: `Context budget error: ${error.message}` };
+  }
+}
+
 async function handleGatewayMetrics(params) {
   const format = params?.format || 'summary';
 
@@ -866,105 +1207,6 @@ ${trends.map(d => `  ${d.date}: ${d.queries} queries, ${d.tokensSaved} tokens sa
   return {
     result: `Gateway: ${summary.totalQueries} queries | Cache ${cacheStats.hitRate} hit | ${summary.tokens.savingsRate} tokens saved | ${summary.performance.avgLatencyMs}ms avg`
   };
-}
-
-// --- AnythingLLM Document RAG handlers ---
-
-async function handleDocQuery(params) {
-  const startTime = Date.now();
-  const workspace = params.workspace || 'TERRA';
-  const mode = params.mode || 'query';
-
-  try {
-    // First, get the workspace slug
-    const workspacesRes = await fetch(`${ANYTHINGLLM_URL}/api/v1/workspaces`, {
-      headers: { 'Authorization': `Bearer ${ANYTHINGLLM_API_KEY}` }
-    });
-
-    if (!workspacesRes.ok) {
-      return { error: `AnythingLLM API error: ${workspacesRes.status} ${workspacesRes.statusText}` };
-    }
-
-    const workspacesData = await workspacesRes.json();
-    const workspaceObj = workspacesData.workspaces?.find(
-      w => w.name.toLowerCase() === workspace.toLowerCase() || w.slug === workspace
-    );
-
-    if (!workspaceObj) {
-      const available = workspacesData.workspaces?.map(w => w.name).join(', ') || 'none';
-      return { error: `Workspace '${workspace}' not found. Available: ${available}` };
-    }
-
-    // Query the workspace
-    const chatRes = await fetch(`${ANYTHINGLLM_URL}/api/v1/workspace/${workspaceObj.slug}/chat`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${ANYTHINGLLM_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: params.query,
-        mode: mode
-      })
-    });
-
-    if (!chatRes.ok) {
-      const errText = await chatRes.text();
-      return { error: `AnythingLLM chat error: ${chatRes.status} - ${errText}` };
-    }
-
-    const chatData = await chatRes.json();
-
-    // Format response with sources
-    let result = chatData.textResponse || chatData.response || 'No response';
-
-    if (chatData.sources && chatData.sources.length > 0) {
-      result += '\n\n---\nSources:\n';
-      for (const source of chatData.sources) {
-        result += `- ${source.title || source.name || 'Document'}\n`;
-      }
-    }
-
-    metrics.recordQuery({
-      tool: 'doc_query',
-      route: 'anythingllm',
-      tokensUsed: metrics.estimateTokens(result),
-      tokensSaved: 0,
-      latencyMs: Date.now() - startTime,
-      cacheHit: false
-    });
-
-    return { result };
-  } catch (error) {
-    return { error: `AnythingLLM error: ${error.message}` };
-  }
-}
-
-async function handleDocListWorkspaces() {
-  try {
-    const res = await fetch(`${ANYTHINGLLM_URL}/api/v1/workspaces`, {
-      headers: { 'Authorization': `Bearer ${ANYTHINGLLM_API_KEY}` }
-    });
-
-    if (!res.ok) {
-      return { error: `AnythingLLM API error: ${res.status}` };
-    }
-
-    const data = await res.json();
-    const workspaces = data.workspaces || [];
-
-    if (workspaces.length === 0) {
-      return { result: 'No workspaces found. Create one in AnythingLLM first.' };
-    }
-
-    const formatted = workspaces.map(w =>
-      `- ${w.name} (slug: ${w.slug})${w.documentCount ? ` - ${w.documentCount} docs` : ''}`
-    ).join('\n');
-
-    return { result: `AnythingLLM Workspaces:\n${formatted}` };
-  } catch (error) {
-    return { error: `AnythingLLM error: ${error.message}` };
-  }
 }
 
 // --- Memory tool handlers (passthrough) ---
@@ -1049,6 +1291,13 @@ async function handleMemoryHealth(params, cwd) {
   if (!projectConfig) return { error: `Project not found: ${project}` };
 
   const action = params.action || 'status';
+
+  // Handle repair action separately
+  if (action === 'repair') {
+    const output = await runPythonScript(path.join(MLX_TOOLS, 'memory_repair.py'), [project]);
+    return { result: output };
+  }
+
   const output = await runPythonScript(path.join(MLX_TOOLS, 'code_health.py'), [projectConfig.path, project, action]);
   return { result: output };
 }
@@ -1111,6 +1360,45 @@ async function handleMemorySearchAll(params) {
   return { result: output };
 }
 
+// --- Roadmap tool handler ---
+
+async function handleMemoryRoadmap(params, cwd) {
+  const project = params.project || detectProject(cwd);
+  if (!project) {
+    return { error: 'Could not detect project. Please specify project ID.' };
+  }
+
+  const action = params.action || 'status';
+  const roadmapLoaderPath = path.join(MEMORY_ROOT, 'memory', 'roadmap_loader.py');
+
+  if (!fs.existsSync(roadmapLoaderPath)) {
+    return { error: 'Roadmap loader not installed.' };
+  }
+
+  const roadmapPath = path.join(MEMORY_ROOT, 'projects', project, 'roadmap.json');
+  if (!fs.existsSync(roadmapPath) && action !== 'add') {
+    return { error: `No roadmap found for project: ${project}. Create one at ${roadmapPath}` };
+  }
+
+  try {
+    let args = [project, action];
+
+    if (action === 'complete' && params.id) {
+      args.push(params.id);
+    } else if (action === 'add' && params.title) {
+      args.push(params.title);
+      if (params.priority) {
+        args.push(params.priority);
+      }
+    }
+
+    const output = await runPythonScript(roadmapLoaderPath, args);
+    return { result: output };
+  } catch (error) {
+    return { error: `Roadmap error: ${error.message}` };
+  }
+}
+
 // --- Learning tool handlers ---
 
 async function handleReasoningQuery(params) {
@@ -1144,6 +1432,119 @@ async function handleReasoningQuery(params) {
     return { result: output || 'No relevant learning trajectories found.' };
   } catch (error) {
     return { error: `ReasoningBank error: ${error.message}` };
+  }
+}
+
+async function handleReasoningCapture(params, cwd) {
+  const startTime = Date.now();
+  const project = params.project || detectProject(cwd);
+
+  // Build the chain data
+  const chainData = {
+    trigger: params.trigger,
+    steps: params.steps,
+    conclusion: params.conclusion,
+    outcome: params.outcome,
+    domain: params.domain,
+    project: project,
+    alternatives: params.alternatives || [],
+    constraints: params.constraints || [],
+    revisitWhen: params.revisitWhen || [],
+    confidence: params.confidence || 0.8
+  };
+
+  try {
+    const chainsPath = path.join(MEMORY_ROOT, 'learning', 'reasoning_chains.py');
+    if (!fs.existsSync(chainsPath)) {
+      return { error: 'Reasoning chains module not installed.' };
+    }
+
+    const output = await runPythonScript(chainsPath, ['capture', JSON.stringify(chainData)]);
+
+    metrics.recordQuery({
+      tool: 'reasoning_capture',
+      route: 'learning',
+      tokensUsed: metrics.estimateTokens(output),
+      tokensSaved: 0,
+      latencyMs: Date.now() - startTime,
+      cacheHit: false
+    });
+
+    return { result: output };
+  } catch (error) {
+    return { error: `Reasoning capture error: ${error.message}` };
+  }
+}
+
+async function handleReasoningRecall(params, cwd) {
+  const startTime = Date.now();
+  const project = params.project || detectProject(cwd);
+
+  const args = ['recall', params.context, '--json'];
+  if (params.domain) {
+    args.push('--domain', params.domain);
+  }
+  if (project) {
+    args.push('--project', project);
+  }
+  if (params.limit) {
+    args.push('--limit', String(params.limit));
+  }
+
+  try {
+    const chainsPath = path.join(MEMORY_ROOT, 'learning', 'reasoning_chains.py');
+    if (!fs.existsSync(chainsPath)) {
+      return { error: 'Reasoning chains module not installed.' };
+    }
+
+    const output = await runPythonScript(chainsPath, args);
+
+    // Parse JSON output and format for readability
+    let chains;
+    try {
+      chains = JSON.parse(output);
+    } catch {
+      return { result: output };  // Return raw if not JSON
+    }
+
+    if (!chains || chains.length === 0) {
+      return { result: 'No relevant reasoning chains found.' };
+    }
+
+    // Format for human readability
+    const formatted = chains.map((chain, i) => {
+      let text = `\n## ${i + 1}. ${chain.trigger}\n`;
+      text += `**Conclusion:** ${chain.conclusion}\n`;
+      text += `**Outcome:** ${chain.outcome}\n`;
+      text += '**Journey:**\n';
+      for (let j = 0; j < (chain.steps || []).length; j++) {
+        const step = chain.steps[j];
+        text += `  ${j + 1}. ${step.observation} → ${step.interpretation}\n`;
+      }
+      if (chain.alternatives && chain.alternatives.length > 0) {
+        text += '**Alternatives considered:**\n';
+        for (const alt of chain.alternatives) {
+          text += `  - ${alt.option}: rejected because ${alt.rejectedBecause}\n`;
+        }
+      }
+      if (chain.revisitWhen && chain.revisitWhen.length > 0) {
+        text += `**Revisit if:** ${chain.revisitWhen.join(', ')}\n`;
+      }
+      return text;
+    }).join('\n');
+
+    metrics.recordQuery({
+      tool: 'reasoning_recall',
+      route: 'learning',
+      tokensUsed: metrics.estimateTokens(formatted),
+      tokensSaved: 0,
+      latencyMs: Date.now() - startTime,
+      cacheHit: false
+    });
+
+    return { result: `Found ${chains.length} relevant reasoning chain(s):\n${formatted}` };
+  } catch (error) {
+    return { error: `Reasoning recall error: ${error.message}` };
   }
 }
 
@@ -1292,6 +1693,202 @@ async function handleHnswStatus(params) {
   }
 }
 
+// --- PM Agent tool handlers ---
+
+async function handlePmPortfolio(params, cwd) {
+  const detail = params?.detail || 'full';
+  const project = params?.project || detectProject(cwd);
+  const pmAgentPath = path.join(MEMORY_ROOT, 'pm', 'pm_agent.py');
+
+  if (!fs.existsSync(pmAgentPath)) {
+    return { error: 'PM Agent not installed.' };
+  }
+
+  try {
+    const args = project ? [project, 'portfolio', detail] : ['_', 'portfolio', detail];
+    const output = await runPythonScript(pmAgentPath, args);
+    return { result: output || 'No portfolio data available.' };
+  } catch (error) {
+    return { error: `PM Agent error: ${error.message}` };
+  }
+}
+
+async function handlePmAsk(params, cwd) {
+  const question = params?.question;
+  if (!question) {
+    return { error: 'Question is required.' };
+  }
+
+  const project = params?.project || detectProject(cwd);
+  const pmAgentPath = path.join(MEMORY_ROOT, 'pm', 'pm_agent.py');
+
+  if (!fs.existsSync(pmAgentPath)) {
+    return { error: 'PM Agent not installed.' };
+  }
+
+  try {
+    const args = project ? [project, 'ask', question] : ['_', 'ask', question];
+    const output = await runPythonScript(pmAgentPath, args);
+    return { result: output || 'No answer available.' };
+  } catch (error) {
+    return { error: `PM Agent error: ${error.message}` };
+  }
+}
+
+// --- Cross-Project Query Handler ---
+
+async function handleProjectQuery(params, cwd) {
+  const startTime = Date.now();
+  const targetProject = params.project;
+  const query = params.query;
+  const queryType = params.type || 'memory';
+
+  // Validate project ID
+  const projectCheck = validateProjectId(targetProject);
+  if (!projectCheck.valid) {
+    return { error: projectCheck.error };
+  }
+
+  // Validate query
+  const queryCheck = validateQuery(query);
+  if (!queryCheck.valid) {
+    return { error: queryCheck.error };
+  }
+
+  // Check if project exists in config
+  const config = loadConfig();
+  const projectConfig = config.projects.find(p => p.id === targetProject);
+  if (!projectConfig) {
+    const availableProjects = config.projects.map(p => p.id).join(', ');
+    return { error: `Project not found: ${targetProject}. Available projects: ${availableProjects}` };
+  }
+
+  // Get current project for context prefix
+  const currentProject = detectProject(cwd);
+  const contextPrefix = currentProject && currentProject !== targetProject
+    ? `[Cross-project query: ${currentProject} → ${targetProject}]\n\n`
+    : `[Query: ${targetProject}]\n\n`;
+
+  try {
+    let result;
+
+    switch (queryType) {
+      case 'memory':
+        // Use hybrid search (BM25 + semantic)
+        const memoryOutput = await runPythonScript(
+          path.join(MLX_TOOLS, 'query.py'),
+          [targetProject, queryCheck.query]
+        );
+        result = contextPrefix + memoryOutput;
+        break;
+
+      case 'functions':
+        // Search functions.json directly
+        const functionsPath = path.join(MEMORY_ROOT, 'projects', targetProject, 'functions.json');
+        if (!fs.existsSync(functionsPath)) {
+          return { error: `Functions index not found for project: ${targetProject}` };
+        }
+        const functions = JSON.parse(fs.readFileSync(functionsPath, 'utf8'));
+        const searchTerm = queryCheck.query.toLowerCase();
+        const funcResults = [];
+
+        for (const [funcName, locations] of Object.entries(functions.functions || {})) {
+          if (funcName.toLowerCase().includes(searchTerm)) {
+            for (const loc of locations) {
+              funcResults.push({ name: funcName, file: loc.file, line: loc.line, type: loc.type || 'function' });
+            }
+          }
+        }
+
+        if (funcResults.length === 0) {
+          result = contextPrefix + `No functions found matching: ${query}`;
+        } else {
+          const formatted = funcResults.slice(0, 20).map(r =>
+            `${r.name}() [${r.type}] at ${r.file}:${r.line}`
+          ).join('\n');
+          result = contextPrefix + `Found ${funcResults.length} function(s) in ${targetProject}:\n${formatted}`;
+        }
+        break;
+
+      case 'similar':
+        // Find similar files using hybrid search
+        const similarOutput = await runPythonScript(
+          path.join(MLX_TOOLS, 'hybrid_search.py'),
+          [targetProject, queryCheck.query, '--limit', '10']
+        );
+        result = contextPrefix + similarOutput;
+        break;
+
+      case 'decisions':
+        // Search past decisions
+        const decisionsPath = path.join(MEMORY_ROOT, 'projects', targetProject, 'decisions.json');
+        if (!fs.existsSync(decisionsPath)) {
+          return { error: `No decisions recorded for project: ${targetProject}` };
+        }
+        const decisions = JSON.parse(fs.readFileSync(decisionsPath, 'utf8'));
+        const searchLower = queryCheck.query.toLowerCase();
+
+        const matchingDecisions = (decisions.decisions || []).filter(d => {
+          const searchText = `${d.summary || ''} ${d.reason || ''} ${d.context || ''}`.toLowerCase();
+          return searchLower.split(' ').some(term => searchText.includes(term));
+        });
+
+        if (matchingDecisions.length === 0) {
+          result = contextPrefix + `No decisions found matching: ${query}`;
+        } else {
+          const formatted = matchingDecisions.slice(0, 10).map(d =>
+            `• ${d.summary}\n  Reason: ${d.reason || 'Not specified'}\n  Date: ${d.date || 'Unknown'}`
+          ).join('\n\n');
+          result = contextPrefix + `Found ${matchingDecisions.length} decision(s) in ${targetProject}:\n\n${formatted}`;
+        }
+        break;
+
+      case 'patterns':
+        // Search observations for patterns
+        const observationsPath = path.join(MEMORY_ROOT, 'projects', targetProject, 'observations.json');
+        if (!fs.existsSync(observationsPath)) {
+          return { error: `No observations recorded for project: ${targetProject}` };
+        }
+        const observations = JSON.parse(fs.readFileSync(observationsPath, 'utf8'));
+        const patternSearch = queryCheck.query.toLowerCase();
+
+        const matchingPatterns = (observations.observations || []).filter(o => {
+          if (o.type !== 'pattern' && o.type !== 'implementation') return false;
+          const searchText = `${o.content || ''} ${o.summary || ''}`.toLowerCase();
+          return patternSearch.split(' ').some(term => searchText.includes(term));
+        });
+
+        if (matchingPatterns.length === 0) {
+          result = contextPrefix + `No patterns found matching: ${query}`;
+        } else {
+          const formatted = matchingPatterns.slice(0, 10).map(p =>
+            `• ${p.summary || p.content?.substring(0, 100) || 'No summary'}`
+          ).join('\n');
+          result = contextPrefix + `Found ${matchingPatterns.length} pattern(s) in ${targetProject}:\n${formatted}`;
+        }
+        break;
+
+      default:
+        return { error: `Unknown query type: ${queryType}` };
+    }
+
+    const tokensUsed = metrics.estimateTokens(result);
+
+    metrics.recordQuery({
+      tool: 'project_query',
+      route: 'memory',
+      tokensUsed,
+      tokensSaved: tokensUsed, // Would have been context switch + multiple queries
+      latencyMs: Date.now() - startTime,
+      cacheHit: false
+    });
+
+    return { result };
+  } catch (error) {
+    return { error: `Cross-project query error: ${error.message}` };
+  }
+}
+
 // =============================================================================
 // MCP SERVER
 // =============================================================================
@@ -1369,16 +1966,23 @@ class MCPServer {
         case 'smart_edit':
           result = await handleSmartEdit(args, this.currentCwd);
           break;
+
+        // Local LLM tools (Ollama - FREE)
+        case 'local_ask':
+          result = await handleLocalAsk(args, this.currentCwd);
+          break;
+        case 'local_review':
+          result = await handleLocalReview(args, this.currentCwd);
+          break;
+
         case 'gateway_metrics':
           result = await handleGatewayMetrics(args);
           break;
-
-        // Document RAG tools (AnythingLLM)
-        case 'doc_query':
-          result = await handleDocQuery(args);
+        case 'context_budget':
+          result = await handleContextBudget(args, this.currentCwd);
           break;
-        case 'doc_list_workspaces':
-          result = await handleDocListWorkspaces();
+        case 'pattern_review':
+          result = await handlePatternReview(args, this.currentCwd);
           break;
 
         // Memory tools
@@ -1407,9 +2011,20 @@ class MCPServer {
           result = await handleMemorySearchAll(args);
           break;
 
+        // Roadmap tool
+        case 'memory_roadmap':
+          result = await handleMemoryRoadmap(args, this.currentCwd);
+          break;
+
         // Learning tools
         case 'reasoning_query':
           result = await handleReasoningQuery(args);
+          break;
+        case 'reasoning_capture':
+          result = await handleReasoningCapture(args, this.currentCwd);
+          break;
+        case 'reasoning_recall':
+          result = await handleReasoningRecall(args, this.currentCwd);
           break;
         case 'learning_status':
           result = await handleLearningStatus(args, this.currentCwd);
@@ -1419,6 +2034,19 @@ class MCPServer {
           break;
         case 'hnsw_status':
           result = await handleHnswStatus(args);
+          break;
+
+        // PM Agent tools
+        case 'pm_portfolio':
+          result = await handlePmPortfolio(args, this.currentCwd);
+          break;
+        case 'pm_ask':
+          result = await handlePmAsk(args, this.currentCwd);
+          break;
+
+        // Cross-project query tool
+        case 'project_query':
+          result = await handleProjectQuery(args, this.currentCwd);
           break;
 
         default:

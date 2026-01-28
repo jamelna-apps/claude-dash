@@ -42,7 +42,7 @@ def check_ollama():
             # Check for recommended models (gemma3 or phi3 for general tasks)
             has_chat_model = any(m.startswith(('gemma', 'phi3', 'qwen')) for m in models)
             if not has_chat_model:
-                warnings.append(f"No chat model found. Available: {models}. Recommended: gemma3:4b")
+                warnings.append(f"No chat model found. Available: {models}. Recommended: gemma3:4b-it-qat")
                 return True, "missing_chat_model"
 
             return True, "ok"
@@ -73,11 +73,11 @@ def fix_ollama(status):
             return False
 
     elif status == "no_models":
-        issues.append("Ollama has no models. Run: ollama pull gemma3:4b")
+        issues.append("Ollama has no models. Run: ollama pull gemma3:4b-it-qat")
         return False
 
     elif status == "missing_chat_model":
-        warnings.append("Consider running: ollama pull gemma3:4b")
+        warnings.append("Consider running: ollama pull gemma3:4b-it-qat")
         return True  # Not critical
 
     return True

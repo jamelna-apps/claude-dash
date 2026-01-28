@@ -12,12 +12,13 @@ const CACHE_DIR = path.join(process.env.HOME, '.claude-dash', 'cache');
 
 // Default TTLs in seconds
 const DEFAULT_TTLS = {
-  gitStatus: 30,
-  fileList: 300,      // 5 minutes
-  npmList: 3600,      // 1 hour
-  fileRead: 600,      // 10 minutes
-  query: 300,         // 5 minutes
-  default: 60
+  gitStatus: 60,       // 1 minute (was 30)
+  fileList: 600,       // 10 minutes (was 5)
+  npmList: 3600,       // 1 hour
+  fileRead: 900,       // 15 minutes (was 10)
+  query: 600,          // 10 minutes (was 5)
+  command: 300,        // 5 minutes for command results
+  default: 120         // 2 minutes (was 1)
 };
 
 // Cache size limits to prevent unbounded growth
@@ -126,8 +127,8 @@ class Cache {
     // Store in memory
     this.memory.set(key, entry);
 
-    // Persist to disk for longer-lived entries
-    if (ttl > 60) {
+    // Persist to disk for longer-lived entries (lowered threshold for better cross-session caching)
+    if (ttl > 30) {
       // Check disk cache limits before writing
       this.enforceDiskLimits();
 

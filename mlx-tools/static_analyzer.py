@@ -42,6 +42,35 @@ class StaticAnalyzer:
         self.issue_counter = 0
         self.files_scanned = 0
         self.files_cached = 0
+        self.config = self._load_health_config()
+
+    def _load_health_config(self) -> Dict:
+        """Load project-specific health config."""
+        config_path = self.memory_root / "projects" / self.project_id / "health_config.json"
+        if config_path.exists():
+            try:
+                with open(config_path) as f:
+                    return json.load(f)
+            except:
+                pass
+        return {"ignore": {"security": [], "performance": []}}
+
+    def _is_ignored(self, category: str, file_path: str) -> bool:
+        """Check if an issue should be ignored based on config."""
+        import fnmatch
+        ignore_rules = self.config.get("ignore", {}).get(category, [])
+
+        for rule in ignore_rules:
+            if "pattern" in rule:
+                pattern = rule["pattern"]
+                # Directory pattern (ends with /) - match files within that directory
+                if pattern.endswith("/"):
+                    if file_path.startswith(pattern) or f"/{pattern}" in f"/{file_path}":
+                        return True
+                # File pattern - match against path or filename
+                elif fnmatch.fnmatch(file_path, f"*{pattern}") or fnmatch.fnmatch(Path(file_path).name, pattern):
+                    return True
+        return False
 
     def _load_memory_data(self) -> tuple:
         """Load index.json and previous health.json for incremental scanning."""
@@ -139,7 +168,7 @@ class StaticAnalyzer:
         """Get all JavaScript/TypeScript source files, excluding node_modules during traversal."""
         extensions = {'.js', '.jsx', '.ts', '.tsx', '.py'}
         files = []
-        exclude_dirs = {'node_modules', '.git', 'dist', 'build', '__pycache__', '.next', '.worktrees'}
+        exclude_dirs = {'node_modules', '.git', 'dist', 'build', '__pycache__', '.next', '.vercel', '.worktrees', 'coverage', '.turbo', '.cache', '.venv', 'venv', 'env'}
 
         def scan_dir(directory: Path):
             try:
@@ -180,9 +209,15 @@ class StaticAnalyzer:
             (r'secret\s*[=:]\s*["\'][^"\']+["\']', "Hardcoded secret", Severity.CRITICAL, "assisted", "Move to environment variable"),
             (r'\beval\s*\(', "Use of eval() - code injection risk", Severity.HIGH, "auto", "Remove eval() call"),
             (r'dangerouslySetInnerHTML', "dangerouslySetInnerHTML - XSS risk", Severity.HIGH, "semi-auto", "Use safe rendering"),
-            (r'innerHTML\s*=', "Direct innerHTML assignment - XSS risk", Severity.MEDIUM, "auto", "Use textContent instead"),
+            (r'(?<!dangerouslySet)innerHTML\s*=', "Direct innerHTML assignment - XSS risk", Severity.MEDIUM, "auto", "Use textContent instead"),
             (r'document\.write\s*\(', "document.write() usage", Severity.MEDIUM, "auto", "Remove document.write()"),
         ]
+
+        # Check for safe patterns in file content
+        is_test_file = re.search(r'\.(test|spec)\.(ts|tsx|js|jsx)$', file_path) or '__tests__' in file_path
+        has_dompurify = 'DOMPurify' in content
+        is_jsonld_file = 'application/ld+json' in content or 'JsonLd' in file_path
+        uses_json_stringify = 'JSON.stringify' in content and 'dangerouslySetInnerHTML' in content
 
         for i, line in enumerate(lines, 1):
             stripped = line.strip()
@@ -191,6 +226,14 @@ class StaticAnalyzer:
                 continue
             for pattern, message, severity, fix_type, fix_desc in patterns:
                 if re.search(pattern, line, re.IGNORECASE):
+                    # Smart exceptions for common safe patterns
+                    if 'api[_-]?key' in pattern and is_test_file:
+                        continue  # Test mock API keys are safe
+                    if 'dangerouslySetInnerHTML' in pattern and (is_jsonld_file or uses_json_stringify):
+                        continue  # JSON-LD SEO patterns are safe
+                    if 'innerHTML' in pattern and has_dompurify:
+                        continue  # DOMPurify-sanitized innerHTML is safe
+
                     self._add_issue(
                         severity=severity.value,
                         category="security",
@@ -238,13 +281,13 @@ class StaticAnalyzer:
             if re.search(r'\bconsole\.(log|debug|info)\s*\(', line):
                 self._add_issue(
                     severity=Severity.LOW.value,
-                    category="performance",
-                    message="console.log in production code",
+                    category="suggestions",  # Doesn't affect score - babel strips in production
+                    message="console.log (auto-stripped in production)",
                     file=file_path,
                     line=i,
                     code_snippet=line.strip()[:100],
-                    fix_type="auto",
-                    fix_description="Remove console statement"
+                    fix_type="info",
+                    fix_description="Auto-removed by babel in production builds"
                 )
 
     def _check_todo_fixme(self, file_path: str, content: str, lines: List[str]):
@@ -253,13 +296,13 @@ class StaticAnalyzer:
             if re.search(r'\b(TODO|FIXME|HACK|XXX)\b', line, re.IGNORECASE):
                 self._add_issue(
                     severity=Severity.LOW.value,
-                    category="maintenance",
-                    message="Unresolved TODO/FIXME comment",
+                    category="suggestions",  # Doesn't affect score - just reminders
+                    message="TODO/FIXME comment",
                     file=file_path,
                     line=i,
                     code_snippet=line.strip()[:100],
-                    fix_type="manual",
-                    fix_description="Address or remove comment"
+                    fix_type="info",
+                    fix_description="Reminder for future work"
                 )
 
     def _check_long_functions(self, file_path: str, content: str, lines: List[str]):
@@ -287,7 +330,13 @@ class StaticAnalyzer:
             pass
 
     def _add_issue(self, **kwargs):
-        """Add an issue to the list."""
+        """Add an issue to the list, unless ignored by config."""
+        # Check if this issue should be ignored
+        category = kwargs.get("category", "")
+        file_path = kwargs.get("file", "")
+        if self._is_ignored(category, file_path):
+            return  # Skip ignored issues
+
         self.issue_counter += 1
         self.issues.append(Issue(
             id=f"ISSUE-{self.issue_counter:04d}",

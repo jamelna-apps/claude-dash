@@ -1,0 +1,161 @@
+{
+  "version": "1.0",
+  "description": "Claude-Dash Skills Registry - Domain expertise modules that activate based on prompt keywords",
+  "skills": {
+    "core": [
+      {
+        "name": "debug-strategy",
+        "path": "core/debug-strategy/SKILL.md",
+        "triggers": ["bug", "error", "not working", "broken", "crash", "fails", "issue", "problem"],
+        "description": "Systematic debugging approaches"
+      },
+      {
+        "name": "performance-audit",
+        "path": "core/performance-audit/SKILL.md",
+        "triggers": ["slow", "performance", "optimize", "speed", "lag", "loading", "memory", "CPU"],
+        "description": "Performance analysis framework"
+      },
+      {
+        "name": "refactor-guide",
+        "path": "core/refactor-guide/SKILL.md",
+        "triggers": ["refactor", "clean up", "technical debt", "restructure", "reorganize"],
+        "description": "Safe refactoring practices"
+      },
+      {
+        "name": "api-design",
+        "path": "core/api-design/SKILL.md",
+        "triggers": ["API", "endpoint", "REST", "GraphQL", "API route", "request", "response"],
+        "description": "API design patterns"
+      },
+      {
+        "name": "code-review",
+        "path": "core/code-review/SKILL.md",
+        "triggers": ["review", "PR", "pull request", "code review", "check my code", "feedback"],
+        "description": "Code review guidelines"
+      },
+      {
+        "name": "testing-strategy",
+        "path": "core/testing-strategy/SKILL.md",
+        "triggers": ["test", "testing", "unit test", "integration", "e2e", "coverage", "TDD", "mock"],
+        "description": "Testing approaches"
+      },
+      {
+        "name": "app-store-submission",
+        "path": "core/app-store-submission/SKILL.md",
+        "triggers": ["app store", "app store connect", "privacy declaration", "data tracking", "app submission", "iOS submission", "app review", "privacy labels"],
+        "description": "App Store Connect submission and privacy declarations"
+      },
+      {
+        "name": "smart-routing",
+        "path": "core/smart-routing/SKILL.md",
+        "triggers": ["model routing", "which model", "complex task", "multi-file", "architectural", "deep debugging", "local vs claude", "cost savings"],
+        "description": "Local vs Claude routing decisions for cost optimization"
+      },
+      {
+        "name": "correction-learning",
+        "path": "core/correction-learning/SKILL.md",
+        "triggers": ["no I meant", "that's wrong", "actually", "I prefer", "always use", "don't suggest", "not X but Y", "use X instead"],
+        "description": "Real-time learning from user corrections"
+      },
+      {
+        "name": "knowledge-consolidation",
+        "path": "core/knowledge-consolidation/SKILL.md",
+        "triggers": ["remember this", "pattern", "decision", "gotcha", "bug fix", "next time", "learned", "consolidate"],
+        "description": "RETRIEVE→JUDGE→DISTILL→CONSOLIDATE learning cycle"
+      },
+      {
+        "name": "portfolio-intelligence",
+        "path": "core/portfolio-intelligence/SKILL.md",
+        "triggers": ["portfolio", "across projects", "compare projects", "project health", "PR description", "cross-project"],
+        "description": "Cross-project strategic guidance and PR generation"
+      },
+      {
+        "name": "rag-enhancement",
+        "path": "core/rag-enhancement/SKILL.md",
+        "triggers": ["explain", "how does", "understand", "background on", "context for", "why does"],
+        "description": "Auto-enhance explanations with retrieved decision history"
+      },
+      {
+        "name": "confidence-calibration",
+        "path": "core/confidence-calibration/SKILL.md",
+        "triggers": ["confidence", "accuracy", "how sure", "uncertain", "reliable", "track record", "calibration"],
+        "description": "Domain-aware self-assessment and calibrated uncertainty"
+      },
+      {
+        "name": "git-workflow",
+        "path": "core/git-workflow/SKILL.md",
+        "triggers": ["commit", "branch", "merge", "git history", "what changed", "since last session", "git context"],
+        "description": "Session continuity via git awareness and commit guidance"
+      },
+      {
+        "name": "error-diagnosis",
+        "path": "core/error-diagnosis/SKILL.md",
+        "triggers": ["exception", "stack trace", "crashed", "categorize error", "root cause", "failed"],
+        "description": "Structured error categorization and prevention strategies"
+      },
+      {
+        "name": "code-health-remediation",
+        "path": "core/code-health-remediation/SKILL.md",
+        "triggers": ["dead code", "duplicates", "code cleanup", "tech debt", "health scan", "remediation", "unused"],
+        "description": "Act on health scan results - safe code cleanup guidance"
+      },
+      {
+        "name": "index-freshness",
+        "path": "core/index-freshness/SKILL.md",
+        "triggers": ["stale", "outdated", "reindex", "sync", "refresh index", "embeddings outdated"],
+        "description": "Index maintenance and freshness detection"
+      },
+      {
+        "name": "mode-awareness",
+        "path": "core/mode-awareness/SKILL.md",
+        "triggers": ["switch mode", "debugging mode", "exploration mode", "feature mode", "refactor mode", "infrastructure mode"],
+        "description": "Mode-specific approach guidance for detected work patterns"
+      },
+      {
+        "name": "session-handoff",
+        "path": "core/session-handoff/SKILL.md",
+        "triggers": ["continue", "pick up", "last time", "previous session", "what were we doing", "left off"],
+        "description": "Session continuity and structured context handoff"
+      },
+      {
+        "name": "cost-tracking",
+        "path": "core/cost-tracking/SKILL.md",
+        "triggers": ["spending", "usage", "tokens", "API cost", "budget", "expensive", "cost"],
+        "description": "API cost awareness and optimization guidance"
+      },
+      {
+        "name": "claude-dash-admin",
+        "path": "core/claude-dash-admin/SKILL.md",
+        "triggers": ["system health", "system cleanup", "optimize claude-dash", "memory system", "indexes", "watcher"],
+        "description": "Self-maintenance and system administration guidance"
+      }
+    ],
+    "marketing": [
+      {
+        "name": "pricing-strategy",
+        "path": "marketing/pricing-strategy/SKILL.md",
+        "triggers": ["pricing", "price", "monetization", "subscription", "tiers", "freemium"],
+        "description": "Pricing and monetization strategies"
+      },
+      {
+        "name": "launch-strategy",
+        "path": "marketing/launch-strategy/SKILL.md",
+        "triggers": ["launch", "release", "announcement", "go-to-market", "GTM"],
+        "description": "Product launch planning"
+      },
+      {
+        "name": "free-tool-strategy",
+        "path": "marketing/free-tool-strategy/SKILL.md",
+        "triggers": ["free tool", "engineering as marketing", "lead magnet", "calculator", "generator"],
+        "description": "Engineering-as-marketing tools"
+      },
+      {
+        "name": "page-cro",
+        "path": "marketing/page-cro/SKILL.md",
+        "triggers": ["conversion", "CRO", "landing page", "not converting", "bounce rate", "optimize page"],
+        "description": "Page conversion optimization"
+      }
+    ]
+  },
+  "project_skills": {}
+}

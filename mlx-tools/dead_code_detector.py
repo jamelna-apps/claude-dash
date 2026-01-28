@@ -64,9 +64,20 @@ class DeadCodeDetector:
                 if Path(file_path).name == rule["file"] or file_path == rule["file"]:
                     return True, rule.get("reason", "Ignored by config")
 
-            # Check pattern
-            if "pattern" in rule:
-                if fnmatch.fnmatch(file_path, rule["pattern"]):
+            # Check file pattern (e.g., "page.tsx", "*.test.ts", "scripts/")
+            if "pattern" in rule and "name" not in rule:
+                pattern = rule["pattern"]
+                # Directory pattern (ends with /) - match files within that directory
+                if pattern.endswith("/"):
+                    if file_path.startswith(pattern) or f"/{pattern}" in f"/{file_path}":
+                        return True, rule.get("reason", "Ignored by config")
+                # File pattern - match against path or filename
+                elif fnmatch.fnmatch(file_path, f"*{pattern}") or fnmatch.fnmatch(Path(file_path).name, pattern):
+                    return True, rule.get("reason", "Ignored by config")
+
+            # Check export name (e.g., "metadata", "GET", "POST")
+            if "name" in rule and name:
+                if name == rule["name"]:
                     return True, rule.get("reason", "Ignored by config")
 
         return False, None
@@ -269,15 +280,24 @@ class DeadCodeDetector:
 
             # If file is never imported, all its exports are unused
             if file_path not in all_imported:
-                is_ignored, ignore_reason = self._is_ignored(file_path)
+                # Check if entire file is ignored
+                file_ignored, file_reason = self._is_ignored(file_path)
+                if file_ignored:
+                    continue  # Skip this entire file
+
                 for exp in file_exports:
+                    # Check if this specific export name is ignored
+                    name_ignored, name_reason = self._is_ignored(file_path, exp["name"])
+                    if name_ignored:
+                        continue  # Skip this export
+
                     dead.append(DeadCode(
                         type="unused_export",
                         name=exp["name"],
                         file=file_path,
                         line=exp["line"],
-                        confidence="low" if is_ignored else "medium",
-                        reason=ignore_reason if is_ignored else "File is never imported"
+                        confidence="medium",
+                        reason="File is never imported"
                     ))
 
         return dead
@@ -293,6 +313,11 @@ class DeadCodeDetector:
         for file_path, file_imports in imports.items():
             # Skip known entry points and configs
             if any(entry in file_path for entry in ['index.', 'App.', 'main.', 'config', 'test', 'spec', '.d.ts']):
+                continue
+
+            # Check if file is ignored by config (e.g., page.tsx, route.ts)
+            is_ignored, _ = self._is_ignored(file_path)
+            if is_ignored:
                 continue
 
             # Orphan: not imported and doesn't import much
@@ -344,7 +369,7 @@ class DeadCodeDetector:
         files = []
         # Merge default and config excludes
         config_excludes = set(self.config.get("exclude_dirs", []))
-        exclude_dirs = {'node_modules', '.git', 'dist', 'build', '.next', '.worktrees'} | config_excludes
+        exclude_dirs = {'node_modules', '.git', 'dist', 'build', '.next', '.vercel', '.worktrees', 'coverage', '.turbo', '.cache', '.venv', 'venv', 'env'} | config_excludes
 
         def scan_dir(directory: Path):
             try:

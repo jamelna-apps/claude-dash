@@ -99,24 +99,129 @@ def detect_correction(message):
 
 def extract_correction_context(message, previous_context=None):
     """Extract what was wrong and what's correct."""
-    # Simple extraction - can be enhanced with Ollama
     correction = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "user_message": message[:500],
         "previous_context": previous_context[:500] if previous_context else None,
     }
 
-    # Try to extract the "not X, but Y" pattern
-    not_but_match = re.search(r"not\s+['\"]?(\w+)['\"]?[,.]?\s+(?:but\s+)?['\"]?(\w+)['\"]?", message.lower())
-    if not_but_match:
-        correction["wrong"] = not_but_match.group(1)
-        correction["correct"] = not_but_match.group(2)
+    msg_lower = message.lower()
+
+    # Pattern 1: "use X not Y" or "use X instead of Y"
+    use_not_match = re.search(r"use\s+([^\s,]+(?:\s+[^\s,]+)?)\s+(?:not|instead\s+of)\s+([^\s,]+)", msg_lower)
+    if use_not_match:
+        correction["correct"] = use_not_match.group(1)
+        correction["wrong"] = use_not_match.group(2)
+        return correction
+
+    # Pattern 2: "no, I meant X" or "I meant X not Y"
+    meant_match = re.search(r"(?:no[,.]?\s+)?i\s+meant\s+(?:use\s+)?([^\s,]+(?:\.[^\s,]+)?)", msg_lower)
+    if meant_match:
+        correction["correct"] = meant_match.group(1)
+        return correction
+
+    # Pattern 3: "should be X not Y"
+    should_be_match = re.search(r"should\s+be\s+([^\s,]+)\s+not\s+([^\s,]+)", msg_lower)
+    if should_be_match:
+        correction["correct"] = should_be_match.group(1)
+        correction["wrong"] = should_be_match.group(2)
+        return correction
+
+    # Pattern 4: "it's X not Y" (capturing multi-part identifiers)
+    its_not_match = re.search(r"it'?s\s+([^\s,]+(?:\.[^\s,]+)?)\s+not\s+([^\s,]+)", msg_lower)
+    if its_not_match:
+        correction["correct"] = its_not_match.group(1)
+        correction["wrong"] = its_not_match.group(2)
+        return correction
+
+    # Pattern 5: "prefer X over Y"
+    prefer_over_match = re.search(r"prefer\s+([^\s,]+)\s+over\s+([^\s,]+)", msg_lower)
+    if prefer_over_match:
+        correction["correct"] = prefer_over_match.group(1)
+        correction["wrong"] = prefer_over_match.group(2)
+        return correction
+
+    # Pattern 6: "always use X"
+    always_match = re.search(r"always\s+use\s+([^\s,]+(?:[\s-]+\w+)?)", msg_lower)
+    if always_match:
+        correction["correct"] = always_match.group(1)
+        return correction
+
+    # Pattern 7: "don't use X" or "never use X" or "stop using X"
+    dont_match = re.search(r"(?:don'?t|never|stop)\s+(?:use|using)\s+([^\s,]+(?:\s+\w+)?)", msg_lower)
+    if dont_match:
+        correction["wrong"] = dont_match.group(1)
+        return correction
+
+    # Pattern 8: "do not add/do/make X"
+    donot_match = re.search(r"do\s+not\s+(?:add|do|make|create|put)\s+([^\s,]+(?:\s+[^\s,]+)?)", msg_lower)
+    if donot_match:
+        correction["wrong"] = donot_match.group(1)
+        return correction
+
+    # Pattern 9: "uses X instead" or "have X now"
+    have_now_match = re.search(r"(?:have|using?)\s+([^\s,]+)\s+(?:now|instead)", msg_lower)
+    if have_now_match:
+        correction["correct"] = have_now_match.group(1)
+        return correction
 
     return correction
 
 
+def is_quality_correction(message):
+    """Filter out false positive corrections (build output, errors, instructions)."""
+    msg = message.lower()
+
+    # Skip if message looks like build/error output (common false positives)
+    build_output_patterns = [
+        r'^\s*›',                    # Expo/npm progress lines
+        r'^\s*\d+\.\d+\.\d+',        # Version numbers at start
+        r'error\s*\(exit\s*\d+\)',   # Exit codes
+        r'npm\s+(run|install|start|test)',  # npm commands
+        r'compiling\s+\w+\s+pods',   # iOS compilation
+        r'shell\s+cwd\s+was\s+reset', # Shell resets
+        r'http://\d+\.\d+\.\d+\.\d+:\d+',  # IP:port URLs
+        r'waiting\s+for\s+watchman',  # Watchman output
+        r'^\s*at\s+\w+\s+\(',        # Stack traces
+        r'npx\s+expo',               # Expo commands
+        r'eas\s+build',              # EAS commands
+    ]
+
+    for pattern in build_output_patterns:
+        if re.search(pattern, msg):
+            return False
+
+    # Skip if message is too long (likely pasted output, not a correction)
+    if len(message) > 500:
+        return False
+
+    # Skip if message has too many newlines (likely pasted output)
+    if message.count('\n') > 3:
+        return False
+
+    # Must have a clear correction signal (not just matching a vague pattern)
+    clear_signals = [
+        r'\bno[,.]?\s+i\s+meant\b',
+        r'\bno[,.]?\s+use\b',
+        r'\bactually[,.]?\s+i\s+(want|meant|need)\b',
+        r'\buse\s+\w+\s+not\s+\w+\b',
+        r'\buse\s+\w+\s+instead\b',
+        r"\bi\s+prefer\b",
+        r"\balways\s+use\b",
+        r"\bnever\s+use\b",
+    ]
+
+    has_clear_signal = any(re.search(p, msg) for p in clear_signals)
+
+    return has_clear_signal
+
+
 def record_correction(message, previous_context=None, topic=None, project_id=None):
     """Record a correction for future learning."""
+    # Quality filter - skip false positives
+    if not is_quality_correction(message):
+        return None
+
     data = load_corrections()
 
     correction = extract_correction_context(message, previous_context)
@@ -139,20 +244,30 @@ def record_correction(message, previous_context=None, topic=None, project_id=Non
     save_corrections(data)
 
     # === REASONING BANK INTEGRATION ===
-    # Also record to ReasoningBank for RETRIEVE→JUDGE→DISTILL cycle
-    try:
-        from reasoning_bank import record_trajectory
-        record_trajectory(
-            context=previous_context or "",
-            problem=message[:200],
-            solution=correction.get("correct", message[:100]),
-            domain=topic,
-            project_id=project_id
-        )
-    except ImportError:
-        pass  # ReasoningBank not available
-    except Exception:
-        pass  # Non-critical - don't fail correction recording
+    # Only record to ReasoningBank if we extracted a meaningful correction
+    # Don't pollute with garbage solutions
+    if correction.get("correct") or correction.get("wrong"):
+        try:
+            from reasoning_bank import record_trajectory
+            # Build meaningful solution string
+            solution_parts = []
+            if correction.get("correct"):
+                solution_parts.append(f"Use: {correction['correct']}")
+            if correction.get("wrong"):
+                solution_parts.append(f"Avoid: {correction['wrong']}")
+            solution = "; ".join(solution_parts)
+
+            record_trajectory(
+                context=previous_context or message[:200],  # Use message as context fallback
+                problem=message[:200],
+                solution=solution,
+                domain=topic,
+                project_id=project_id
+            )
+        except ImportError:
+            pass  # ReasoningBank not available
+        except Exception:
+            pass  # Non-critical - don't fail correction recording
 
     return correction
 
