@@ -43,12 +43,13 @@ def get_last_session_time(project_id):
     return None
 
 
-def run_git_command(cmd, cwd):
-    """Run a git command and return output."""
+def run_git_command(args, cwd):
+    """Run a git command and return output.
+    SECURITY: Uses array form to prevent shell injection.
+    """
     try:
         result = subprocess.run(
-            cmd,
-            shell=True,
+            args,
             cwd=cwd,
             capture_output=True,
             text=True,
@@ -59,10 +60,30 @@ def run_git_command(cmd, cwd):
         return None
 
 
+def validate_date_string(date_str):
+    """Validate date string to prevent injection."""
+    import re
+    # Allow ISO dates, relative dates like "7 days ago", or simple formats
+    safe_patterns = [
+        r'^\d{4}-\d{2}-\d{2}$',  # YYYY-MM-DD
+        r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}',  # ISO format
+        r'^\d+\s+(day|week|month|year)s?\s+ago$',  # Relative dates
+        r'^yesterday$',
+        r'^last\s+(week|month|year)$',
+    ]
+    return any(re.match(p, date_str, re.IGNORECASE) for p in safe_patterns)
+
+
 def get_commits_since(project_path, since_date):
     """Get commits since a date."""
-    cmd = f'git log --since="{since_date}" --pretty=format:"%h|%an|%s|%ai" --no-merges'
-    output = run_git_command(cmd, project_path)
+    # SECURITY: Validate date to prevent injection
+    if not validate_date_string(since_date):
+        return []
+
+    output = run_git_command(
+        ['git', 'log', f'--since={since_date}', '--pretty=format:%h|%an|%s|%ai', '--no-merges'],
+        project_path
+    )
 
     if not output:
         return []
@@ -85,13 +106,33 @@ def get_commits_since(project_path, since_date):
 
 def get_files_changed_since(project_path, since_date):
     """Get files changed since a date."""
-    cmd = f'git diff --name-only $(git rev-list -1 --before="{since_date}" HEAD) HEAD 2>/dev/null'
-    output = run_git_command(cmd, project_path)
+    # SECURITY: Validate date to prevent injection
+    if not validate_date_string(since_date):
+        return []
+
+    # Get the commit hash from before the date first
+    rev_output = run_git_command(
+        ['git', 'rev-list', '-1', f'--before={since_date}', 'HEAD'],
+        project_path
+    )
+
+    if rev_output:
+        output = run_git_command(
+            ['git', 'diff', '--name-only', rev_output, 'HEAD'],
+            project_path
+        )
+    else:
+        output = None
 
     if not output:
         # Fallback: get files from recent commits
-        cmd = f'git log --since="{since_date}" --name-only --pretty=format: | sort -u'
-        output = run_git_command(cmd, project_path)
+        output = run_git_command(
+            ['git', 'log', f'--since={since_date}', '--name-only', '--pretty=format:'],
+            project_path
+        )
+        if output:
+            # Remove duplicates
+            output = '\n'.join(sorted(set(output.split('\n'))))
 
     if not output:
         return []

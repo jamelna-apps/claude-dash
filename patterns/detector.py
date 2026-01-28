@@ -28,7 +28,7 @@ try:
     OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", _MODEL)
 except ImportError:
     OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-    OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma3:4b")
+    OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma3:4b-it-qat")
 
 
 def load_patterns():

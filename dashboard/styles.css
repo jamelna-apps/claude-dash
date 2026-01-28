@@ -4148,7 +4148,7 @@ body {
 /* Reports */
 .reports-view {
   padding: 20px;
-  max-width: 900px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
@@ -4160,12 +4160,16 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .reports-header h3 {
   color: #fff;
   margin: 0;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .reports-list {
@@ -4393,59 +4397,69 @@ body {
 /* ===== EFFICIENCY METRICS STYLES ===== */
 
 .efficiency-section {
-  margin-top: 32px;
-  padding-top: 32px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 24px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.efficiency-section:first-of-type {
+  margin-top: 24px;
 }
 
 .efficiency-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .efficiency-header h3 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
 }
 
 /* Stat Cards */
 .efficiency-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-  margin-bottom: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
 }
 
 .efficiency-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 16px;
   text-align: center;
 }
 
 .efficiency-card-label {
-  font-size: 12px;
-  color: #888;
+  font-size: 11px;
+  color: #aaa;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
+  font-weight: 500;
 }
 
 .efficiency-card-value {
-  font-size: 32px;
-  font-weight: 600;
+  font-size: 28px;
+  font-weight: 700;
   color: #fff;
   line-height: 1.2;
 }
 
 .efficiency-card-sub {
-  font-size: 12px;
-  color: #666;
-  margin-top: 4px;
+  font-size: 11px;
+  color: #888;
+  margin-top: 6px;
 }
 
 /* Progress Bars */
@@ -4976,4 +4990,692 @@ body {
   text-align: center;
   color: #666;
   font-size: 13px;
+}
+
+/* Token Metrics Section */
+.projection-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.metrics-table thead tr {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.metrics-table th {
+  font-weight: 600;
+  font-size: 12px;
+  color: #ccc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.metrics-table td {
+  font-size: 13px;
+  color: #aaa;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.metrics-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.metrics-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Collapsible Reports Sections */
+.collapsible-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+  border-radius: 8px;
+  margin: -12px -12px 16px -12px;
+  padding: 12px;
+}
+
+.collapsible-header:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.toggle-icon {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: bold;
+  transition: transform 0.2s ease;
+  min-width: 16px;
+  color: #666;
+}
+
+.collapsible-content {
+  max-height: 10000px;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  opacity: 1;
+}
+
+.collapsible-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* ==========================================
+   PORTFOLIO VIEW
+   ========================================== */
+.portfolio-view {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.portfolio-view.hidden {
+  display: none;
+}
+
+/* Health Summary */
+.portfolio-health-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.portfolio-health-card {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+
+.portfolio-health-card.paused {
+  background: rgba(234, 179, 8, 0.1);
+  border-color: rgba(234, 179, 8, 0.3);
+}
+
+.portfolio-health-card.stale {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.portfolio-health-card.total {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.portfolio-health-value {
+  font-size: 36px;
+  font-weight: 700;
+  color: #10b981;
+  line-height: 1.2;
+}
+
+.portfolio-health-card.paused .portfolio-health-value {
+  color: #eab308;
+}
+
+.portfolio-health-card.stale .portfolio-health-value {
+  color: #ef4444;
+}
+
+.portfolio-health-card.total .portfolio-health-value {
+  color: #3b82f6;
+}
+
+.portfolio-health-label {
+  font-size: 14px;
+  color: #888;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Portfolio Sections */
+.portfolio-section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.portfolio-section.hidden {
+  display: none;
+}
+
+.portfolio-section-header {
+  margin-bottom: 16px;
+}
+
+.portfolio-section-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Needs Attention */
+.portfolio-attention-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.portfolio-attention-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border-left: 3px solid #ef4444;
+}
+
+.portfolio-attention-item.stale {
+  border-left-color: #f59e0b;
+}
+
+.portfolio-attention-item.blocked {
+  border-left-color: #ef4444;
+}
+
+.portfolio-attention-project {
+  font-weight: 600;
+  color: #fff;
+  min-width: 120px;
+}
+
+.portfolio-attention-reason {
+  flex: 1;
+  color: #aaa;
+  font-size: 14px;
+}
+
+.portfolio-attention-btn {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.portfolio-attention-btn:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+/* Milestones */
+.portfolio-milestones-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.portfolio-milestone-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+}
+
+.portfolio-milestone-item.urgent {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.portfolio-milestone-item.soon {
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.portfolio-milestone-days {
+  font-size: 18px;
+  font-weight: 700;
+  color: #3b82f6;
+  min-width: 50px;
+  text-align: center;
+}
+
+.portfolio-milestone-item.urgent .portfolio-milestone-days {
+  color: #ef4444;
+}
+
+.portfolio-milestone-item.soon .portfolio-milestone-days {
+  color: #eab308;
+}
+
+.portfolio-milestone-info {
+  flex: 1;
+}
+
+.portfolio-milestone-name {
+  font-weight: 600;
+  color: #fff;
+  font-size: 15px;
+}
+
+.portfolio-milestone-project {
+  font-size: 13px;
+  color: #888;
+  margin-top: 2px;
+}
+
+.portfolio-milestone-date {
+  font-size: 14px;
+  color: #aaa;
+}
+
+/* Projects Grid */
+.portfolio-projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.portfolio-project-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.portfolio-project-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(59, 130, 246, 0.4);
+  transform: translateY(-2px);
+}
+
+.portfolio-project-card.stale {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.portfolio-project-card.paused {
+  border-color: rgba(234, 179, 8, 0.3);
+  opacity: 0.8;
+}
+
+.portfolio-project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.portfolio-project-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.portfolio-project-status {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.portfolio-project-status.active {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.portfolio-project-status.paused {
+  background: rgba(234, 179, 8, 0.2);
+  color: #eab308;
+}
+
+.portfolio-project-status.stale {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.portfolio-project-version {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.portfolio-project-phase {
+  font-size: 12px;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.15);
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 12px;
+}
+
+.portfolio-project-sprint {
+  margin-bottom: 12px;
+}
+
+.portfolio-sprint-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.portfolio-sprint-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.portfolio-sprint-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: #888;
+}
+
+.portfolio-sprint-stats .in-progress {
+  color: #3b82f6;
+}
+
+.portfolio-sprint-stats .blocked {
+  color: #ef4444;
+}
+
+.portfolio-project-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #666;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Portfolio Modal */
+.portfolio-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.portfolio-modal.hidden {
+  display: none;
+}
+
+.portfolio-modal-content {
+  background: #1c1c1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 700px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.portfolio-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.portfolio-modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.portfolio-modal-close {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 28px;
+  cursor: pointer;
+  padding: 0 8px;
+  line-height: 1;
+}
+
+.portfolio-modal-close:hover {
+  color: #fff;
+}
+
+.portfolio-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+/* Roadmap Styles */
+.roadmap-header {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.roadmap-version,
+.roadmap-phase,
+.roadmap-status {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.roadmap-version {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.roadmap-phase {
+  background: rgba(139, 92, 246, 0.2);
+  color: #a78bfa;
+}
+
+.roadmap-status {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.roadmap-section {
+  margin-bottom: 24px;
+}
+
+.roadmap-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.roadmap-milestones {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.roadmap-milestone {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border-left: 3px solid #3b82f6;
+}
+
+.roadmap-milestone.completed {
+  border-left-color: #10b981;
+  opacity: 0.7;
+}
+
+.milestone-name {
+  font-weight: 500;
+  color: #fff;
+  flex: 1;
+}
+
+.milestone-date {
+  font-size: 13px;
+  color: #888;
+  margin-left: 12px;
+}
+
+.milestone-status {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #aaa;
+  margin-left: 12px;
+}
+
+.roadmap-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.roadmap-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+}
+
+.roadmap-item.completed {
+  opacity: 0.6;
+}
+
+.roadmap-item.in_progress {
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 3px solid #3b82f6;
+}
+
+.roadmap-item.blocked {
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 3px solid #ef4444;
+}
+
+.item-status-icon {
+  font-size: 14px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.roadmap-item.completed .item-status-icon {
+  color: #10b981;
+}
+
+.roadmap-item.in_progress .item-status-icon {
+  color: #3b82f6;
+}
+
+.roadmap-item.blocked .item-status-icon {
+  color: #ef4444;
+}
+
+.item-title {
+  flex: 1;
+  color: #ccc;
+  font-size: 14px;
+}
+
+.item-priority {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.item-priority.high {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.item-priority.medium {
+  background: rgba(234, 179, 8, 0.2);
+  color: #fbbf24;
+}
+
+.item-priority.low {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+}
+
+.roadmap-items.backlog .roadmap-item,
+.roadmap-items.tech-debt .roadmap-item {
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.more-items {
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #666;
+  font-style: italic;
+}
+
+/* Responsive Portfolio */
+@media (max-width: 768px) {
+  .portfolio-health-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .portfolio-projects-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-attention-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .portfolio-milestone-item {
+    flex-wrap: wrap;
+  }
+
+  .portfolio-modal-content {
+    width: 95%;
+    max-height: 90vh;
+  }
 }

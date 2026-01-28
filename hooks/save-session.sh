@@ -260,4 +260,17 @@ consolidate_learning(force=False)
 " >> "$MEMORY_ROOT/logs/reasoning.log" 2>&1 &
 fi
 
+# === ROADMAP PROGRESS TRACKING ===
+# Detect completed tasks from session and update roadmap
+ROADMAP_TRACKER="$MEMORY_ROOT/memory/roadmap_tracker.py"
+ROADMAP_FILE="$MEMORY_ROOT/projects/$PROJECT_ID/roadmap.json"
+
+if [ -f "$ROADMAP_TRACKER" ] && [ -f "$ROADMAP_FILE" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+  nohup "$PYTHON" "$ROADMAP_TRACKER" \
+    --transcript "$TRANSCRIPT_PATH" \
+    --project "$PROJECT_ID" \
+    --roadmap "$ROADMAP_FILE" \
+    >> "$MEMORY_ROOT/logs/roadmap.log" 2>&1 &
+fi
+
 exit 0

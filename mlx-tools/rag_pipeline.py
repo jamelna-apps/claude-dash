@@ -7,17 +7,35 @@ Combines semantic search with LLM generation for accurate answers
 import json
 import urllib.request
 import sys
+import os
 from pathlib import Path
 from typing import List, Dict, Optional
+from datetime import datetime
 
 try:
-    from config import OLLAMA_URL, OLLAMA_EMBED_MODEL as EMBEDDING_MODEL, MEMORY_ROOT
+    from config import OLLAMA_URL, OLLAMA_EMBED_MODEL as EMBEDDING_MODEL, MEMORY_ROOT, cosine_similarity
     from ollama_client import OllamaClient
+    from hybrid_search import hybrid_search as _hybrid_search
+    HAS_HYBRID = True
 except ImportError:
+    HAS_HYBRID = False
+    _hybrid_search = None
+    import math
     MEMORY_ROOT = Path.home() / '.claude-dash'
     OLLAMA_URL = 'http://localhost:11434'
     EMBEDDING_MODEL = 'nomic-embed-text'
-    # Fallback if imports fail
+
+    def cosine_similarity(vec1: list, vec2: list) -> float:
+        """Fallback cosine similarity."""
+        if not vec1 or not vec2 or len(vec1) != len(vec2):
+            return 0.0
+        dot_product = sum(a * b for a, b in zip(vec1, vec2))
+        norm1 = math.sqrt(sum(a * a for a in vec1))
+        norm2 = math.sqrt(sum(b * b for b in vec2))
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+        return dot_product / (norm1 * norm2)
+
     class OllamaClient:
         def __init__(self, **kwargs):
             pass
@@ -110,15 +128,30 @@ class RAGPipeline:
             return []
 
     def _cosine_similarity(self, a: List[float], b: List[float]) -> float:
-        """Calculate cosine similarity"""
-        import numpy as np
-        a, b = np.array(a), np.array(b)
-        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+        """Calculate cosine similarity using centralized implementation."""
+        return cosine_similarity(a, b)
 
-    def retrieve(self, query: str, top_k: int = 5) -> List[Dict]:
-        """Retrieve relevant context for a query"""
+    def retrieve(self, query: str, top_k: int = 5, use_recency: bool = True) -> List[Dict]:
+        """
+        Retrieve relevant context for a query.
+
+        Uses hybrid search (BM25 + semantic) when available, with optional
+        recency weighting to boost recently modified files.
+        """
+        # Try hybrid search first (best quality)
+        if HAS_HYBRID and _hybrid_search:
+            try:
+                results = _hybrid_search(self.project_id, query, top_k * 2)
+                if results:
+                    # Apply recency weighting if enabled
+                    if use_recency:
+                        results = self._apply_recency_weight(results)
+                    return results[:top_k]
+            except Exception as e:
+                print(f"Hybrid search failed, falling back: {e}", file=sys.stderr)
+
+        # Fallback to semantic-only search
         if not self.embeddings:
-            # Fall back to keyword search
             return self._keyword_search(query, top_k)
 
         query_embedding = self._get_embedding(query)
@@ -136,7 +169,59 @@ class RAGPipeline:
             })
 
         results.sort(key=lambda x: x['score'], reverse=True)
+
+        # Apply recency weighting
+        if use_recency:
+            results = self._apply_recency_weight(results)
+
         return results[:top_k]
+
+    def _apply_recency_weight(self, results: List[Dict], decay_days: int = 30) -> List[Dict]:
+        """
+        Apply recency weighting to boost recently modified files.
+
+        Files modified in the last `decay_days` get a boost that decays over time.
+        Max boost: 20% for files modified today, decaying to 0% after decay_days.
+        """
+        # Get project root from config
+        try:
+            config_path = MEMORY_ROOT / 'config.json'
+            if config_path.exists():
+                config = json.loads(config_path.read_text())
+                project_info = next((p for p in config.get('projects', [])
+                                   if p['id'] == self.project_id), None)
+                if project_info:
+                    project_root = Path(project_info.get('path', ''))
+                else:
+                    return results
+            else:
+                return results
+        except Exception:
+            return results
+
+        now = datetime.now()
+
+        for result in results:
+            filepath = result['file']
+            full_path = project_root / filepath
+
+            try:
+                if full_path.exists():
+                    mtime = datetime.fromtimestamp(full_path.stat().st_mtime)
+                    days_old = (now - mtime).days
+
+                    if days_old < decay_days:
+                        # Linear decay: 20% boost at day 0, 0% at decay_days
+                        recency_boost = 0.2 * (1 - days_old / decay_days)
+                        original_score = result.get('score', 0) or result.get('rrf_score', 0)
+                        result['score'] = original_score * (1 + recency_boost)
+                        result['recency_days'] = days_old
+            except Exception:
+                pass
+
+        # Re-sort by updated scores
+        results.sort(key=lambda x: x.get('score', 0), reverse=True)
+        return results
 
     def _keyword_search(self, query: str, top_k: int) -> List[Dict]:
         """Fallback keyword search"""

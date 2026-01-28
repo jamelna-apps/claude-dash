@@ -58,14 +58,11 @@ curl -fsSL https://raw.githubusercontent.com/jamelna-apps/claude-dash/main/insta
    cd watcher && npm install
    ```
 
-5. Install Ollama (required for learning features):
+5. Install Ollama (required for embeddings):
    ```bash
    brew install ollama
-   # Task-optimized models for M2 16GB
-   ollama pull deepseek-coder:6.7b    # Code review & analysis
-   ollama pull gemma3:4b-it-qat       # RAG queries (128K context, QAT quality!)
-   ollama pull phi3:mini              # Quick tasks (commit messages)
-   ollama pull qwen3-vl:8b            # UI/screenshot analysis
+   # Minimal setup - use Claude for real code work
+   ollama pull gemma3:4b-it-qat       # Cheap queries, commit messages (128K context)
    ollama pull nomic-embed-text       # Embeddings for semantic search
    ```
 
@@ -236,41 +233,29 @@ Even if your terminal crashes or is force-quit, recent learnings are preserved i
 - `context_budget` - HOT/WARM/COLD tier breakdown with token costs
 - `pattern_review` - LLM-powered code validation against patterns
 
-### Local AI Tools (Task-Optimized)
+### Local AI Tools (Minimal Setup)
 
-Claude-Dash uses **task-based model routing** for optimal performance on M2 16GB:
-- Code tasks → `deepseek-coder:6.7b` (best code quality)
-- RAG queries → `gemma3:4b-it-qat` (128K context, QAT quality!)
-- Quick tasks → `phi3:mini` (60-80 tok/s, ultra-fast)
-- UI analysis → `qwen3-vl:8b` (vision specialist)
+Claude-Dash uses a **minimal local model setup** - Claude handles all real code work:
+- `gemma3:4b-it-qat` - Commit messages, cheap queries, Enchanted app
+- `nomic-embed-text` - Embeddings for semantic search
+- **Claude (Sonnet/Opus)** - All code generation, debugging, reviews
 
 ```bash
 # Quick query (uses gemma3:4b-it-qat)
 mlx q my-app "where is the login screen?"
 
-# RAG-powered Q&A (uses gemma3:4b-it-qat with 128K context)
-mlx rag my-app "how does authentication work?"
-
-# Find similar files (semantic search)
-mlx similar my-app src/components/Button.js
-
-# Code review (uses deepseek-coder:6.7b)
-mlx review src/NewFeature.js
-
-# UI/screenshot analysis (uses qwen3-vl:8b)
-mlx ui screenshot.png
-mlx ui screenshot.png --mode accessibility
+# Generate commit message (local, free)
+mlx commit
 
 # Model management
-mlx models list      # Show task routing
-mlx models status    # Show model status
-mlx hardware         # M2-specific recommendations
+mlx models list      # Show installed models
+mlx models status    # Show Ollama status
+mlx hardware         # Hardware recommendations
 ```
 
 **See also:**
 - `mlx-tools/ARCHITECTURE_OVERVIEW.md` - Complete system design
-- `mlx-tools/FINAL_SETUP_M2_16GB.md` - Optimal M2 16GB configuration
-- `mlx-tools/ROLE_HIERARCHY.md` - Claude as senior developer, local models as assistants
+- `mlx-tools/ROLE_HIERARCHY.md` - Claude as senior developer
 
 ### Web Dashboard
 
@@ -286,10 +271,8 @@ Opens at `http://localhost:3847`.
 - Node.js 18+
 - Python 3.10+
 - Claude Code CLI
-- Ollama with task-optimized models:
-  - `gemma3:4b-it-qat` - Default model for RAG, general tasks (128K context, QAT quality)
-  - `deepseek-coder:6.7b` - Code review and analysis
-  - `phi3:mini` - Fast tasks (commit messages, quick summaries)
+- Ollama with minimal models:
+  - `gemma3:4b-it-qat` - Cheap local tasks (commit messages, queries)
   - `nomic-embed-text` - Embeddings for semantic search
 
 ## Directory Structure

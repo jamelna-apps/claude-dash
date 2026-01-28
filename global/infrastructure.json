@@ -13,19 +13,11 @@
       "reversible": true
     },
     {
-      "id": "anythingllm-over-openwebui",
-      "date": "2026-01-13",
-      "decision": "Use AnythingLLM as sole local AI interface, removed Open WebUI",
-      "reason": "AnythingLLM provides chat + document RAG in one tool, Open WebUI was redundant",
-      "impact": "Freed 520MB RAM, 5.5GB disk, simplified stack",
-      "reversible": true
-    },
-    {
-      "id": "rag-settings",
-      "date": "2026-01-13",
-      "decision": "RAG configured with Top N=4, similarity threshold=0.15, model=qwen2.5:7b",
-      "reason": "Better document coverage and reasoning capability for complex queries",
-      "impact": "Slower responses (~23s vs ~3s) but higher quality",
+      "id": "removed-anythingllm",
+      "date": "2026-01-19",
+      "decision": "Removed AnythingLLM - use claude-dash memory_query for RAG",
+      "reason": "claude-dash gateway already provides RAG via memory_query, AnythingLLM was redundant",
+      "impact": "Simplified stack, one less service to manage",
       "reversible": true
     }
   ],
@@ -35,20 +27,13 @@
       "type": "native",
       "path": "/opt/homebrew/bin/ollama",
       "port": 11434,
-      "models": ["qwen2.5:7b", "llama3.2:3b", "nomic-embed-text"],
+      "models": ["qwen2.5-coder:7b", "gemma3:4b-it-qat", "nomic-embed-text"],
       "gpu": "Metal"
-    },
-    "anythingllm": {
-      "type": "docker",
-      "port": 3001,
-      "workspace": "TERRA",
-      "apiKey": "EPDM6YT-EHW4NJ5-M941M99-BZFFKY2",
-      "ollamaUrl": "http://host.docker.internal:11434"
     },
     "claude-dash-gateway": {
       "type": "native",
       "port": 3847,
-      "tools": ["memory_query", "memory_search", "memory_functions", "memory_similar", "doc_query"]
+      "tools": ["memory_query", "memory_search", "memory_functions", "memory_similar"]
     },
     "memory-dashboard": {
       "type": "docker",
@@ -58,6 +43,7 @@
 
   "docker_compose_notes": {
     "ollama": "DISABLED - using native for Metal GPU",
-    "open-webui": "REMOVED - replaced by AnythingLLM"
+    "open-webui": "REMOVED - no longer needed",
+    "anythingllm": "REMOVED - using claude-dash memory_query for RAG"
   }
 }

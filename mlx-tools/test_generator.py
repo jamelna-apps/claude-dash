@@ -13,7 +13,7 @@ try:
 except ImportError:
     MEMORY_ROOT = Path.home() / '.claude-dash'
     OLLAMA_URL = 'http://localhost:11434'
-    MODEL = 'llama3.2:3b'
+    MODEL = 'gemma3:4b-it-qat'
 
 # Framework detection by extension
 FRAMEWORKS = {

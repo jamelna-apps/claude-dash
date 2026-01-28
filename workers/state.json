@@ -1,21 +1,52 @@
 {
   "last_run": {
-    "consolidate": "2026-01-17T18:21:16.288809",
-    "freshness": "2026-01-17T18:21:16.286494"
+    "checkpoints": "2026-01-28T18:35:42.450124",
+    "freshness": "2026-01-28T18:32:54.703634",
+    "summaries": "2026-01-28T05:00:00.759738",
+    "consolidate": "2026-01-28T12:49:49.206591"
   },
   "results": {
-    "consolidate": {
-      "trajectories_processed": 17,
-      "patterns_created": 0,
-      "patterns_updated": 0,
-      "_worker": "consolidate",
-      "_duration_ms": 2.7560000000000002
+    "checkpoints": {
+      "status": "consolidated",
+      "checkpoints_processed": 3,
+      "observations_merged": 6,
+      "files_tracked": 23,
+      "sessions": [
+        "24fbe941-cbc4-49e2-864d-4e9b3cbb5df4"
+      ],
+      "checkpoints_cleaned": 0,
+      "_worker": "checkpoints",
+      "_duration_ms": 8.305
     },
     "freshness": {
       "stale": [],
       "needs_attention": false,
       "_worker": "freshness",
-      "_duration_ms": 0.07200000000000001
+      "_duration_ms": 0.075
+    },
+    "summaries": {
+      "total_pending": 11,
+      "total_processed": 0,
+      "by_project": {
+        "gyst": {
+          "processed": 0,
+          "pending": 4
+        },
+        "coachdesk": {
+          "processed": 0,
+          "pending": 7
+        }
+      },
+      "_worker": "summaries",
+      "_duration_ms": 500.756
+    },
+    "consolidate": {
+      "trajectories_processed": 1,
+      "patterns_created": 0,
+      "patterns_updated": 0,
+      "skipped": true,
+      "_worker": "consolidate",
+      "_duration_ms": 2.007
     }
   }
 }

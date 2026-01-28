@@ -3,13 +3,13 @@
 # MLX Tools Runner for Claude-Dash
 #
 # Usage:
-#   mlx summarize <project> [--limit N]    # Re-summarize files
 #   mlx search <project> "query"           # Semantic search
 #   mlx similar <project> <file>           # Find similar files
 #   mlx build-embeddings <project>         # Build search index
-#   mlx classify "query"                   # Classify intent
 #   mlx pending                            # Show pending summaries
 #   mlx process [--all]                    # Process pending summaries
+#   mlx ask <project> "question"           # Ask about codebase (Ollama)
+#   mlx rag <project> "question"           # RAG-powered Q&A (Ollama)
 #
 
 MLX_DIR="$HOME/.claude-dash/mlx-tools"
@@ -48,8 +48,11 @@ case "$1" in
         python3 "$MLX_DIR/hybrid_search.py" "$@"
         ;;
     summarize)
-        shift
-        python "$MLX_DIR/summarizer.py" "$@"
+        echo "DEPRECATED: 'mlx summarize' has been removed (required mlx-lm)."
+        echo "Alternatives:"
+        echo "  - Structural summaries: node ~/.claude-dash/watcher/extractors/ast-parser.js <path> <project>"
+        echo "  - Session summaries: python3 ~/.claude-dash/memory/summarizer.py <project>"
+        exit 1
         ;;
     search)
         project="$2"
@@ -106,6 +109,37 @@ case "$1" in
         project_path=$(python3 -c "import json; c=json.load(open('$HOME/.claude-dash/config.json')); print([p['path'] for p in c['projects'] if p['id']=='$project'][0])" 2>/dev/null)
         python3 "$MLX_DIR/code_health.py" "$project_path" "$project" status
         ;;
+    # ===================
+    # MEMORY HEALTH (Index/embedding repairs)
+    # ===================
+    memory-health|mh)
+        project="$2"
+        action="${3:-status}"
+        if [ -z "$project" ]; then
+            echo "Usage: mlx memory-health <project> [status|repair|scan]"
+            exit 1
+        fi
+        python3 "$MLX_DIR/memory_repair.py" "$project" "$action"
+        ;;
+    context-budget|cb)
+        project="$2"
+        if [ -z "$project" ]; then
+            # Show budget for all projects
+            python3 "$MLX_DIR/context_budget.py"
+        else
+            python3 "$MLX_DIR/context_budget.py" "$project"
+        fi
+        ;;
+    pattern-review|pr-review)
+        project="$2"
+        file="$3"
+        mode="${4:-normal}"
+        if [ -z "$project" ] || [ -z "$file" ]; then
+            echo "Usage: mlx pattern-review <project> <file> [normal|safe]"
+            exit 1
+        fi
+        python3 "$MLX_DIR/pattern_review.py" "$project" "$file" "$mode"
+        ;;
     wireframe|wf)
         shift
         python3 "$MLX_DIR/wireframe_analyzer.py" "$@"
@@ -121,8 +155,9 @@ case "$1" in
         python "$MLX_DIR/semantic_search.py" "$@" build
         ;;
     classify)
-        shift
-        python "$MLX_DIR/intent_classifier.py" "$@"
+        echo "DEPRECATED: 'mlx classify' has been removed (required mlx-lm)."
+        echo "The gateway uses router.js for query classification instead."
+        exit 1
         ;;
     sessions|obs)
         shift
@@ -274,6 +309,19 @@ case "$1" in
         python3 "$MLX_DIR/hardware_check.py"
         ;;
     # ===================
+    # COMPLEXITY ROUTING (Local vs Cloud)
+    # ===================
+    complexity|cx)
+        # Analyze task complexity to decide local vs cloud
+        shift
+        python3 "$MLX_DIR/complexity_router.py" "$@"
+        ;;
+    auto|route|rt)
+        # Auto-routing: routes to local or Claude based on complexity
+        shift
+        python3 "$MLX_DIR/smart_router.py" "$@"
+        ;;
+    # ===================
     # UI ANALYSIS (Vision)
     # ===================
     ui|ui-analyze)
@@ -304,7 +352,21 @@ case "$1" in
         echo ""
         echo "CODE HEALTH:"
         echo "  mlx health <project>                   # Run quick health scan"
+        echo "  mlx health <project> fix <issue_id>    # Fix/acknowledge an issue"
         echo "  mlx health-status <project>            # Show current health status"
+        echo ""
+        echo "MEMORY HEALTH (Index/embedding repairs):"
+        echo "  mlx memory-health <project> status     # Check memory index health"
+        echo "  mlx memory-health <project> repair     # Auto-repair stale indexes"
+        echo "  mlx memory-health <project> scan       # Full scan without repairs"
+        echo ""
+        echo "CONTEXT BUDGET:"
+        echo "  mlx context-budget                     # Show all projects' token tiers"
+        echo "  mlx context-budget <project>           # Show project's HOT/WARM/COLD breakdown"
+        echo ""
+        echo "PATTERN REVIEW (Code validation):"
+        echo "  mlx pattern-review <project> <file>    # Validate file against patterns"
+        echo "  mlx pattern-review <project> <file> safe  # High-confidence issues only"
         echo ""
         echo "WIREFRAME & DESIGN:"
         echo "  mlx wireframe <project> inventory      # List all screens"
@@ -346,6 +408,15 @@ case "$1" in
         echo "  mlx models test <task>                 # Test routing for a task"
         echo "  mlx models set <task> <model>          # Set model for a task (temp)"
         echo "  mlx hardware                           # Hardware-specific recommendations"
+        echo ""
+        echo "AUTO ROUTING (Local vs cloud - saves money!):"
+        echo "  mlx auto <query>                       # Auto-route query (recommended)"
+        echo "  mlx auto -v <query>                    # Verbose (show routing decision)"
+        echo "  mlx auto --dry-run <query>             # Preview routing without running"
+        echo "  mlx auto -l <query>                    # Force local processing"
+        echo "  mlx auto -c <query>                    # Force Claude API"
+        echo "  mlx auto --stats                       # Show routing statistics"
+        echo "  mlx complexity <query>                 # Just analyze complexity"
         echo ""
         echo "UI ANALYSIS (Vision model - qwen3-vl:8b):"
         echo "  mlx ui <image> [--mode review]         # Comprehensive UI/UX review"
@@ -407,7 +478,6 @@ case "$1" in
         echo "  mlx ctx --error <type> <message>       # Find similar past errors"
         echo ""
         echo "MAINTENANCE:"
-        echo "  mlx summarize <project> [--limit N]    # Re-summarize changed files"
         echo "  mlx build-embeddings <project>         # Build search index"
         echo "  mlx pending                            # Show pending summaries"
         echo "  mlx process [--all | <project>]        # Process pending summaries"

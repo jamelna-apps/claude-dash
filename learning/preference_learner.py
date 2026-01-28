@@ -232,12 +232,14 @@ def analyze_git_diffs(project_path, limit=50):
     # to properly identify which changes were to Claude's output
 
     # For now, look for patterns in recent commits
-    cmd = f'git log -p -{limit} --pretty=format:"COMMIT:%h" -- "*.ts" "*.tsx" "*.js" "*.jsx"'
-
+    # SECURITY: Use array form to prevent shell injection
     try:
         result = subprocess.run(
-            cmd,
-            shell=True,
+            [
+                'git', 'log', '-p', f'-{limit}',
+                '--pretty=format:COMMIT:%h',
+                '--', '*.ts', '*.tsx', '*.js', '*.jsx'
+            ],
             cwd=project_path,
             capture_output=True,
             text=True,

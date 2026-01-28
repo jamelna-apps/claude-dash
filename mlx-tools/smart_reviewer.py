@@ -3,10 +3,12 @@
 Smart Code Reviewer - Token-efficient code review using local Ollama
 
 Strategy:
-1. First-pass: Local LLM (deepseek-coder:6.7b by default) analyzes code (free, fast)
+1. First-pass: Local LLM (gemma3:4b-it-qat) analyzes code (free, fast)
 2. Outputs structured summary with issues categorized by severity
 3. Only escalates to Claude when HIGH severity or complex issues found
 4. Provides Claude-ready context that's 70-90% smaller than raw code
+
+Note: For critical code reviews, prefer Claude (Sonnet/Opus) directly.
 
 Usage:
   python smart_reviewer.py <file>                    # Local review only
@@ -14,7 +16,7 @@ Usage:
   python smart_reviewer.py <file> --summary-only     # Just the summary for Claude
   python smart_reviewer.py --staged                  # Review git staged changes
 
-Set REVIEW_MODEL env var to use a different model (e.g., deepseek-coder:33b on 32GB+ systems)
+Set REVIEW_MODEL env var to use a different model.
 """
 
 import sys
@@ -28,10 +30,9 @@ import os
 MEMORY_ROOT = Path.home() / '.claude-dash'
 OLLAMA_URL = os.environ.get('OLLAMA_URL', 'http://localhost:11434')
 
-# Use deepseek-coder:6.7b for code review (specialized for code analysis)
-# For 32GB+ systems, set REVIEW_MODEL=deepseek-coder:33b
-REVIEW_MODEL = os.environ.get('REVIEW_MODEL', 'deepseek-coder:6.7b')
-FALLBACK_MODEL = 'gemma3:4b'  # General-purpose fallback
+# Use gemma3 for local code review (note: prefer Claude for critical reviews)
+REVIEW_MODEL = os.environ.get('REVIEW_MODEL', 'gemma3:4b-it-qat')
+FALLBACK_MODEL = 'gemma3:4b-it-qat'  # General-purpose fallback (QAT for quality)
 
 
 def get_available_model() -> str:
@@ -46,18 +47,15 @@ def get_available_model() -> str:
                 return REVIEW_MODEL
             if any(FALLBACK_MODEL in m for m in models):
                 return FALLBACK_MODEL
-            # Try any code-focused model first, then general models
-            code_models = [m for m in models if 'deepseek' in m.lower() or 'coder' in m.lower()]
-            if code_models:
-                return code_models[0]
-            general_models = [m for m in models if 'gemma' in m.lower() or 'phi' in m.lower()]
-            if general_models:
-                return general_models[0]
+            # Try any gemma model first
+            gemma_models = [m for m in models if 'gemma' in m.lower()]
+            if gemma_models:
+                return gemma_models[0]
             # No suitable model found
             if models:
-                print(f"Warning: No code model found. Available: {', '.join(models[:5])}", file=sys.stderr)
+                print(f"Warning: No suitable model found. Available: {', '.join(models[:5])}", file=sys.stderr)
             else:
-                print("Warning: No Ollama models installed. Run: ollama pull deepseek-coder:6.7b", file=sys.stderr)
+                print("Warning: No Ollama models installed. Run: ollama pull gemma3:4b-it-qat", file=sys.stderr)
     except requests.exceptions.ConnectionError:
         print("Error: Ollama not running. Start with: ollama serve", file=sys.stderr)
     except Exception as e:

@@ -32,12 +32,24 @@ from typing import Dict, Any, List, Optional
 from collections import defaultdict
 
 try:
-    from config import OLLAMA_URL, OLLAMA_CHAT_MODEL as CHAT_MODEL, OLLAMA_EMBED_MODEL as EMBEDDING_MODEL, MEMORY_ROOT
+    from config import OLLAMA_URL, OLLAMA_CHAT_MODEL as CHAT_MODEL, OLLAMA_EMBED_MODEL as EMBEDDING_MODEL, MEMORY_ROOT, cosine_similarity
 except ImportError:
+    import math
     MEMORY_ROOT = Path.home() / '.claude-dash'
     OLLAMA_URL = 'http://localhost:11434'
-    CHAT_MODEL = 'llama3.2:3b'
+    CHAT_MODEL = 'gemma3:4b-it-qat'
     EMBEDDING_MODEL = 'nomic-embed-text'
+
+    def cosine_similarity(vec1: list, vec2: list) -> float:
+        """Fallback cosine similarity."""
+        if not vec1 or not vec2 or len(vec1) != len(vec2):
+            return 0.0
+        dot_product = sum(a * b for a, b in zip(vec1, vec2))
+        norm1 = math.sqrt(sum(a * a for a in vec1))
+        norm2 = math.sqrt(sum(b * b for b in vec2))
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+        return dot_product / (norm1 * norm2)
 
 PORTFOLIO_SYSTEM_CONTEXT = """You are an AI assistant with complete knowledge of a developer's project portfolio.
 
@@ -175,16 +187,8 @@ class PortfolioAssistant:
             return []
 
     def _cosine_similarity(self, a: List[float], b: List[float]) -> float:
-        """Calculate cosine similarity."""
-        if not a or not b:
-            return 0.0
-        import math
-        dot = sum(x * y for x, y in zip(a, b))
-        norm_a = math.sqrt(sum(x * x for x in a))
-        norm_b = math.sqrt(sum(x * x for x in b))
-        if norm_a == 0 or norm_b == 0:
-            return 0.0
-        return dot / (norm_a * norm_b)
+        """Calculate cosine similarity using centralized implementation."""
+        return cosine_similarity(a, b)
 
     def _get_rating(self, score: int) -> str:
         """Convert score to rating."""

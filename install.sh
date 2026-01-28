@@ -248,7 +248,7 @@ if [ "$OLLAMA_INSTALLED" = true ]; then
     fi
 
     # Pull required models
-    MODELS=("gemma3:4b" "nomic-embed-text")
+    MODELS=("gemma3:4b-it-qat" "nomic-embed-text")
     for model in "${MODELS[@]}"; do
         if ollama list 2>/dev/null | grep -q "$model"; then
             success "Model $model already installed"
@@ -261,7 +261,7 @@ else
     warn "Skipping Ollama setup (not installed)"
     echo "    To enable learning features, install Ollama:"
     echo "    brew install ollama"
-    echo "    ollama pull gemma3:4b"
+    echo "    ollama pull gemma3:4b-it-qat"
     echo "    ollama pull nomic-embed-text"
 fi
 

@@ -1,17 +1,968 @@
 {
-  "totalQueries": 0,
+  "totalQueries": 380,
   "routingBreakdown": {
-    "memory": 0,
-    "filesystem": 0,
-    "commander": 0,
-    "cached": 0
+    "memory": 40,
+    "filesystem": 303,
+    "commander": 5,
+    "cached": 31,
+    "learning": 1
   },
   "tokenEstimates": {
-    "saved": 0,
-    "actual": 0,
+    "saved": 3512,
+    "actual": 866644,
     "wouldHaveBeen": 0
   },
-  "recentQueries": [],
-  "dailyStats": {},
-  "lastUpdated": 1768682778429
+  "recentQueries": [
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2200,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769437710327
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1428,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769437700477
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2202,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769437694707
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 778,
+      "tokensSaved": 0,
+      "latencyMs": 0,
+      "cacheHit": false,
+      "timestamp": 1769437689279
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2358,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769437688923
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2058,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769437688579
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 7394,
+      "tokensSaved": 0,
+      "latencyMs": 3,
+      "cacheHit": false,
+      "timestamp": 1769437683094
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 701,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769437679143
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 3866,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769437678758
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 3226,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769437678409
+    },
+    {
+      "tool": "smart_exec",
+      "route": "commander",
+      "tokensUsed": 420,
+      "tokensSaved": 0,
+      "latencyMs": 10,
+      "cacheHit": false,
+      "timestamp": 1769437675191
+    },
+    {
+      "tool": "smart_exec",
+      "route": "commander",
+      "tokensUsed": 373,
+      "tokensSaved": 0,
+      "latencyMs": 192,
+      "cacheHit": false,
+      "timestamp": 1769437672582
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 451,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769434542505
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2735,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769434542187
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1255,
+      "tokensSaved": 0,
+      "latencyMs": 3,
+      "cacheHit": false,
+      "timestamp": 1769434541865
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1572,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399797295
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 3438,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399796620
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 286,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769399795896
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 5882,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399789384
+    },
+    {
+      "tool": "smart_search",
+      "route": "memory",
+      "tokensUsed": 58,
+      "tokensSaved": 58,
+      "latencyMs": 84,
+      "cacheHit": false,
+      "timestamp": 1769399783192
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1484,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399779021
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 200,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399778350
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 200,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399777678
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 197,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399773277
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 789,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399772429
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2587,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399771238
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 565,
+      "tokensSaved": 0,
+      "latencyMs": 0,
+      "cacheHit": false,
+      "timestamp": 1769399771052
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 609,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399769651
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1915,
+      "tokensSaved": 0,
+      "latencyMs": 0,
+      "cacheHit": false,
+      "timestamp": 1769399766119
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 770,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399764719
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2930,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399764527
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 976,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399763453
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 3471,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399763226
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 3046,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399761526
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 549,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399756179
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 4469,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399755510
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 202,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399754846
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1217,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769399748171
+    },
+    {
+      "tool": "smart_search",
+      "route": "memory",
+      "tokensUsed": 107,
+      "tokensSaved": 107,
+      "latencyMs": 157,
+      "cacheHit": false,
+      "timestamp": 1769399745515
+    },
+    {
+      "tool": "smart_search",
+      "route": "memory",
+      "tokensUsed": 131,
+      "tokensSaved": 131,
+      "latencyMs": 613,
+      "cacheHit": false,
+      "timestamp": 1769399740309
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1020,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769395862478
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 187,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769395862287
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 690,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769395862084
+    },
+    {
+      "tool": "smart_read",
+      "route": "cached",
+      "tokensUsed": 1183,
+      "tokensSaved": 0,
+      "latencyMs": 0,
+      "cacheHit": true,
+      "timestamp": 1769395847346
+    },
+    {
+      "tool": "smart_read",
+      "route": "cached",
+      "tokensUsed": 821,
+      "tokensSaved": 0,
+      "latencyMs": 0,
+      "cacheHit": true,
+      "timestamp": 1769395847119
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2452,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769395840727
+    },
+    {
+      "tool": "smart_read",
+      "route": "cached",
+      "tokensUsed": 4897,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": true,
+      "timestamp": 1769395840501
+    },
+    {
+      "tool": "smart_read",
+      "route": "cached",
+      "tokensUsed": 3438,
+      "tokensSaved": 0,
+      "latencyMs": 0,
+      "cacheHit": true,
+      "timestamp": 1769395819088
+    },
+    {
+      "tool": "smart_read",
+      "route": "cached",
+      "tokensUsed": 844,
+      "tokensSaved": 0,
+      "latencyMs": 0,
+      "cacheHit": true,
+      "timestamp": 1769395812216
+    },
+    {
+      "tool": "smart_read",
+      "route": "cached",
+      "tokensUsed": 2094,
+      "tokensSaved": 0,
+      "latencyMs": 0,
+      "cacheHit": true,
+      "timestamp": 1769395812010
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 996,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769395811799
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1639,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769395811572
+    },
+    {
+      "tool": "smart_read",
+      "route": "cached",
+      "tokensUsed": 5865,
+      "tokensSaved": 0,
+      "latencyMs": 0,
+      "cacheHit": true,
+      "timestamp": 1769395804732
+    },
+    {
+      "tool": "smart_read",
+      "route": "cached",
+      "tokensUsed": 554,
+      "tokensSaved": 0,
+      "latencyMs": 0,
+      "cacheHit": true,
+      "timestamp": 1769395804534
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 909,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769395704067
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 4897,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769395703854
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2094,
+      "tokensSaved": 0,
+      "latencyMs": 3,
+      "cacheHit": false,
+      "timestamp": 1769395703684
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1183,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769395697934
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 821,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769395697757
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 844,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769395697569
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 5865,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769395694896
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 3185,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769395690169
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1105,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769395685217
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 3438,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769395685027
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 554,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769395684803
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2114,
+      "tokensSaved": 0,
+      "latencyMs": 0,
+      "cacheHit": false,
+      "timestamp": 1769376234819
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 4434,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769376227259
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 4578,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769376222913
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 3096,
+      "tokensSaved": 0,
+      "latencyMs": 4,
+      "cacheHit": false,
+      "timestamp": 1769376001032
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2128,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769371448619
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1044,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769371080097
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 9275,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769370649400
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 60400,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769370649103
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 4999,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769370619923
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 3006,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769370619799
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2219,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769370619681
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 971,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769370614267
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 3417,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769370604230
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 5421,
+      "tokensSaved": 0,
+      "latencyMs": 3,
+      "cacheHit": false,
+      "timestamp": 1769370403456
+    },
+    {
+      "tool": "reasoning_query",
+      "route": "learning",
+      "tokensUsed": 9,
+      "tokensSaved": 0,
+      "latencyMs": 68,
+      "cacheHit": false,
+      "timestamp": 1769370396869
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 4233,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769362429933
+    },
+    {
+      "tool": "smart_exec",
+      "route": "commander",
+      "tokensUsed": 301,
+      "tokensSaved": 0,
+      "latencyMs": 10,
+      "cacheHit": false,
+      "timestamp": 1769361705671
+    },
+    {
+      "tool": "smart_exec",
+      "route": "commander",
+      "tokensUsed": 85,
+      "tokensSaved": 0,
+      "latencyMs": 36,
+      "cacheHit": false,
+      "timestamp": 1769361705580
+    },
+    {
+      "tool": "smart_exec",
+      "route": "commander",
+      "tokensUsed": 48,
+      "tokensSaved": 0,
+      "latencyMs": 172,
+      "cacheHit": false,
+      "timestamp": 1769361705468
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 4134,
+      "tokensSaved": 0,
+      "latencyMs": 4,
+      "cacheHit": false,
+      "timestamp": 1769300262638
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 151,
+      "tokensSaved": 0,
+      "latencyMs": 4,
+      "cacheHit": false,
+      "timestamp": 1769300262527
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 404,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769278986281
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2464,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769278986162
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 131,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769278980179
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2063,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769278428003
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1324,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769278089371
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 400,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769278059446
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2063,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769278049161
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 3001,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769278049086
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 700,
+      "tokensSaved": 0,
+      "latencyMs": 0,
+      "cacheHit": false,
+      "timestamp": 1769278043057
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1335,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769278042982
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 879,
+      "tokensSaved": 0,
+      "latencyMs": 1,
+      "cacheHit": false,
+      "timestamp": 1769278037912
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1713,
+      "tokensSaved": 0,
+      "latencyMs": 0,
+      "cacheHit": false,
+      "timestamp": 1769276723176
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 1758,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769276723149
+    },
+    {
+      "tool": "smart_read",
+      "route": "filesystem",
+      "tokensUsed": 2464,
+      "tokensSaved": 0,
+      "latencyMs": 2,
+      "cacheHit": false,
+      "timestamp": 1769276723122
+    }
+  ],
+  "dailyStats": {
+    "2026-01-19": {
+      "queries": 42,
+      "tokensSaved": 44,
+      "cacheHits": 4,
+      "ollamaQueries": 0
+    },
+    "2026-01-20": {
+      "queries": 12,
+      "tokensSaved": 0,
+      "cacheHits": 0,
+      "ollamaQueries": 0
+    },
+    "2026-01-21": {
+      "queries": 116,
+      "tokensSaved": 2033,
+      "cacheHits": 10,
+      "ollamaQueries": 0
+    },
+    "2026-01-22": {
+      "queries": 4,
+      "tokensSaved": 0,
+      "cacheHits": 0,
+      "ollamaQueries": 0
+    },
+    "2026-01-23": {
+      "queries": 40,
+      "tokensSaved": 392,
+      "cacheHits": 5,
+      "ollamaQueries": 0
+    },
+    "2026-01-24": {
+      "queries": 80,
+      "tokensSaved": 747,
+      "cacheHits": 4,
+      "ollamaQueries": 0
+    },
+    "2026-01-25": {
+      "queries": 21,
+      "tokensSaved": 0,
+      "cacheHits": 0,
+      "ollamaQueries": 0
+    },
+    "2026-01-26": {
+      "queries": 65,
+      "tokensSaved": 296,
+      "cacheHits": 8,
+      "ollamaQueries": 0
+    }
+  },
+  "lastUpdated": 1769642312189
 }

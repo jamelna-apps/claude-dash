@@ -1,103 +1,66 @@
 # AI Model Selection Strategy
 
-**Last Updated:** 2026-01-10
+**Last Updated:** 2026-01-26
 **Hardware:** Mac Mini M2, 16GB RAM
-**Goal:** Minimize token costs while maintaining quality
+**Goal:** Quality over cost - use the right model for the job
 
 ---
 
-## The Gradient Approach
+## The Quality-First Approach
 
 ```
-Question Complexity:     Low ←――――――――――――――→ High
-                         │         │        │
-Tools Used:          Local MLX  → Sonnet → Opus
-Token Cost:          $0        → $$     → $$$$
-Response Time:       2-3s      → 10-20s → 15-30s
+Task Criticality:    Low ←――――――――――――――→ High
+                      │         │        │
+Tools Used:        Local  ← Haiku → Sonnet → Opus
+Token Cost:         $0      $      $$     $$$$
+Quality:           Low    Good   Great  Excellent
 ```
+
+**IMPORTANT:** Local LLM is NOT for critical development work.
 
 ---
 
-## Tier 1: Local First (qwen2.5:7b via MLX) - $0
+## Tier 1: Haiku - $ (Fast Exploration)
 
-### Automatic MLX Routing (Claude does this)
+### Use Haiku For:
 
-When asking Claude questions, these patterns trigger automatic MLX usage:
+**Quick, straightforward tasks:**
+- File/code exploration: "Show me all API routes"
+- Simple lookups: "Find files that use Firebase"
+- Code formatting/style fixes
+- Adding debug logging
+- Simple translations/conversions
+- Documentation updates
 
-| Question Pattern | MLX Command | Example |
-|-----------------|-------------|---------|
-| "Where is X?" | `mlx q <project> "query"` | "Where is the login screen?" |
-| "Find files that..." | `mlx db-search <query>` | "Find files that use Firebase" |
-| "How does X work?" (exploring) | `mlx rag <project> "query"` | "How does authentication work?" |
-| "What files use X?" | `mlx q <project> "query"` | "What files use AuthContext?" |
-| Function lookups | `mlx db-functions <name>` | "Find handleSubmit function" |
+### Agent Usage with Haiku
 
-**Context Awareness:**
-- **Exploring phase** (first messages, no files read) → Use MLX
-- **Mid-implementation** (files loaded, actively coding) → Skip MLX, use loaded context
-
-### Manual MLX Usage (Terminal/Direct)
-
-Commands to run yourself to save tokens:
-
-```bash
-# Before asking Claude
-mlx q <project> "where is X?"           # Find files/features
-mlx rag <project> "how does X work?"    # Understand systems
-mlx db-functions "functionName"         # Find function locations
-mlx similar <project> <file>            # Find related files
-
-# Git operations
-mlx commit                              # Generate commit message
-mlx pr [base]                           # Generate PR description
-
-# Code quality
-mlx code-review [file]                  # Review for issues
-mlx test <file>                         # Generate test scaffolds
-mlx error                               # Analyze error messages
-```
-
-### Current Local Model
-
-**Installed:** `llama3.2:3b` (2GB)
-**Recommended Upgrade:** `qwen2.5:7b` (4.7GB)
-
-**Why upgrade?**
-- 2-3x better at `mlx rag` (understanding complex questions)
-- Significantly better code review (catches logic issues, not just syntax)
-- Better intent classification
-- Still fast on M2 (2-3 seconds)
-- Fits comfortably in 16GB RAM (~5-6GB usage)
-
-**To upgrade:**
-```bash
-ollama pull qwen2.5:7b
+```javascript
+// Exploration agent
+Task({
+  subagent_type: "Explore",
+  model: "haiku",  // Fast exploration
+  prompt: "Find all files that define React components"
+})
 ```
 
 ---
 
-## Tier 2: Sonnet - $$
+## Tier 2: Sonnet - $$ (Default for Development)
 
 ### Use Sonnet For:
 
+**THE DEFAULT for all development work:**
+- ALL implementation work (even from Opus plans)
+- Bug fixes requiring context understanding
+- Feature additions to existing code
+- Test writing
+- Most day-to-day coding tasks
+- Refactoring with clear approach
+
 **Planning (75% of cases):**
-- ✅ Feature implementations following existing patterns
-- ✅ Refactoring with clear approach
-- ✅ Well-understood problems
-- ✅ Most day-to-day planning
-
-**Examples:**
-- "Add user profile edit screen" (follow existing patterns)
-- "Implement pagination for product list" (known pattern)
-- "Refactor auth to use context" (clear path)
-- "Add dark mode support" (established approach)
-
-**Implementation (100% of cases):**
-- ✅ ALL implementation work (even from Opus plans)
-- ✅ Bug fixes requiring context understanding
-- ✅ Feature additions to existing code
-- ✅ Test writing
-- ✅ Most day-to-day coding tasks
+- Feature implementations following existing patterns
+- Well-understood problems
+- Most day-to-day planning
 
 ### Agent Usage with Sonnet
 
@@ -119,7 +82,7 @@ Task({
 
 ---
 
-## Tier 3: Opus - $$$$
+## Tier 3: Opus - $$$$ (Complex Architecture)
 
 ### Use Opus ONLY For:
 
@@ -156,27 +119,31 @@ Task({
 
 ---
 
-## Tier 4: Haiku - $
+## Tier 4: Local Ollama - $0 (Non-Critical Only)
 
-### Use Haiku For:
+### IMPORTANT: NOT for Critical Development Work
 
-**Quick, straightforward tasks:**
-- ✅ File/code exploration: "Show me all API routes"
-- ✅ Simple refactors: "Rename variable X to Y"
-- ✅ Code formatting/style fixes
-- ✅ Adding debug logging
-- ✅ Simple translations/conversions
-- ✅ Documentation updates
+Local LLM (Ollama) is NOT appropriate for development tasks. Use ONLY for:
 
-### Agent Usage with Haiku
+**Acceptable Uses:**
+- Enchanted/mobile app queries (API access)
+- Commit message generation (`mlx commit`)
+- PR description drafts (`mlx pr`)
+- Personal tinkering and experimentation
 
-```javascript
-// Exploration agent
-Task({
-  subagent_type: "Explore",
-  model: "haiku",  // Fast exploration
-  prompt: "Find all files that define React components"
-})
+**DO NOT Use Local For:**
+- ❌ Code generation or modification
+- ❌ Bug debugging or investigation
+- ❌ Feature implementation
+- ❌ Code review for critical changes
+- ❌ Any task where quality matters
+
+### Manual MLX Commands (Terminal)
+
+```bash
+# Git operations only
+mlx commit                              # Generate commit message
+mlx pr [base]                           # Generate PR description
 ```
 
 ---
@@ -204,63 +171,26 @@ Is this genuinely complex architecture?
 ```
 New task arrives
     ↓
-Need to find/explore first?
-    ├─ YES → Use MLX (local, $0)
-    │        mlx q / mlx rag / mlx db-search
+Is it a simple exploration/lookup?
+    ├─ YES → Use HAIKU (fast, cheap)
     │
-    └─ NO → Is it straightforward?
-            ├─ YES → HAIKU
-            └─ NO → SONNET
+    └─ NO → Is it trivial (commit msg, personal experiment)?
+            ├─ YES → Local OK
+            └─ NO → Use SONNET
 ```
-
----
-
-## Token Savings Estimate
-
-**Before optimization:**
-- Exploration: Claude Sonnet ($$)
-- Planning: Opus by default ($$$$)
-- Implementation: Sonnet ($$)
-
-**After optimization:**
-- Exploration: MLX local ($0) ← **Saves 100%**
-- Planning: Sonnet for 75% of cases ($$) ← **Saves ~40%**
-- Implementation: Sonnet ($$) ← **No change**
-
-**Overall estimated savings: ~50-60% of total token usage**
-
----
-
-## Implementation Checklist
-
-- [ ] Upgrade Ollama: `ollama pull qwen2.5:7b`
-- [ ] Test MLX with new model: `mlx rag gyst "how does authentication work?"`
-- [ ] Update global preferences with new model selection rules
-- [ ] Create shell function for terminal usage (optional)
-- [ ] Practice using MLX before asking Claude
-- [ ] Default to Sonnet for planning, reserve Opus for complex cases
 
 ---
 
 ## Quick Reference Card
 
-**Before asking Claude:**
-
-| Question Type | Try First | Command |
-|--------------|-----------|---------|
-| Where is X? | MLX | `mlx q <project> "query"` |
-| How does X work? | MLX | `mlx rag <project> "query"` |
-| Find function X | MLX | `mlx db-functions "name"` |
-| Commit message | MLX | `mlx commit` |
-| PR description | MLX | `mlx pr` |
-
-**When using agents:**
+**Model Selection:**
 
 | Task Type | Model | Why |
 |-----------|-------|-----|
-| Complex planning | Opus | Genuinely hard problems |
-| Standard planning | Sonnet | 75% of planning tasks |
-| Implementation | Sonnet | Always |
-| Exploration | Haiku | Fast and cheap |
+| Complex architecture | **Opus** | High-stakes decisions |
+| Standard planning | **Sonnet** | 75% of planning tasks |
+| Implementation | **Sonnet** | Always |
+| Exploration/lookup | **Haiku** | Fast and cheap |
+| Commit messages | Local | Non-critical |
 
-**Remember:** If in doubt, ask yourself: "Could I use MLX for this?" → Try it first!
+**Remember:** Quality over cost. Use Claude for critical work, Local only for trivial non-development tasks.

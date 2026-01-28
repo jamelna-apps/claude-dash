@@ -148,7 +148,7 @@ BACKGROUND SERVICES (Always Running)
 │                                                                  │
 │  Models loaded on-demand:                                        │
 │  • deepseek-coder:6.7b  → Code review, analysis                 │
-│  • gemma3:4b            → RAG queries (128K context!)            │
+│  • gemma3:4b-it-qat            → RAG queries (128K context!)            │
 │  • phi3:mini            → Quick tasks (commit msgs)              │
 │  • qwen3-vl:8b          → UI analysis, screenshots               │
 │  • nomic-embed-text     → Generate embeddings                    │
@@ -461,7 +461,7 @@ All tasks use qwen2.5:7b:
 ```
 Code review → deepseek-coder:6.7b (score: 9/10, specialized)
 Commit msg  → phi3:mini (60-80 tok/s, instant)
-RAG query   → gemma3:4b (128K context, 4x better!)
+RAG query   → gemma3:4b-it-qat (128K context, 4x better!)
 
 Result: Better quality + faster responses
 ```

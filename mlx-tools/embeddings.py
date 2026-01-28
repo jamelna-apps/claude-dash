@@ -26,9 +26,20 @@ import numpy as np
 try:
     from config import OLLAMA_URL, OLLAMA_EMBED_MODEL as EMBEDDING_MODEL, cosine_similarity as _cosine_sim
 except ImportError:
+    import math
     OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
     EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "nomic-embed-text")
-    _cosine_sim = None
+
+    def _cosine_sim(vec1: list, vec2: list) -> float:
+        """Fallback cosine similarity implementation."""
+        if not vec1 or not vec2 or len(vec1) != len(vec2):
+            return 0.0
+        dot_product = sum(a * b for a, b in zip(vec1, vec2))
+        norm1 = math.sqrt(sum(a * a for a in vec1))
+        norm2 = math.sqrt(sum(b * b for b in vec2))
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+        return dot_product / (norm1 * norm2)
 
 # Cache for embeddings to avoid recomputation
 _embedding_cache = {}
@@ -169,23 +180,14 @@ class EmbeddingProvider:
 
     @staticmethod
     def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-        """Compute cosine similarity between two vectors."""
-        if len(a) == 0 or len(b) == 0:
-            return 0.0
+        """Compute cosine similarity between two vectors.
 
-        # Handle dimension mismatch
-        if len(a) != len(b):
-            min_len = min(len(a), len(b))
-            a, b = a[:min_len], b[:min_len]
-
-        dot = np.dot(a, b)
-        norm_a = np.linalg.norm(a)
-        norm_b = np.linalg.norm(b)
-
-        if norm_a == 0 or norm_b == 0:
-            return 0.0
-
-        return float(dot / (norm_a * norm_b))
+        Uses centralized implementation from config.py.
+        """
+        # Convert numpy arrays to lists for config.cosine_similarity
+        vec1 = a.tolist() if hasattr(a, 'tolist') else list(a)
+        vec2 = b.tolist() if hasattr(b, 'tolist') else list(b)
+        return _cosine_sim(vec1, vec2)
 
     def search(self, query: str, documents: List[str], top_k: int = 5) -> List[Tuple[int, float]]:
         """Search documents by query similarity."""

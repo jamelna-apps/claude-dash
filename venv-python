@@ -1,0 +1,3 @@
+#!/bin/bash
+# Wrapper script to run Python with claude-dash venv
+exec /Users/jmelendez/.claude-dash/venv/bin/python3 "$@"

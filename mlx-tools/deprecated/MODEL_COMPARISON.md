@@ -1,8 +1,8 @@
-# Model Comparison: gemma3:4b vs qwen2.5:7b
+# Model Comparison: gemma3:4b-it-qat vs qwen2.5:7b
 
 ## Quick Comparison
 
-| Feature | gemma3:4b | qwen2.5:7b | Winner |
+| Feature | gemma3:4b-it-qat | qwen2.5:7b | Winner |
 |---------|-----------|------------|--------|
 | **Size** | 3.3GB | 4.7GB | ✅ gemma3 (smaller) |
 | **Parameters** | 4B | 7.6B | ✅ qwen2.5 (more capable) |
@@ -17,7 +17,7 @@
 
 ## Key Insights
 
-### gemma3:4b Advantages
+### gemma3:4b-it-qat Advantages
 
 1. **128K Context Window** 🚀
    - **Huge advantage** for RAG tasks
@@ -64,32 +64,32 @@
 
 ### Code Review & Analysis
 - **qwen2.5:7b**: Better quality, stronger code understanding
-- **gemma3:4b**: Faster, but moderate code scores (36.0 HumanEval is okay but not great)
+- **gemma3:4b-it-qat**: Faster, but moderate code scores (36.0 HumanEval is okay but not great)
 - **Recommendation**: qwen2.5:7b (unless speed matters more than quality)
 
 ### RAG / Codebase Q&A
-- **gemma3:4b**: 128K context is MASSIVE advantage - can fit entire large files
+- **gemma3:4b-it-qat**: 128K context is MASSIVE advantage - can fit entire large files
 - **qwen2.5:7b**: 32K context is good but limited for very large files
-- **Recommendation**: gemma3:4b (context window is huge win for RAG)
+- **Recommendation**: gemma3:4b-it-qat (context window is huge win for RAG)
 
 ### Commit Messages / Documentation
-- **gemma3:4b**: Fast, good enough quality for simple text generation
+- **gemma3:4b-it-qat**: Fast, good enough quality for simple text generation
 - **qwen2.5:7b**: Better quality, more nuanced understanding
 - **Recommendation**: Tie (either works well)
 
 ### Error Analysis / Debugging
 - **qwen2.5:7b**: Better reasoning for complex debugging
-- **gemma3:4b**: 128K context helps with large stack traces
+- **gemma3:4b-it-qat**: 128K context helps with large stack traces
 - **Recommendation**: qwen2.5:7b (quality > context for debugging)
 
 ### UI Analysis (Vision)
-- **gemma3:4b**: Multimodal! Can handle images
+- **gemma3:4b-it-qat**: Multimodal! Can handle images
 - **qwen3-vl:8b**: Specialized vision model, better quality
 - **Recommendation**: Keep qwen3-vl:8b (specialized is better)
 
 ## Realistic Scenarios on M2 16GB
 
-### Scenario 1: Replace qwen2.5:7b with gemma3:4b
+### Scenario 1: Replace qwen2.5:7b with gemma3:4b-it-qat
 
 **Pros:**
 - Faster responses
@@ -109,19 +109,19 @@
 **Setup:**
 ```python
 TASK_MODEL_MAP = {
-    # Use gemma3:4b for RAG (leverage 128K context)
-    'rag': 'gemma3:4b',
-    'query': 'gemma3:4b',
-    'ask': 'gemma3:4b',
+    # Use gemma3:4b-it-qat for RAG (leverage 128K context)
+    'rag': 'gemma3:4b-it-qat',
+    'query': 'gemma3:4b-it-qat',
+    'ask': 'gemma3:4b-it-qat',
 
     # Use qwen2.5:7b for code tasks (better quality)
     'code_review': 'qwen2.5:7b',
     'code_analysis': 'qwen2.5:7b',
 
-    # Use gemma3:4b for docs (speed + quality balance)
-    'commit_message': 'gemma3:4b',
-    'pr_description': 'gemma3:4b',
-    'summarization': 'gemma3:4b',
+    # Use gemma3:4b-it-qat for docs (speed + quality balance)
+    'commit_message': 'gemma3:4b-it-qat',
+    'pr_description': 'gemma3:4b-it-qat',
+    'summarization': 'gemma3:4b-it-qat',
 
     # Keep qwen3-vl for vision
     'ui_analysis': 'qwen3-vl:8b',
@@ -132,7 +132,7 @@ TASK_MODEL_MAP = {
 
 **Verdict**: ✅ Best of both worlds
 
-### Scenario 3: Use gemma3:4b for Everything + Drop qwen2.5:7b
+### Scenario 3: Use gemma3:4b-it-qat for Everything + Drop qwen2.5:7b
 
 **Pros:**
 - Simpler setup
@@ -151,17 +151,17 @@ TASK_MODEL_MAP = {
 
 **Try the hybrid approach (Scenario 2):**
 
-1. **Install gemma3:4b** (~3.3GB)
+1. **Install gemma3:4b-it-qat** (~3.3GB)
    ```bash
-   ollama pull gemma3:4b
+   ollama pull gemma3:4b-it-qat
    ```
 
 2. **Test it on RAG tasks** (leverage 128K context)
    ```bash
    # Update config.py temporarily
-   TASK_MODEL_MAP['rag'] = 'gemma3:4b'
-   TASK_MODEL_MAP['query'] = 'gemma3:4b'
-   TASK_MODEL_MAP['ask'] = 'gemma3:4b'
+   TASK_MODEL_MAP['rag'] = 'gemma3:4b-it-qat'
+   TASK_MODEL_MAP['query'] = 'gemma3:4b-it-qat'
+   TASK_MODEL_MAP['ask'] = 'gemma3:4b-it-qat'
 
    # Test
    mlx rag gyst "how does authentication work?"
@@ -169,25 +169,25 @@ TASK_MODEL_MAP = {
    ```
 
 3. **Compare quality vs qwen2.5:7b**
-   - If RAG quality is good → use gemma3:4b for RAG (128K context wins)
+   - If RAG quality is good → use gemma3:4b-it-qat for RAG (128K context wins)
    - If quality drops too much → stick with qwen2.5:7b
 
 4. **Keep qwen2.5:7b for code tasks**
    - Code review, analysis, debugging → qwen2.5:7b
-   - RAG, queries, docs → gemma3:4b (if quality is acceptable)
+   - RAG, queries, docs → gemma3:4b-it-qat (if quality is acceptable)
 
 ## Test Plan
 
 ```bash
-# 1. Install gemma3:4b
-ollama pull gemma3:4b
+# 1. Install gemma3:4b-it-qat
+ollama pull gemma3:4b-it-qat
 
 # 2. Test RAG with both models
 # First with qwen2.5:7b (current)
 mlx rag gyst "how does user authentication work?" > test-qwen.txt
 
-# Then with gemma3:4b (edit config.py first)
-# Change TASK_MODEL_MAP['rag'] = 'gemma3:4b'
+# Then with gemma3:4b-it-qat (edit config.py first)
+# Change TASK_MODEL_MAP['rag'] = 'gemma3:4b-it-qat'
 mlx rag gyst "how does user authentication work?" > test-gemma.txt
 
 # 3. Compare quality
@@ -196,17 +196,17 @@ diff test-qwen.txt test-gemma.txt
 # 4. Test code review with both
 mlx review src/some-file.js  # Using qwen2.5:7b
 # Change model and test again
-mlx review src/some-file.js  # Using gemma3:4b
+mlx review src/some-file.js  # Using gemma3:4b-it-qat
 
 # 5. Decide based on quality difference
 ```
 
 ## Bottom Line
 
-**Don't replace qwen2.5:7b entirely**, but **consider gemma3:4b for RAG tasks** where the 128K context window is a huge advantage.
+**Don't replace qwen2.5:7b entirely**, but **consider gemma3:4b-it-qat for RAG tasks** where the 128K context window is a huge advantage.
 
 **Optimal setup for M2 16GB:**
-- **gemma3:4b** (3.3GB) → RAG, queries, simple docs (128K context!)
+- **gemma3:4b-it-qat** (3.3GB) → RAG, queries, simple docs (128K context!)
 - **qwen2.5:7b** (4.7GB) → Code review, complex reasoning (better quality)
 - **qwen3-vl:8b** (6.1GB) → UI analysis (specialized vision)
 - **Total**: ~14GB disk, ~6-7GB RAM at a time (Ollama swaps automatically)

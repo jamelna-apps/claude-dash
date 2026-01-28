@@ -30,9 +30,9 @@ DB_PATH = MEMORY_ROOT / 'memory.db'
 OLLAMA_URL = os.environ.get('OLLAMA_URL', 'http://localhost:11434')
 
 # Models
-OLLAMA_CHAT_MODEL = os.environ.get('OLLAMA_MODEL', 'gemma3:4b')
+OLLAMA_CHAT_MODEL = os.environ.get('OLLAMA_MODEL', 'gemma3:4b-it-qat')
 OLLAMA_EMBED_MODEL = os.environ.get('OLLAMA_EMBED_MODEL', 'nomic-embed-text')
-OLLAMA_VLM_MODEL = os.environ.get('OLLAMA_VLM_MODEL', 'qwen3-vl:8b')  # Visual Language Model
+OLLAMA_VLM_MODEL = os.environ.get('OLLAMA_VLM_MODEL', None)  # No local VLM - use Claude API for vision
 
 # Timeouts (in seconds)
 OLLAMA_TIMEOUT = int(os.environ.get('OLLAMA_TIMEOUT', '60'))
@@ -42,7 +42,8 @@ OLLAMA_EMBED_TIMEOUT = int(os.environ.get('OLLAMA_EMBED_TIMEOUT', '30'))
 # SEARCH CONFIGURATION
 # =============================================================================
 
-DEFAULT_TOP_K = 10
+# Increased TOP_K to use more of gemma3's 128K context window
+DEFAULT_TOP_K = 15
 MIN_KEYWORD_LENGTH = 3
 BM25_K1 = 1.2
 BM25_B = 0.75
@@ -66,40 +67,91 @@ REVIEW_TEMPERATURE = 0.1
 REVIEW_NUM_PREDICT = 1000
 
 # =============================================================================
+# MODEL CAPABILITIES
+# =============================================================================
+
+# Minimal model setup - use Claude for critical work, local for embeddings + cheap tasks
+# Installed: nomic-embed-text (embeddings), gemma3:4b-it-qat (generation)
+
+# Models optimized for fast generation
+GENERATION_MODELS = {
+    "gemma3:4b-it-qat", "gemma3:12b",
+}
+
+# Default model for all local generation tasks
+OLLAMA_FAST_MODEL = os.environ.get('OLLAMA_FAST_MODEL', 'gemma3:4b-it-qat')
+
+# Tool calling not supported locally - use Claude for agent tasks
+TOOL_CAPABLE_MODELS = set()  # None installed
+OLLAMA_TOOL_MODEL = None  # Use Claude instead
+
+def model_supports_tools(model: str) -> bool:
+    """Check if a model supports native tool calling."""
+    # Normalize model name (remove tag variations)
+    base_model = model.split(':')[0] if ':' in model else model
+    return any(base_model in m or m.startswith(base_model) for m in TOOL_CAPABLE_MODELS)
+
+def get_tool_model() -> str:
+    """Get the best available model for tool calling tasks."""
+    return OLLAMA_TOOL_MODEL
+
+def get_generation_model() -> str:
+    """Get the best available model for simple generation tasks."""
+    return OLLAMA_FAST_MODEL
+
+# =============================================================================
 # TASK-BASED MODEL ROUTING
 # =============================================================================
 
 # Task categories and their preferred models
-# Optimized for M2 16GB Mac Mini
+# Minimal setup: gemma3:4b-it-qat for all local tasks, Claude for critical work
+# Updated 2026-01-28: Removed specialized models - use Claude for quality work
 TASK_MODEL_MAP = {
-    # Code analysis tasks - use deepseek-coder (specialized for code)
-    'code_review': 'deepseek-coder:6.7b',
-    'code_analysis': 'deepseek-coder:6.7b',
-    'code_explanation': 'deepseek-coder:6.7b',
-    'static_analysis': 'deepseek-coder:6.7b',
-    'test_generation': 'deepseek-coder:6.7b',
+    # All local tasks route to gemma3 - use Claude for critical code work
+    'code_review': 'gemma3:4b-it-qat',       # Note: prefer Claude for real reviews
+    'code_analysis': 'gemma3:4b-it-qat',
+    'code_explanation': 'gemma3:4b-it-qat',
+    'static_analysis': 'gemma3:4b-it-qat',
+    'test_generation': 'gemma3:4b-it-qat',   # Note: prefer Claude for real tests
 
-    # Documentation tasks - use phi3:mini (fast for simple text)
-    'documentation': 'phi3:mini',
-    'summarization': 'phi3:mini',
-    'commit_message': 'phi3:mini',
-    'pr_description': 'phi3:mini',
+    # Documentation tasks - good local use case
+    'documentation': 'gemma3:4b-it-qat',
+    'summarization': 'gemma3:4b-it-qat',
+    'commit_message': 'gemma3:4b-it-qat',
+    'pr_description': 'gemma3:4b-it-qat',
 
-    # Reasoning/RAG tasks - use gemma3:4b (128K context + multimodal)
-    'rag': 'gemma3:4b',
-    'query': 'gemma3:4b',
-    'ask': 'gemma3:4b',
-    'planning': 'gemma3:4b',
-    'architecture': 'gemma3:4b',
+    # Reasoning/RAG tasks - 128K context works well
+    'rag': 'gemma3:4b-it-qat',
+    'query': 'gemma3:4b-it-qat',
+    'ask': 'gemma3:4b-it-qat',
+    'planning': 'gemma3:4b-it-qat',
+    'architecture': 'gemma3:4b-it-qat',
 
-    # Error analysis - use deepseek-coder (code context matters)
-    'error_analysis': 'deepseek-coder:6.7b',
+    # Math tasks - gemma3 handles simple math, use Claude for complex
+    'math': 'gemma3:4b-it-qat',
+    'calculation': 'gemma3:4b-it-qat',
+    'logic': 'gemma3:4b-it-qat',
+    'algorithm': 'gemma3:4b-it-qat',
 
-    # Visual tasks - use qwen3-vl (specialized vision model)
-    'ui_analysis': OLLAMA_VLM_MODEL,
-    'screenshot_review': OLLAMA_VLM_MODEL,
-    'design_assessment': OLLAMA_VLM_MODEL,
-    'wireframe_analysis': OLLAMA_VLM_MODEL,
+    # Instruction-following tasks
+    'instruction': 'gemma3:4b-it-qat',
+    'task_execution': 'gemma3:4b-it-qat',
+    'step_by_step': 'gemma3:4b-it-qat',
+
+    # Error analysis - use Claude for real debugging
+    'error_analysis': 'gemma3:4b-it-qat',
+
+    # Tool-calling/agent tasks - NOT supported locally, use Claude
+    'tool_calling': None,      # Use Claude
+    'agent': None,             # Use Claude
+    'function_calling': None,  # Use Claude
+    'portfolio_analysis': 'gemma3:4b-it-qat',
+
+    # Visual tasks - no local VLM, use Claude
+    'ui_analysis': None,
+    'screenshot_review': None,
+    'design_assessment': None,
+    'wireframe_analysis': None,
 }
 
 def get_model_for_task(task: str, fallback_to_default: bool = True) -> str:
@@ -115,11 +167,11 @@ def get_model_for_task(task: str, fallback_to_default: bool = True) -> str:
 
     Examples:
         >>> get_model_for_task('code_review')
-        'gemma3:4b'
+        'gemma3:4b-it-qat'
         >>> get_model_for_task('ui_analysis')  # When VLM is set
         'llava:13b'
         >>> get_model_for_task('unknown_task')
-        'gemma3:4b'  # Falls back to default
+        'gemma3:4b-it-qat'  # Falls back to default
     """
     model = TASK_MODEL_MAP.get(task)
 
@@ -154,7 +206,7 @@ def update_task_model(task: str, model: str) -> None:
         model: Model name to assign
 
     Example:
-        >>> update_task_model('code_review', 'deepseek-coder:33b')
+        >>> update_task_model('code_review', 'gemma3:4b-it-qat')
     """
     TASK_MODEL_MAP[task] = model
 

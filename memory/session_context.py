@@ -145,6 +145,101 @@ def get_infrastructure_context():
         return None  # Infrastructure file unreadable
 
 
+def get_pending_work(project_id):
+    """Get pending work items from roadmap for this project."""
+    if not project_id:
+        return []
+
+    roadmap_path = MEMORY_ROOT / "projects" / project_id / "roadmap.json"
+
+    if not roadmap_path.exists():
+        return []
+
+    try:
+        data = json.loads(roadmap_path.read_text())
+
+        # Get items from current sprint that are not done
+        pending = []
+
+        # Check sprints
+        for sprint in data.get("sprints", []):
+            if sprint.get("status") == "active":
+                for item in sprint.get("items", []):
+                    if item.get("status") not in ["done", "completed"]:
+                        pending.append({
+                            "title": item.get("title", "Untitled"),
+                            "status": item.get("status", "pending"),
+                            "priority": item.get("priority", "medium")
+                        })
+
+        # Check backlog for high-priority items
+        # Handle both flat list and nested category format
+        backlog = data.get("backlog", [])
+        if isinstance(backlog, dict):
+            # Nested format: {shortTerm: {items: []}, mediumTerm: {items: []}}
+            for category in backlog.values():
+                if isinstance(category, dict):
+                    for item in category.get("items", []):
+                        if item.get("priority") == "high" and item.get("status") not in ["done", "completed"]:
+                            pending.append({
+                                "title": item.get("title", "Untitled"),
+                                "status": "backlog",
+                                "priority": "high"
+                            })
+        elif isinstance(backlog, list):
+            # Flat list format
+            for item in backlog:
+                if isinstance(item, dict) and item.get("priority") == "high" and item.get("status") not in ["done", "completed"]:
+                    pending.append({
+                        "title": item.get("title", "Untitled"),
+                        "status": "backlog",
+                        "priority": "high"
+                    })
+
+        return pending[:5]  # Limit to 5 items
+    except (json.JSONDecodeError, IOError, KeyError):
+        return []
+
+
+def get_blockers(project_id):
+    """Get unresolved blockers for this project."""
+    if not project_id:
+        return []
+
+    roadmap_path = MEMORY_ROOT / "projects" / project_id / "roadmap.json"
+
+    if not roadmap_path.exists():
+        return []
+
+    try:
+        data = json.loads(roadmap_path.read_text())
+
+        blockers = []
+
+        # Check for explicit blockers
+        for blocker in data.get("blockers", []):
+            if blocker.get("status") not in ["resolved", "closed"]:
+                blockers.append({
+                    "description": blocker.get("description", "Unknown blocker"),
+                    "created": blocker.get("created", ""),
+                    "affects": blocker.get("affects", [])
+                })
+
+        # Check sprint items for blocked status
+        for sprint in data.get("sprints", []):
+            for item in sprint.get("items", []):
+                if item.get("status") == "blocked":
+                    blockers.append({
+                        "description": f"Blocked: {item.get('title', 'Unknown')}",
+                        "reason": item.get("blockedReason", "Unknown reason"),
+                        "affects": [item.get("title")]
+                    })
+
+        return blockers[:3]  # Limit to 3 blockers
+    except (json.JSONDecodeError, IOError, KeyError):
+        return []
+
+
 def search_digests(query, limit=3):
     """Search compacted session digests for historical context."""
     if not DIGESTS_DIR.exists():
@@ -188,6 +283,23 @@ def format_session_context(project_id):
     last_summary = get_last_session_summary(project_id)
     if last_summary:
         lines.append(f"[LAST SESSION] {last_summary}")
+
+    # Pending work items from roadmap
+    pending = get_pending_work(project_id)
+    if pending:
+        lines.append("\n[PENDING WORK]")
+        for item in pending[:3]:
+            priority_marker = "!" if item.get("priority") == "high" else ""
+            lines.append(f"  • {priority_marker}{item.get('title', '')} ({item.get('status', '')})")
+
+    # Blockers
+    blockers = get_blockers(project_id)
+    if blockers:
+        lines.append("\n[BLOCKERS - ADDRESS FIRST]")
+        for b in blockers:
+            lines.append(f"  • {b.get('description', '')}")
+            if b.get('reason'):
+                lines.append(f"    Reason: {b.get('reason')}")
 
     # Recent decisions
     decisions = get_recent_decisions(project_id)

@@ -201,13 +201,85 @@ def consolidate_checkpoints(project_id: str = None) -> Dict:
     }
 
 
+def process_summaries(project_id: str = None, limit: int = 20) -> Dict:
+    """Process pending file summarizations using Ollama."""
+    config_path = MEMORY_ROOT / 'config.json'
+    if not config_path.exists():
+        return {"error": "No config found"}
+
+    config = json.loads(config_path.read_text())
+    projects = config.get('projects', [])
+    if project_id:
+        projects = [p for p in projects if p['id'] == project_id]
+
+    total_pending = 0
+    total_processed = 0
+    results_by_project = {}
+
+    for project in projects:
+        pid = project['id']
+        summaries_path = MEMORY_ROOT / 'projects' / pid / 'summaries.json'
+
+        if not summaries_path.exists():
+            continue
+
+        try:
+            summaries = json.loads(summaries_path.read_text())
+        except:
+            continue
+
+        # Count pending
+        pending = [
+            p for p, d in summaries.get("files", {}).items()
+            if d and d.get("needsResummarization", False)
+        ]
+
+        total_pending += len(pending)
+
+        if not pending:
+            continue
+
+        # Process up to limit per project
+        project_limit = min(len(pending), limit // len(projects) or 5)
+
+        log(f"Processing {project_limit} files for {pid}")
+
+        # Run the summarizer
+        try:
+            result = subprocess.run(
+                [sys.executable, str(MEMORY_ROOT / 'mlx-tools' / 'summarizer.py'),
+                 pid, '--limit', str(project_limit)],
+                capture_output=True,
+                text=True,
+                timeout=300  # 5 min timeout
+            )
+            if result.returncode == 0:
+                # Count processed from output
+                processed = result.stdout.count('✓')
+                total_processed += processed
+                results_by_project[pid] = {"processed": processed, "pending": len(pending)}
+            else:
+                results_by_project[pid] = {"error": result.stderr[:200]}
+        except subprocess.TimeoutExpired:
+            results_by_project[pid] = {"error": "Timeout"}
+        except Exception as e:
+            results_by_project[pid] = {"error": str(e)}
+
+    return {
+        "total_pending": total_pending,
+        "total_processed": total_processed,
+        "by_project": results_by_project
+    }
+
+
 def run_worker(worker_name: str, **kwargs) -> Dict:
     """Run a specific worker."""
     workers = {
         "freshness": check_freshness,
         "health": run_health_check,
         "consolidate": consolidate_learning,
-        "checkpoints": consolidate_checkpoints
+        "checkpoints": consolidate_checkpoints,
+        "summaries": process_summaries
     }
     if worker_name not in workers:
         return {"error": f"Unknown worker: {worker_name}"}
@@ -230,13 +302,13 @@ def run_worker(worker_name: str, **kwargs) -> Dict:
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Background workers")
-    parser.add_argument("worker", choices=["freshness", "health", "consolidate", "checkpoints", "all"], default="health")
+    parser.add_argument("worker", choices=["freshness", "health", "consolidate", "checkpoints", "summaries", "all"], default="health")
     parser.add_argument("--project", "-p")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
     if args.worker == "all":
-        results = {w: run_worker(w) for w in ["health", "freshness", "consolidate", "checkpoints"]}
+        results = {w: run_worker(w) for w in ["health", "freshness", "consolidate", "checkpoints", "summaries"]}
     else:
         kwargs = {"project_id": args.project} if args.project else {}
         results = {args.worker: run_worker(args.worker, **kwargs)}

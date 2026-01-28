@@ -8,7 +8,7 @@
 
 ### 2. Fixed Default Model Configuration
 - ❌ Old: `OLLAMA_CHAT_MODEL = 'qwen2.5:7b'` (deleted model)
-- ✅ New: `OLLAMA_CHAT_MODEL = 'gemma3:4b'` (128K context, multimodal)
+- ✅ New: `OLLAMA_CHAT_MODEL = 'gemma3:4b-it-qat'` (128K context, multimodal)
 
 **File updated:** `~/.claude-dash/mlx-tools/config.py:33`
 
@@ -26,7 +26,7 @@
 ### Active Ollama Models (15.5GB)
 ```
 deepseek-coder:6.7b    3.8 GB  → Code review, analysis, debugging
-gemma3:4b              3.3 GB  → RAG, queries, planning (128K context!)
+gemma3:4b-it-qat              3.3 GB  → RAG, queries, planning (128K context!)
 phi3:mini              2.2 GB  → Quick tasks (commit msgs, docs)
 qwen3-vl:8b            6.1 GB  → UI analysis, screenshot review
 nomic-embed-text       274 MB  → Embeddings for semantic search
@@ -35,7 +35,7 @@ nomic-embed-text       274 MB  → Embeddings for semantic search
 ### Task Routing Verified ✅
 - 19 task categories configured
 - All tasks route to optimal models
-- Fallback: `gemma3:4b` (was broken, now fixed)
+- Fallback: `gemma3:4b-it-qat` (was broken, now fixed)
 
 ### Running Services
 ```

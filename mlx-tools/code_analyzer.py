@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 """
-MLX Code Analyzer - Using code-specialized models
+Code Analyzer - Using Ollama for code analysis
 
-Uses DeepSeek-Coder for better code understanding:
-- More accurate function detection
-- Better code summaries
-- Code smell detection
-- Refactoring suggestions
+Uses gemma3:4b-it-qat for local code understanding.
+Note: For critical code work, prefer Claude (Sonnet/Opus).
 
 Usage:
   python code_analyzer.py <project> analyze <file>   # Analyze a file
@@ -17,27 +14,45 @@ Usage:
 import json
 import sys
 import argparse
+import re
 from pathlib import Path
 
 MEMORY_ROOT = Path.home() / ".claude-dash"
-CODE_MODEL = "mlx-community/deepseek-coder-6.7b-instruct-hf-4bit-mlx"
 
-# Check if model exists, fall back to Llama if not
-def get_model():
-    """Load the best available code model."""
-    from mlx_lm import load
+# Import config for model routing
+try:
+    from config import get_model_for_task, call_ollama_generate
+except ImportError:
+    import os
+    import urllib.request
 
-    try:
-        print(f"Loading {CODE_MODEL}...")
-        return load(CODE_MODEL)
-    except Exception as e:
-        print(f"Code model not found, using Llama...")
-        return load("mlx-community/Llama-3.2-3B-Instruct-4bit")
+    OLLAMA_URL = os.environ.get('OLLAMA_URL', 'http://localhost:11434')
+    CODE_MODEL = os.environ.get('OLLAMA_CODE_MODEL', 'gemma3:4b-it-qat')
 
-def analyze_file(model, tokenizer, file_path, project_path):
+    def get_model_for_task(task: str, fallback_to_default: bool = True) -> str:
+        return CODE_MODEL
+
+    def call_ollama_generate(prompt: str, model: str = None, timeout: int = 60) -> str:
+        model = model or CODE_MODEL
+        data = json.dumps({
+            'model': model,
+            'prompt': prompt,
+            'stream': False
+        }).encode('utf-8')
+
+        req = urllib.request.Request(
+            f"{OLLAMA_URL}/api/generate",
+            data=data,
+            headers={'Content-Type': 'application/json'}
+        )
+
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            return result.get('response', '')
+
+
+def analyze_file(file_path: str, project_path: str) -> dict:
     """Analyze a code file."""
-    from mlx_lm import generate
-
     full_path = Path(project_path) / file_path
     if not full_path.exists():
         return {"error": f"File not found: {full_path}"}
@@ -59,10 +74,10 @@ def analyze_file(model, tokenizer, file_path, project_path):
 Respond in this JSON format:
 {{"purpose": "...", "functions": [{{"name": "...", "does": "..."}}], "dependencies": [...], "issues": [...]}}"""
 
-    response = generate(model, tokenizer, prompt=prompt, max_tokens=500, temp=0.1)
+    model = get_model_for_task('code_analysis')
+    response = call_ollama_generate(prompt, model=model, timeout=120)
 
     try:
-        import re
         json_match = re.search(r'\{[\s\S]*\}', response)
         if json_match:
             return json.loads(json_match.group())
@@ -71,10 +86,9 @@ Respond in this JSON format:
 
     return {"raw": response}
 
-def explain_code(model, tokenizer, file_path, project_path):
-    """Explain what code does in plain English."""
-    from mlx_lm import generate
 
+def explain_code(file_path: str, project_path: str) -> str:
+    """Explain what code does in plain English."""
     full_path = Path(project_path) / file_path
     content = full_path.read_text()[:8000]
 
@@ -86,12 +100,12 @@ def explain_code(model, tokenizer, file_path, project_path):
 
 Explain in 3-5 sentences:"""
 
-    return generate(model, tokenizer, prompt=prompt, max_tokens=300, temp=0.3)
+    model = get_model_for_task('code_explanation')
+    return call_ollama_generate(prompt, model=model, timeout=90)
 
-def review_code(model, tokenizer, file_path, project_path):
+
+def review_code(file_path: str, project_path: str) -> str:
     """Review code for issues and improvements."""
-    from mlx_lm import generate
-
     full_path = Path(project_path) / file_path
     content = full_path.read_text()[:8000]
 
@@ -108,7 +122,9 @@ def review_code(model, tokenizer, file_path, project_path):
 
 List the issues found (or say "No major issues" if clean):"""
 
-    return generate(model, tokenizer, prompt=prompt, max_tokens=500, temp=0.2)
+    model = get_model_for_task('code_review')
+    return call_ollama_generate(prompt, model=model, timeout=120)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -124,19 +140,18 @@ def main():
         print(f"Project not found: {args.project}")
         sys.exit(1)
 
-    model, tokenizer = get_model()
-
     if args.command == "analyze":
-        result = analyze_file(model, tokenizer, args.file, project["path"])
+        result = analyze_file(args.file, project["path"])
         print(json.dumps(result, indent=2))
 
     elif args.command == "explain":
-        result = explain_code(model, tokenizer, args.file, project["path"])
+        result = explain_code(args.file, project["path"])
         print(result)
 
     elif args.command == "review":
-        result = review_code(model, tokenizer, args.file, project["path"])
+        result = review_code(args.file, project["path"])
         print(result)
+
 
 if __name__ == "__main__":
     main()

@@ -24,7 +24,7 @@
 │  LOCAL MODELS (Support Team)        │
 │                                     │
 │  deepseek-coder → Code review       │
-│  gemma3:4b → Research/RAG           │
+│  gemma3:4b-it-qat → Research/RAG           │
 │  phi3:mini → Quick tasks            │
 │  qwen3-vl → UI analysis             │
 └─────────────────────────────────────┘

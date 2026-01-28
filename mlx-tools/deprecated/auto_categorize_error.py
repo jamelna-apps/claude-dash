@@ -96,7 +96,7 @@ def categorize_error(error_data: dict) -> dict:
     )
 
     try:
-        response = client.generate(prompt, model="llama3.2:3b")
+        response = client.generate(prompt, model="gemma3:4b-it-qat")
 
         # Parse JSON response
         # Clean up response - remove markdown if present

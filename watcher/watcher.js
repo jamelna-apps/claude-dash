@@ -752,6 +752,7 @@ function updateProjectIndex(project) {
 
   // Update index
   index.lastScanned = new Date().toISOString();
+  index.structure = index.structure || {};
   index.structure.totalFiles = totalFiles;
   index.structure.languages = languageCount;
   index.fileIndex = fileIndex.slice(0, 500); // Limit to 500 files

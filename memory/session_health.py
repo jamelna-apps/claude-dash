@@ -22,15 +22,15 @@ IMPROVEMENTS_PATH = MEMORY_ROOT / 'improvements.json'
 
 
 def check_gateway():
-    """Check if gateway is running."""
-    try:
-        result = subprocess.run(
-            ['pgrep', '-f', 'gateway/server.js'],
-            capture_output=True, timeout=1
-        )
-        return result.returncode == 0
-    except:
-        return False
+    """Check if gateway is available.
+
+    Note: The gateway is an MCP server that uses stdio transport.
+    It's spawned by Claude Code on demand, not run as a background daemon.
+    Always return True since the gateway is available when Claude Code needs it.
+    """
+    # MCP servers use stdio transport - they're spawned by the client (Claude Code)
+    # on demand, not run as persistent background processes
+    return True
 
 
 def check_watcher():

@@ -179,7 +179,7 @@ Current processes use minimal CPU when idle:
 |-------|------|--------|--------|
 | qwen2.5:7b | 4.7GB | ⚠️ Old | Remove (replaced by deepseek + gemma3) |
 | deepseek-coder:6.7b | 3.8GB | ✅ Active | Keep |
-| gemma3:4b | 3.3GB | ✅ Active | Keep |
+| gemma3:4b-it-qat | 3.3GB | ✅ Active | Keep |
 | qwen3-vl:8b | 6.1GB | ✅ Active | Keep |
 | phi3:mini | 2.2GB | ✅ Active | Keep |
 | nomic-embed-text | 274MB | ✅ Active | Keep |
@@ -199,7 +199,7 @@ ollama rm qwen2.5:7b
 | Task Category | Model | Rationale |
 |---------------|-------|-----------|
 | **Code Tasks** | deepseek-coder:6.7b | Best code quality (HumanEval ~50-55) |
-| **RAG/Queries** | gemma3:4b | 128K context (4x larger), multimodal |
+| **RAG/Queries** | gemma3:4b-it-qat | 128K context (4x larger), multimodal |
 | **Quick Tasks** | phi3:mini | Ultra-fast (60-80 tok/s), 2.2GB |
 | **Vision Tasks** | qwen3-vl:8b | Specialized vision model |
 | **Embeddings** | nomic-embed-text | Fast, small (274MB) |
@@ -211,7 +211,7 @@ ollama rm qwen2.5:7b
 ```python
 TASK_MODEL_MAP = {
     'code_review': 'deepseek-coder:6.7b',        # ✅
-    'rag': 'gemma3:4b',                          # ✅
+    'rag': 'gemma3:4b-it-qat',                          # ✅
     'commit_message': 'phi3:mini',               # ✅
     'ui_analysis': 'qwen3-vl:8b',                # ✅
     # ... 19 total task categories

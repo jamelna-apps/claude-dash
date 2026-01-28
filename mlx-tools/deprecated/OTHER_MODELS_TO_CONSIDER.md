@@ -5,7 +5,7 @@ Before finalizing your setup, here are models that might offer advantages for sp
 ## Current Planned Setup
 
 ```
-gemma3:4b (3.3GB)   → RAG, queries (128K context, multimodal)
+gemma3:4b-it-qat (3.3GB)   → RAG, queries (128K context, multimodal)
 qwen2.5:7b (4.7GB)  → Code tasks (proven)
 qwen3-vl:8b (6.1GB) → UI analysis (specialized vision)
 ```
@@ -45,9 +45,9 @@ TASK_MODEL_MAP = {
     'code_explanation': 'deepseek-coder:6.7b',
     'test_generation': 'deepseek-coder:6.7b',
 
-    # Keep gemma3:4b for other tasks
-    'rag': 'gemma3:4b',
-    'ask': 'gemma3:4b',
+    # Keep gemma3:4b-it-qat for other tasks
+    'rag': 'gemma3:4b-it-qat',
+    'ask': 'gemma3:4b-it-qat',
 }
 ```
 
@@ -67,7 +67,7 @@ TASK_MODEL_MAP = {
 - 128K context window
 
 **Benchmarks:**
-- MMLU: ~69 (better than gemma3:4b!)
+- MMLU: ~69 (better than gemma3:4b-it-qat!)
 - GSM8K: ~81 (excellent math)
 - Fast enough for real-time interaction
 
@@ -91,7 +91,7 @@ TASK_MODEL_MAP = {
 
     # Quality tasks
     'code_review': 'qwen2.5:7b',
-    'rag': 'gemma3:4b',
+    'rag': 'gemma3:4b-it-qat',
 }
 ```
 
@@ -125,7 +125,7 @@ TASK_MODEL_MAP = {
 **Use case:**
 Alternative to qwen2.5:7b if you want 128K context + good general performance.
 
-**Verdict**: 🤔 **Consider** if you need 128K for non-RAG tasks, but gemma3:4b already has this
+**Verdict**: 🤔 **Consider** if you need 128K for non-RAG tasks, but gemma3:4b-it-qat already has this
 
 ---
 
@@ -216,7 +216,7 @@ time echo "test" | git commit --allow-empty -F -  # Fast test
 
 ### Skip:
 
-#### 3. **llama3.1:8b** - gemma3:4b already covers this (128K + multimodal)
+#### 3. **llama3.1:8b** - gemma3:4b-it-qat already covers this (128K + multimodal)
 #### 4. **llava:7b** - qwen3-vl:8b is better for UI analysis
 #### 5. **codestral:22b** - Too large for 16GB
 
@@ -227,7 +227,7 @@ time echo "test" | git commit --allow-empty -F -  # Fast test
 ### Option A: Code-Focused (Recommended if you code a lot)
 ```
 deepseek-coder:6.7b (4GB)  → Code tasks (best quality)
-gemma3:4b (3.3GB)          → RAG, queries (128K + multimodal)
+gemma3:4b-it-qat (3.3GB)          → RAG, queries (128K + multimodal)
 qwen3-vl:8b (6.1GB)        → UI analysis (specialized)
 phi3:mini (2.3GB)          → Quick tasks (optional, super fast)
 
@@ -248,7 +248,7 @@ RAM: 2-6GB at a time (one model loads)
 ### Option B: Balanced (Original Plan)
 ```
 qwen2.5:7b (4.7GB)   → Code tasks (proven)
-gemma3:4b (3.3GB)    → RAG, queries (128K + multimodal)
+gemma3:4b-it-qat (3.3GB)    → RAG, queries (128K + multimodal)
 qwen3-vl:8b (6.1GB)  → UI analysis (specialized)
 
 Total: ~14GB disk
@@ -265,7 +265,7 @@ RAM: 3-7GB at a time
 
 ### Option C: Minimalist (If disk space matters)
 ```
-gemma3:4b (3.3GB)    → Everything except vision (128K + multimodal)
+gemma3:4b-it-qat (3.3GB)    → Everything except vision (128K + multimodal)
 qwen3-vl:8b (6.1GB)  → UI analysis only
 
 Total: ~9GB disk
@@ -289,7 +289,7 @@ RAM: 3-7GB at a time
 |-----------|-------------|--------|
 | Do lots of code review | deepseek-coder:6.7b | Best code quality for size |
 | Want fastest responses | phi3:mini | 2.3GB, 60-80 tok/s |
-| Need to save disk space | Skip qwen2.5, use gemma3:4b only | Multimodal covers most needs |
+| Need to save disk space | Skip qwen2.5, use gemma3:4b-it-qat only | Multimodal covers most needs |
 | Do heavy UI analysis | Keep qwen3-vl:8b | Specialized > general |
 | Want simplicity | Stick with original plan | Proven and balanced |
 
@@ -310,10 +310,10 @@ diff review-deepseek.md review-qwen.md
 # 2. Test phi3:mini for speed
 ollama pull phi3:mini
 time mlx ask gyst "quick question" --model phi3:mini
-time mlx ask gyst "quick question" --model gemma3:4b
+time mlx ask gyst "quick question" --model gemma3:4b-it-qat
 
-# 3. Compare gemma3:4b code quality
-mlx review src/file.js --model gemma3:4b
+# 3. Compare gemma3:4b-it-qat code quality
+mlx review src/file.js --model gemma3:4b-it-qat
 mlx review src/file.js --model qwen2.5:7b
 ```
 
@@ -329,7 +329,7 @@ mlx review src/file.js --model qwen2.5:7b
 **Final setup:**
 ```
 deepseek-coder:6.7b (4GB)  → Code review, analysis
-gemma3:4b (3.3GB)          → RAG, queries, docs
+gemma3:4b-it-qat (3.3GB)          → RAG, queries, docs
 qwen3-vl:8b (6.1GB)        → UI analysis
 [phi3:mini (2.3GB)]        → Optional: quick tasks
 

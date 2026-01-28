@@ -24,7 +24,7 @@ try:
 except ImportError:
     MEMORY_ROOT = Path.home() / '.claude-dash'
     OLLAMA_URL = 'http://localhost:11434'
-    CHAT_MODEL = 'llama3.2:3b'
+    CHAT_MODEL = 'gemma3:4b-it-qat'
 
 # System context explaining the memory system to Ollama
 SYSTEM_CONTEXT = """You are an AI assistant with complete access to the Claude Memory system.

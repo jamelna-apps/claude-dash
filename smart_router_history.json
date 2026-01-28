@@ -1,0 +1,8 @@
+[
+  {
+    "timestamp": "2026-01-25T12:57:58.785841",
+    "query": "where is the login screen?",
+    "backend": "local",
+    "reason": "Question can be answered locally (complexity: TRIVIAL)"
+  }
+]

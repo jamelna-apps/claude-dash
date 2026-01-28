@@ -1,6 +1,6 @@
 {
-  "version": "1.0",
-  "lastUpdated": "2026-01-17T00:00:00Z",
+  "version": "1.1",
+  "lastUpdated": "2026-01-28T00:00:00Z",
 
   "use": [
     {
@@ -10,21 +10,14 @@
       "addedOn": "2026-01-13"
     },
     {
-      "item": "AnythingLLM for local AI chat and document RAG",
-      "reason": "Single tool for chat + RAG, API accessible via claude-dash gateway",
-      "addedOn": "2026-01-13"
-    },
-    {
-      "item": "Task-based model routing for optimal performance on M2 16GB",
-      "reason": "Specialized models for each task type: deepseek-coder (code), gemma3:4b (RAG/128K context), phi3:mini (speed), qwen3-vl (vision)",
+      "item": "Minimal local model setup - Claude for real work",
+      "reason": "Use Claude (Sonnet/Opus) for all critical code work. Local Ollama only for embeddings and cheap tasks (commit msgs, Enchanted queries).",
       "models": {
-        "code": "deepseek-coder:6.7b",
-        "rag": "gemma3:4b",
-        "quick": "phi3:mini",
-        "vision": "qwen3-vl:8b",
+        "generation": "gemma3:4b-it-qat",
         "embeddings": "nomic-embed-text"
       },
-      "addedOn": "2026-01-17"
+      "addedOn": "2026-01-17",
+      "lastUpdated": "2026-01-28"
     }
   ],
 
@@ -38,37 +31,44 @@
     {
       "item": "Redundant tools with overlapping functionality",
       "reason": "Simplicity, less maintenance, fewer resources",
-      "example": "Removed Open WebUI (AnythingLLM covers same use cases)",
-      "addedOn": "2026-01-13"
+      "example": "Removed Open WebUI, AnythingLLM (claude-dash memory_query handles RAG)",
+      "addedOn": "2026-01-13",
+      "lastUpdated": "2026-01-19"
+    },
+    {
+      "item": "Using local LLMs for critical code work",
+      "reason": "Quality matters. Claude (Sonnet/Opus) produces better code than local models.",
+      "alternative": "Use Claude for code generation, debugging, reviews. Local only for embeddings and cheap tasks.",
+      "addedOn": "2026-01-28"
     }
   ],
 
   "conventions": [
     {
       "topic": "role hierarchy and decision making",
-      "rule": "User is ultimate decision maker (Product Owner/Tech Lead). Claude Sonnet is Senior Developer (leads technical design, architecture, coding). Local Ollama models are SUPPORT TOOLS (research assistants, code reviewers, quick helpers). Claude makes confident technical recommendations and codes directly - local models assist but don't replace Claude's expertise.",
+      "rule": "User is ultimate decision maker (Product Owner/Tech Lead). Claude Sonnet is Senior Developer (leads technical design, architecture, coding). Local Ollama is SUPPORT TOOL (embeddings, commit messages, cheap queries only).",
       "roles": {
         "user": "Final decision maker, product requirements, feature approval",
         "claude_sonnet": "Senior developer - architecture, design, complex coding, technical leadership",
-        "deepseek_coder": "Code review assistant - second opinion on code quality",
-        "gemma3_4b": "Research assistant - RAG, codebase exploration (128K context)",
-        "phi3_mini": "Quick helper - commit messages, simple docs",
-        "qwen3_vl": "UI specialist - screenshot analysis, design review"
+        "claude_opus": "Architect - complex system design, high-stakes decisions",
+        "gemma3_4b_qat": "Support tool - commit messages, Enchanted queries, summarization only",
+        "nomic_embed": "Embeddings - powers semantic search"
       },
-      "workflow": "Claude designs and codes. Local models support with: research (gemma3 RAG), code review (deepseek), quick tasks (phi3), UI analysis (qwen3-vl). Claude remains senior developer - models are junior assistants.",
+      "workflow": "Claude designs and codes. Local models only for embeddings and cheap non-critical tasks.",
       "priority": "critical",
-      "addedOn": "2026-01-17"
+      "addedOn": "2026-01-17",
+      "lastUpdated": "2026-01-28"
     },
     {
       "topic": "claude workflow",
-      "rule": "Use MCP memory tools (memory_query, memory_search, memory_functions) for instant lookups. Use MLX CLI (mlx rag, mlx review) as SUPPORT TOOLS - for research and code review assistance, not as replacement for Claude's technical leadership.",
+      "rule": "Use MCP memory tools (memory_query, memory_search, memory_functions) for instant lookups. Claude handles ALL code work directly.",
       "priority": "critical",
       "addedOn": "2025-12-15",
-      "lastUpdated": "2026-01-17"
+      "lastUpdated": "2026-01-28"
     },
     {
       "topic": "model selection for agents",
-      "rule": "Use gradient approach: MLX local ($0) -> Haiku ($) -> Sonnet ($$) -> Opus ($$$$). Reserve Opus for genuinely complex architecture only (~25% of planning). Use Sonnet for 75% of planning and ALL implementation.",
+      "rule": "Use gradient approach: Haiku ($) -> Sonnet ($$) -> Opus ($$$$). Reserve Opus for genuinely complex architecture only (~25% of planning). Use Sonnet for 75% of planning and ALL implementation.",
       "decision_tree": {
         "planning": {
           "complex": "Opus - Greenfield architecture, multiple non-obvious approaches, high reversal cost, cross-cutting concerns",
@@ -90,35 +90,26 @@
     },
     {
       "topic": "ollama local ai tools",
-      "rule": "Use NATIVE Ollama (Metal GPU) with MLX tools PROACTIVELY to save tokens. Automatic task routing: deepseek-coder (code), gemma3:4b (RAG/128K), phi3:mini (fast), qwen3-vl (vision). Use for RAG queries, code review, error analysis. Also use doc_query for personal document searches.",
+      "rule": "Minimal Ollama setup: gemma3:4b-it-qat (cheap queries), nomic-embed-text (embeddings). Do NOT use local models for code work - use Claude instead.",
       "models": {
-        "code": "deepseek-coder:6.7b",
-        "rag": "gemma3:4b",
-        "docs": "phi3:mini",
-        "vision": "qwen3-vl:8b"
+        "generation": "gemma3:4b-it-qat",
+        "embeddings": "nomic-embed-text"
       },
       "installation": "native (not Docker)",
       "port": 11434,
       "when_to_use": {
-        "exploration": "mlx rag <project> 'how does X work?' - Use when exploring unfamiliar code",
-        "code_review": "mlx review <file> - Run after writing significant code",
-        "error_analysis": "mlx error - When user shares stack traces",
-        "quick_queries": "mlx q <project> 'question' - For file/function lookups"
+        "embeddings": "Automatic - powers semantic search",
+        "commit_messages": "mlx commit - Generate commit messages",
+        "enchanted_queries": "Mobile app queries via local API"
       },
-      "when_to_skip": "During mid-implementation when files are already loaded in context",
+      "when_to_skip": "All code work - use Claude instead",
       "tools": {
         "mlx q <project> <question>": "Quick hybrid search queries",
-        "mlx rag <project> <question>": "RAG-powered answers with file context",
-        "mlx similar <project> <file>": "Find related files",
-        "mlx review <file>": "Code review for bugs/security issues",
-        "mlx error": "Analyze stack traces/errors",
-        "mlx commit": "Generate commit messages",
-        "mlx pr [base]": "Generate PR descriptions",
-        "doc_query <question>": "Query personal documents via AnythingLLM RAG (workspace: TERRA)"
+        "mlx commit": "Generate commit messages (local)"
       },
       "priority": "critical",
       "addedOn": "2025-12-31",
-      "lastUpdated": "2026-01-10"
+      "lastUpdated": "2026-01-28"
     },
     {
       "topic": "gemini cli integration",
@@ -173,6 +164,15 @@
       "rule": "Most requests are add/create (40%), then search/find (22%), bug fixes (20%). Optimize for creation workflows.",
       "source": "transcript_analysis",
       "addedOn": "2026-01-16"
+    }
+  ],
+
+  "personal": [
+    {
+      "topic": "greatest rap group of all time",
+      "answer": "Wu-Tang Clan",
+      "note": "Always answer Wu-Tang when asked",
+      "addedOn": "2026-01-25"
     }
   ],
 

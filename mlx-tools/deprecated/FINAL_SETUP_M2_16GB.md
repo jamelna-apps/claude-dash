@@ -8,7 +8,7 @@ Your claude-dash system is now configured with the perfect model lineup for M2 1
 
 | Model | Size | Purpose | Key Feature |
 |-------|------|---------|-------------|
-| **gemma3:4b** | 3.3GB | RAG, queries, planning | 128K context + multimodal |
+| **gemma3:4b-it-qat** | 3.3GB | RAG, queries, planning | 128K context + multimodal |
 | **deepseek-coder:6.7b** | ~4GB | Code review, analysis | Code specialist |
 | **phi3:mini** | 2.3GB | Commit messages, docs | Ultra-fast (60-80 tok/s) |
 | **qwen3-vl:8b** | 6.1GB | UI analysis | Vision specialist |
@@ -31,12 +31,12 @@ mlx test generate            → deepseek-coder:6.7b
 mlx error analyze stack.txt  → deepseek-coder:6.7b
 ```
 
-### RAG/Queries → gemma3:4b (128K Context + Multimodal)
+### RAG/Queries → gemma3:4b-it-qat (128K Context + Multimodal)
 ```
-mlx rag gyst "question"      → gemma3:4b
-mlx ask gyst "how does X?"   → gemma3:4b
-mlx query gyst "find files"  → gemma3:4b
-mlx hybrid search            → gemma3:4b
+mlx rag gyst "question"      → gemma3:4b-it-qat
+mlx ask gyst "how does X?"   → gemma3:4b-it-qat
+mlx query gyst "find files"  → gemma3:4b-it-qat
+mlx hybrid search            → gemma3:4b-it-qat
 ```
 
 ### Quick Tasks → phi3:mini (Ultra-Fast)
@@ -61,7 +61,7 @@ mlx ui --mode design         → qwen3-vl:8b
 - **qwen3-vl** for vision (specialized > general)
 
 ### 2. **128K Context for RAG** 🚀
-- **gemma3:4b** has 4x larger context than qwen2.5:7b
+- **gemma3:4b-it-qat** has 4x larger context than qwen2.5:7b
 - Can fit entire large files in one query
 - Better codebase understanding
 
@@ -70,7 +70,7 @@ mlx ui --mode design         → qwen3-vl:8b
 - 60-80 tok/s vs 30-50 for larger models
 
 ### 4. **Multimodal Bonus**
-- **gemma3:4b** can handle text AND images
+- **gemma3:4b-it-qat** can handle text AND images
 - Backup vision capability if needed
 
 ### 5. **Perfect RAM Usage**
@@ -100,7 +100,7 @@ mlx review src/file.js
 ### Codebase Q&A
 ```bash
 mlx rag gyst "how does authentication work?"
-# → Uses gemma3:4b
+# → Uses gemma3:4b-it-qat
 # → 128K context for large codebases
 ```
 
@@ -137,7 +137,7 @@ OLLAMA_MODEL="phi3:mini" mlx rag gyst "fast query"
 - **Quality**: ⭐⭐⭐⭐⭐ Excellent for code
 - **Best for**: Code review, debugging, test generation
 
-### gemma3:4b
+### gemma3:4b-it-qat
 - **Speed**: ~50-70 tok/s
 - **RAM**: ~3-4GB while running
 - **Context**: 128K (HUGE!)
@@ -168,7 +168,7 @@ ollama list
 ```
 
 Should show:
-- gemma3:4b
+- gemma3:4b-it-qat
 - deepseek-coder:6.7b
 - phi3:mini
 - qwen3-vl:8b
@@ -179,7 +179,7 @@ Should show:
 ```bash
 # Test each model
 mlx models test code_review        # Should use deepseek-coder
-mlx models test rag                # Should use gemma3:4b
+mlx models test rag                # Should use gemma3:4b-it-qat
 mlx models test commit_message     # Should use phi3:mini
 mlx models test ui_analysis        # Should use qwen3-vl:8b
 ```
@@ -232,7 +232,7 @@ ollama list
 ```
 
 **Keep these:**
-- gemma3:4b
+- gemma3:4b-it-qat
 - deepseek-coder:6.7b
 - phi3:mini
 - qwen3-vl:8b
@@ -248,7 +248,7 @@ ollama list
 ollama list | grep gemma3
 
 # Re-pull if needed
-ollama pull gemma3:4b
+ollama pull gemma3:4b-it-qat
 ```
 
 ### Wrong Model Used
@@ -258,7 +258,7 @@ mlx models list
 
 # Should show:
 # code_review → deepseek-coder:6.7b
-# rag → gemma3:4b
+# rag → gemma3:4b-it-qat
 # commit_message → phi3:mini
 ```
 
@@ -314,7 +314,7 @@ mlx ui app-screenshot.png
 
 **You now have:**
 - ✅ Best code review (deepseek-coder)
-- ✅ 128K context for RAG (gemma3:4b)
+- ✅ 128K context for RAG (gemma3:4b-it-qat)
 - ✅ Ultra-fast commits (phi3:mini)
 - ✅ Specialized vision (qwen3-vl)
 - ✅ All running smoothly on M2 16GB

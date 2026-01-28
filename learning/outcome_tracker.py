@@ -130,14 +130,23 @@ def get_build_commands(project_type):
 
 
 def run_check(command, project_path, timeout=120):
-    """Run a build/test command and return result."""
+    """Run a build/test command and return result.
+    SECURITY: Uses shlex.split to safely parse command without shell=True.
+    """
+    import shlex
+
     if not command:
         return {"success": None, "skipped": True, "reason": "no command"}
 
     try:
+        # SECURITY: Parse command string safely instead of using shell=True
+        if isinstance(command, str):
+            args = shlex.split(command)
+        else:
+            args = command
+
         result = subprocess.run(
-            command,
-            shell=True,
+            args,
             cwd=project_path,
             capture_output=True,
             text=True,

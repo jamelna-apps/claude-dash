@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-UI Analyzer - Vision-powered screenshot analysis using qwen3-vl
+UI Analyzer - Vision-powered screenshot analysis
+
+NOTE: No local VLM installed. Use Claude API for vision tasks.
 
 Analyze app screenshots for:
 - UI/UX issues

@@ -61,16 +61,34 @@ class DuplicateFinder:
                 if (f1_name in files and f2_name in files):
                     return True, rule.get("reason", "Ignored by config")
 
-            # Check patterns like "*Screen.js/*DetailScreen.js"
+            # Check patterns
             if "pattern" in rule:
                 pattern = rule["pattern"]
-                if "/" in pattern:
-                    p1, p2 = pattern.split("/")
+                # Cross-directory pattern (e.g., "services/*/actions/" or "actions/*/components/")
+                # Means: ignore if one file is in dir1 and other is in dir2
+                if pattern.count("/") >= 2 and "*" in pattern:
+                    parts = pattern.split("/")
+                    dir1 = parts[0]
+                    dir2 = parts[-1] if parts[-1] else parts[-2]
+                    if (self._contains_dir(file1, dir1) and self._contains_dir(file2, dir2)) or \
+                       (self._contains_dir(file1, dir2) and self._contains_dir(file2, dir1)):
+                        return True, rule.get("reason", "Ignored by config")
+                # Simple path pattern with "/" (both files must match respective parts)
+                elif "/" in pattern and "*" not in pattern:
+                    p1, p2 = pattern.split("/", 1)
                     if (self._matches_pattern(file1, p1) and self._matches_pattern(file2, p2)) or \
                        (self._matches_pattern(file1, p2) and self._matches_pattern(file2, p1)):
                         return True, rule.get("reason", "Ignored by config")
+                else:
+                    # Single pattern: ignore if BOTH files match (e.g., both are page.tsx)
+                    if self._matches_pattern(file1, pattern) and self._matches_pattern(file2, pattern):
+                        return True, rule.get("reason", "Ignored by config")
 
         return False, None
+
+    def _contains_dir(self, filepath: str, dirname: str) -> bool:
+        """Check if filepath contains the given directory name."""
+        return f"/{dirname}/" in f"/{filepath}" or filepath.startswith(f"{dirname}/")
 
     def _matches_pattern(self, filename: str, pattern: str) -> bool:
         """Check if filename matches a simple glob pattern."""

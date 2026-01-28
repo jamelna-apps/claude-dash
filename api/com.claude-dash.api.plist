@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.claude-dash.api</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/jmelendez/.claude-dash/mlx-env/bin/python3</string>
+        <string>/Users/jmelendez/.claude-dash/api/server.py</string>
+        <string>--host</string>
+        <string>0.0.0.0</string>
+        <string>--port</string>
+        <string>5100</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/jmelendez/.claude-dash/api</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>OLLAMA_URL</key>
+        <string>http://localhost:11434</string>
+        <key>CLAUDE_DASH_ROOT</key>
+        <string>/Users/jmelendez/.claude-dash</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/jmelendez/.claude-dash/logs/api-server.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/jmelendez/.claude-dash/logs/api-server.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+</dict>
+</plist>

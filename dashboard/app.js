@@ -117,16 +117,21 @@ function showPortalTab(tab, btn) {
   if (btn) btn.classList.add('active');
 
   const portalGrid = document.getElementById('portal-grid');
+  const portfolioView = document.getElementById('portfolio-view');
   const kbView = document.getElementById('knowledge-base-view');
   const reportsView = document.getElementById('reports-view');
   const ollamaAccess = document.getElementById('ollama-quick-access');
 
-  [portalGrid, kbView, reportsView].forEach(el => el?.classList.add('hidden'));
+  [portalGrid, portfolioView, kbView, reportsView].forEach(el => el?.classList.add('hidden'));
 
   if (tab === 'projects') {
     portalGrid?.classList.remove('hidden');
     ollamaAccess?.classList.remove('hidden');
     renderProjectsGrid();
+  } else if (tab === 'portfolio') {
+    portfolioView?.classList.remove('hidden');
+    ollamaAccess?.classList.add('hidden');
+    loadPortfolioData();
   } else if (tab === 'knowledge-base') {
     kbView?.classList.remove('hidden');
     ollamaAccess?.classList.add('hidden');
@@ -134,6 +139,7 @@ function showPortalTab(tab, btn) {
     reportsView?.classList.remove('hidden');
     ollamaAccess?.classList.add('hidden');
     loadEfficiencyData();
+    refreshTokenMetrics();
   }
 }
 
@@ -1093,6 +1099,331 @@ function renderFeatures() {
   `).join('');
 }
 
+// ===== PORTFOLIO =====
+
+let portfolioData = null;
+
+async function loadPortfolioData() {
+  try {
+    const response = await fetch('/api/portfolio');
+    portfolioData = await response.json();
+    renderPortfolio();
+  } catch (e) {
+    console.error('Failed to load portfolio:', e);
+    document.getElementById('portfolio-projects-grid').innerHTML =
+      '<div class="error">Failed to load portfolio data</div>';
+  }
+}
+
+function renderPortfolio() {
+  if (!portfolioData) return;
+
+  // Update health summary
+  document.getElementById('portfolio-active').textContent = portfolioData.health.active;
+  document.getElementById('portfolio-paused').textContent = portfolioData.health.paused;
+  document.getElementById('portfolio-stale').textContent = portfolioData.health.stale;
+  document.getElementById('portfolio-total').textContent = portfolioData.health.total;
+
+  // Render needs attention
+  renderPortfolioAttention();
+
+  // Render milestones
+  renderPortfolioMilestones();
+
+  // Render projects grid
+  renderPortfolioProjects();
+}
+
+function renderPortfolioAttention() {
+  const container = document.getElementById('portfolio-attention-list');
+  const section = document.getElementById('portfolio-attention-section');
+
+  if (!container || !portfolioData) return;
+
+  const items = portfolioData.needsAttention || [];
+
+  if (items.length === 0) {
+    section?.classList.add('hidden');
+    return;
+  }
+
+  section?.classList.remove('hidden');
+  container.innerHTML = items.map(item => `
+    <div class="portfolio-attention-item ${item.type}">
+      <div class="portfolio-attention-project">${escapeHtml(item.projectName)}</div>
+      <div class="portfolio-attention-reason">${escapeHtml(item.reason)}</div>
+      <button class="portfolio-attention-btn" onclick="showPortfolioProject('${item.projectId}')">View</button>
+    </div>
+  `).join('');
+}
+
+function renderPortfolioMilestones() {
+  const container = document.getElementById('portfolio-milestones-list');
+  const section = document.getElementById('portfolio-milestones-section');
+
+  if (!container || !portfolioData) return;
+
+  const milestones = portfolioData.milestones || [];
+
+  if (milestones.length === 0) {
+    section?.classList.add('hidden');
+    return;
+  }
+
+  section?.classList.remove('hidden');
+  container.innerHTML = milestones.map(m => {
+    const urgencyClass = m.daysUntil <= 7 ? 'urgent' : m.daysUntil <= 14 ? 'soon' : '';
+    return `
+      <div class="portfolio-milestone-item ${urgencyClass}">
+        <div class="portfolio-milestone-days">${m.daysUntil}d</div>
+        <div class="portfolio-milestone-info">
+          <div class="portfolio-milestone-name">${escapeHtml(m.name)}</div>
+          <div class="portfolio-milestone-project">${escapeHtml(m.projectName)}</div>
+        </div>
+        <div class="portfolio-milestone-date">${formatMilestoneDate(m.targetDate)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function formatMilestoneDate(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function renderPortfolioProjects() {
+  const container = document.getElementById('portfolio-projects-grid');
+  if (!container || !portfolioData) return;
+
+  const projects = portfolioData.projects || [];
+
+  if (projects.length === 0) {
+    container.innerHTML = '<div class="empty-state">No projects found</div>';
+    return;
+  }
+
+  container.innerHTML = projects.map(p => {
+    const statusClass = p.status === 'active' ? 'active' : p.status === 'paused' ? 'paused' : 'stale';
+    const sprintProgress = p.sprint.total > 0
+      ? Math.round((p.sprint.completed / p.sprint.total) * 100)
+      : 0;
+
+    return `
+      <div class="portfolio-project-card ${statusClass}" onclick="showPortfolioProject('${p.id}')">
+        <div class="portfolio-project-header">
+          <div class="portfolio-project-name">${escapeHtml(p.name)}</div>
+          <div class="portfolio-project-status ${statusClass}">${p.status}</div>
+        </div>
+        ${p.version ? `<div class="portfolio-project-version">${escapeHtml(p.version)}</div>` : ''}
+        ${p.phase ? `<div class="portfolio-project-phase">${escapeHtml(p.phase)}</div>` : ''}
+        <div class="portfolio-project-sprint">
+          <div class="portfolio-sprint-bar">
+            <div class="portfolio-sprint-fill" style="width: ${sprintProgress}%"></div>
+          </div>
+          <div class="portfolio-sprint-stats">
+            <span>${p.sprint.completed}/${p.sprint.total} done</span>
+            ${p.sprint.inProgress > 0 ? `<span class="in-progress">${p.sprint.inProgress} in progress</span>` : ''}
+            ${p.sprint.blocked > 0 ? `<span class="blocked">${p.sprint.blocked} blocked</span>` : ''}
+          </div>
+        </div>
+        <div class="portfolio-project-meta">
+          ${p.backlogCount > 0 ? `<span>${p.backlogCount} backlog items</span>` : ''}
+          ${p.daysSinceActivity !== null ? `<span>Updated ${p.daysSinceActivity}d ago</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function showPortfolioProject(projectId) {
+  const modal = document.getElementById('portfolio-project-modal');
+  const title = document.getElementById('portfolio-modal-title');
+  const body = document.getElementById('portfolio-modal-body');
+
+  if (!modal || !body) return;
+
+  modal.classList.remove('hidden');
+  body.innerHTML = '<div class="loading">Loading project roadmap...</div>';
+
+  try {
+    const response = await fetch(`/api/portfolio/project?id=${projectId}`);
+    const roadmap = await response.json();
+
+    if (roadmap.error) {
+      body.innerHTML = `<div class="error">${escapeHtml(roadmap.error)}</div>`;
+      return;
+    }
+
+    if (title) title.textContent = roadmap.projectName || projectId;
+
+    body.innerHTML = renderProjectRoadmap(roadmap);
+  } catch (e) {
+    body.innerHTML = `<div class="error">Failed to load project: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderProjectRoadmap(roadmap) {
+  let html = '';
+
+  // Normalize fields - handle both schema formats
+  const version = roadmap.currentVersion || roadmap.version;
+  const phase = roadmap.summary?.phase || roadmap.phase;
+  const status = roadmap.summary?.status || roadmap.status;
+  const description = roadmap.summary?.description || roadmap.description;
+
+  // Header info
+  html += `
+    <div class="roadmap-header">
+      ${version ? `<span class="roadmap-version">v${escapeHtml(version)}</span>` : ''}
+      ${phase ? `<span class="roadmap-phase">${escapeHtml(phase)}</span>` : ''}
+      ${status ? `<span class="roadmap-status">${escapeHtml(status)}</span>` : ''}
+    </div>
+    ${description ? `<p class="roadmap-description" style="color: var(--text-secondary); margin-bottom: 16px;">${escapeHtml(description)}</p>` : ''}
+  `;
+
+  // Recently Completed
+  if (roadmap.recentlyCompleted && roadmap.recentlyCompleted.length > 0) {
+    html += `
+      <div class="roadmap-section">
+        <h4>✅ Recently Completed (${roadmap.recentlyCompleted.length})</h4>
+        <div class="roadmap-items completed">
+          ${roadmap.recentlyCompleted.slice(0, 5).map(item => `
+            <div class="roadmap-item completed">
+              <span class="item-status-icon">✓</span>
+              <span class="item-title">${escapeHtml(item.item || item.title || item.name || 'Unnamed')}</span>
+              ${item.completedDate ? `<span class="item-date" style="color: var(--text-muted); font-size: 12px;">${item.completedDate}</span>` : ''}
+            </div>
+          `).join('')}
+          ${roadmap.recentlyCompleted.length > 5 ? `<div class="more-items">... and ${roadmap.recentlyCompleted.length - 5} more</div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  // Milestones
+  if (roadmap.milestones && roadmap.milestones.length > 0) {
+    html += `
+      <div class="roadmap-section">
+        <h4>🎯 Milestones</h4>
+        <div class="roadmap-milestones">
+          ${roadmap.milestones.map(m => `
+            <div class="roadmap-milestone ${m.status === 'completed' ? 'completed' : ''}">
+              <div class="milestone-name">${escapeHtml(m.title || m.name || 'Unnamed')}</div>
+              ${m.targetDate ? `<div class="milestone-date">${formatMilestoneDate(m.targetDate)}</div>` : ''}
+              <div class="milestone-status">${escapeHtml(m.status || 'pending')}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Current Sprint
+  if (roadmap.currentSprint && roadmap.currentSprint.items && roadmap.currentSprint.items.length > 0) {
+    html += `
+      <div class="roadmap-section">
+        <h4>🏃 Current Sprint${roadmap.currentSprint.name ? `: ${escapeHtml(roadmap.currentSprint.name)}` : ''}</h4>
+        ${roadmap.currentSprint.goals ? `
+          <div class="sprint-goals" style="margin-bottom: 12px; padding: 8px; background: var(--bg-secondary); border-radius: 6px;">
+            <strong style="font-size: 12px; color: var(--text-muted);">Goals:</strong>
+            <ul style="margin: 4px 0 0 16px; font-size: 13px;">${roadmap.currentSprint.goals.map(g => `<li>${escapeHtml(g)}</li>`).join('')}</ul>
+          </div>
+        ` : ''}
+        <div class="roadmap-items">
+          ${roadmap.currentSprint.items.map(item => `
+            <div class="roadmap-item ${item.status}">
+              <span class="item-status-icon">${getStatusIcon(item.status)}</span>
+              <span class="item-title">${escapeHtml(item.title || item.name || 'Unnamed')}</span>
+              ${item.priority ? `<span class="item-priority ${item.priority}">${item.priority}</span>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Backlog - handle both array and nested object formats
+  let backlogItems = [];
+  if (Array.isArray(roadmap.backlog)) {
+    backlogItems = roadmap.backlog;
+  } else if (roadmap.backlog && typeof roadmap.backlog === 'object') {
+    // Handle nested structure: { shortTerm: { items: [] }, mediumTerm: { items: [] }, ... }
+    for (const [timeframe, data] of Object.entries(roadmap.backlog)) {
+      if (data?.items && Array.isArray(data.items)) {
+        backlogItems.push(...data.items.map(item => ({ ...item, timeframe: data.timeframe || timeframe })));
+      }
+    }
+  }
+
+  if (backlogItems.length > 0) {
+    html += `
+      <div class="roadmap-section">
+        <h4>📋 Backlog (${backlogItems.length} items)</h4>
+        <div class="roadmap-items backlog">
+          ${backlogItems.slice(0, 10).map(item => `
+            <div class="roadmap-item">
+              <span class="item-title">${escapeHtml(item.title || item.name || 'Unnamed')}</span>
+              ${item.priority ? `<span class="item-priority ${item.priority}">${item.priority}</span>` : ''}
+              ${item.timeframe ? `<span class="item-timeframe" style="color: var(--text-muted); font-size: 11px; margin-left: 8px;">${escapeHtml(item.timeframe)}</span>` : ''}
+            </div>
+          `).join('')}
+          ${backlogItems.length > 10 ? `<div class="more-items">... and ${backlogItems.length - 10} more</div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  // Tech Debt - handle both techDebt and technicalDebt field names
+  const techDebt = roadmap.techDebt || roadmap.technicalDebt || [];
+  if (techDebt.length > 0) {
+    html += `
+      <div class="roadmap-section">
+        <h4>🔧 Tech Debt (${techDebt.length} items)</h4>
+        <div class="roadmap-items tech-debt">
+          ${techDebt.slice(0, 5).map(item => `
+            <div class="roadmap-item">
+              <span class="item-title">${escapeHtml(item.title || item.description || 'Unnamed')}</span>
+              ${item.priority ? `<span class="item-priority ${item.priority}">${item.priority}</span>` : ''}
+            </div>
+          `).join('')}
+          ${techDebt.length > 5 ? `<div class="more-items">... and ${techDebt.length - 5} more</div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  // Notes
+  if (roadmap.notes && roadmap.notes.length > 0) {
+    html += `
+      <div class="roadmap-section">
+        <h4>📝 Notes</h4>
+        <ul style="margin: 0; padding-left: 20px; color: var(--text-secondary); font-size: 13px;">
+          ${roadmap.notes.map(note => `<li>${escapeHtml(note)}</li>`).join('')}
+        </ul>
+      </div>
+    `;
+  }
+
+  return html || '<div class="empty-state">No roadmap data available</div>';
+}
+
+function getStatusIcon(status) {
+  switch (status) {
+    case 'completed': return '✓';
+    case 'in_progress': return '●';
+    case 'blocked': return '✗';
+    default: return '○';
+  }
+}
+
+function closePortfolioModal() {
+  document.getElementById('portfolio-project-modal')?.classList.add('hidden');
+}
+
+window.showPortfolioProject = showPortfolioProject;
+window.closePortfolioModal = closePortfolioModal;
+
 // ===== EFFICIENCY METRICS =====
 
 let efficiencyData = null;
@@ -1307,6 +1638,7 @@ function refreshEfficiency() {
 function onReportsTabShown() {
   loadEfficiencyData();
   loadGatewayMetrics();
+  loadWorkers();
   loadReports();
   loadActivityHeatmap();
   loadSessionSummaries();
@@ -1342,6 +1674,73 @@ async function loadGatewayMetrics() {
 
 function refreshGatewayMetrics() {
   loadGatewayMetrics();
+}
+
+// Load background workers status
+async function loadWorkers() {
+  try {
+    const response = await fetch('/api/workers');
+    const data = await response.json();
+
+    // Format relative time
+    const formatTime = (isoStr) => {
+      if (!isoStr) return '-';
+      const date = new Date(isoStr);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays > 0) return `${diffDays}d ago`;
+      if (diffHours > 0) return `${diffHours}h ago`;
+      if (diffMins > 0) return `${diffMins}m ago`;
+      return 'just now';
+    };
+
+    // Summaries
+    const summaries = data.workers?.summaries || {};
+    document.getElementById('wkr-summaries-pending').textContent = summaries.totalPending || 0;
+    document.getElementById('wkr-summaries-last').textContent = `last: ${formatTime(summaries.lastRun)}`;
+
+    // Freshness
+    const freshness = data.workers?.freshness || {};
+    const freshnessStatus = freshness.needsAttention ? `${freshness.staleCount} stale` : 'OK';
+    document.getElementById('wkr-freshness-status').textContent = freshnessStatus;
+    document.getElementById('wkr-freshness-status').style.color = freshness.needsAttention ? '#f59e0b' : '#10b981';
+    document.getElementById('wkr-freshness-last').textContent = `last: ${formatTime(freshness.lastRun)}`;
+
+    // Checkpoints
+    const checkpoints = data.workers?.checkpoints || {};
+    document.getElementById('wkr-checkpoints-merged').textContent = `${checkpoints.observationsMerged || 0} merged`;
+    document.getElementById('wkr-checkpoints-last').textContent = `last: ${formatTime(checkpoints.lastRun)}`;
+
+    // Learning/Consolidate
+    const consolidate = data.workers?.consolidate || {};
+    document.getElementById('wkr-learning-trajectories').textContent = `${consolidate.trajectoriesProcessed || 0} proc`;
+    document.getElementById('wkr-learning-last').textContent = `last: ${formatTime(consolidate.lastRun)}`;
+
+    // Per-project summaries
+    const projectContainer = document.getElementById('wkr-project-summaries');
+    const byProject = summaries.byProject || {};
+    if (Object.keys(byProject).length > 0) {
+      projectContainer.innerHTML = Object.entries(byProject).map(([pid, stats]) => `
+        <div style="padding: 8px; background: var(--bg-secondary); border-radius: 6px; font-size: 12px;">
+          <div style="font-weight: 500; color: var(--text-primary); margin-bottom: 4px;">${escapeHtml(pid)}</div>
+          <div style="color: ${stats.pending > 50 ? '#f59e0b' : 'var(--text-muted)'};">
+            ${stats.pending || 0} pending
+          </div>
+        </div>
+      `).join('');
+    } else {
+      projectContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 12px;">No data yet</div>';
+    }
+  } catch (e) {
+    console.error('Failed to load workers:', e);
+  }
+}
+
+function refreshWorkers() {
+  loadWorkers();
 }
 
 // Load reports list
@@ -1587,6 +1986,81 @@ window.refreshEfficiency = refreshEfficiency;
 window.showOllamaChat = () => showChat(currentProject?.id);
 window.hideOllamaChat = closeChat;
 window.closeChat = closeChat;
+// Token Savings Metrics
+async function refreshTokenMetrics() {
+  try {
+    const response = await fetch('/api/gateway/metrics');
+    const data = await response.json();
+
+    const total = data.totalQueries || 1;
+    const routing = data.routing || {};
+    const memory = routing.memory || 0;
+
+    // Calculate token stats from recent queries
+    const recent = data.recentQueries || [];
+    let tokensUsed = 0;
+    let tokensSaved = 0;
+
+    recent.forEach(q => {
+      tokensUsed += q.tokensUsed || 0;
+      tokensSaved += q.tokensSaved || 0;
+    });
+
+    const wouldHaveUsed = tokensUsed + tokensSaved;
+    const savingsRate = wouldHaveUsed > 0 ? ((tokensSaved / wouldHaveUsed) * 100).toFixed(1) : '0.0';
+
+    // Update cards
+    document.getElementById('token-memory-queries').textContent = memory;
+    document.getElementById('token-memory-percent').textContent = ((memory / total) * 100).toFixed(1) + '% of total';
+
+    document.getElementById('token-actual-used').textContent = formatNumber(tokensUsed);
+    document.getElementById('token-saved').textContent = formatNumber(tokensSaved);
+    document.getElementById('token-savings-rate').textContent = savingsRate + '% savings';
+    document.getElementById('token-would-have').textContent = formatNumber(wouldHaveUsed);
+
+    // Build daily stats table
+    const dailyStats = data.dailyStats || {};
+    const tbody = document.getElementById('token-trend-table');
+    const rows = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const key = date.toISOString().split('T')[0];
+      const stats = dailyStats[key] || { queries: 0, tokensSaved: 0, cacheHits: 0 };
+      const memoryHits = stats.queries - (stats.cacheHits || 0);
+
+      rows.push('<tr style="border-bottom: 1px solid #e5e7eb;">' +
+        '<td style="padding: 0.75rem;">' + date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '</td>' +
+        '<td style="padding: 0.75rem;">' + stats.queries + '</td>' +
+        '<td style="padding: 0.75rem; color: #10b981; font-weight: 600;">' + formatNumber(stats.tokensSaved) + '</td>' +
+        '<td style="padding: 0.75rem; color: #3b82f6;">' + memoryHits + '</td>' +
+        '<td style="padding: 0.75rem; color: #f59e0b;">' + stats.cacheHits + '</td>' +
+        '</tr>');
+    }
+    tbody.innerHTML = rows.join('');
+
+    // Calculate projections
+    const days = Object.keys(dailyStats).length || 1;
+    const dailyAvgSavings = tokensSaved / days;
+    const monthlySavings = Math.round(dailyAvgSavings * 30);
+    const costSavings = (monthlySavings * 5 / 1000000).toFixed(2);
+
+    document.getElementById('proj-current-savings').textContent = formatNumber(tokensSaved);
+    document.getElementById('proj-monthly-savings').textContent = formatNumber(monthlySavings);
+    document.getElementById('proj-cost-savings').textContent = '$' + costSavings;
+
+  } catch (e) {
+    console.error('Error refreshing token metrics:', e);
+  }
+}
+
+function formatNumber(num) {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num.toString();
+}
+
 window.sendMessage = sendMessage;
 window.showSettingsModal = () => document.getElementById('settings-modal')?.classList.remove('hidden');
 window.hideSettingsModal = () => document.getElementById('settings-modal')?.classList.add('hidden');
@@ -1602,8 +2076,29 @@ window.addKnowledgeBaseSource = () => {
     input.value = '';
   }
 };
+
+// Toggle Reports Section Collapsible
+window.toggleReportsSection = (sectionId) => {
+  const content = document.getElementById(`${sectionId}-content`);
+  const toggle = document.getElementById(`${sectionId}-toggle`);
+
+  if (!content || !toggle) return;
+
+  const isCollapsed = content.classList.contains('collapsed');
+
+  if (isCollapsed) {
+    content.classList.remove('collapsed');
+    toggle.textContent = '▼';
+  } else {
+    content.classList.add('collapsed');
+    toggle.textContent = '▶';
+  }
+};
+
 window.generateReport = generateReport;
 window.refreshGatewayMetrics = refreshGatewayMetrics;
+window.refreshWorkers = refreshWorkers;
+window.refreshTokenMetrics = refreshTokenMetrics;
 window.refreshActivityHeatmap = refreshActivityHeatmap;
 window.refreshSessionSummaries = refreshSessionSummaries;
 window.refreshTranscriptStats = refreshTranscriptStats;

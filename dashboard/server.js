@@ -18,6 +18,11 @@ const LEARNING_DIR = path.join(MEMORY_ROOT, 'learning');
 const SESSIONS_DIR = path.join(MEMORY_ROOT, 'sessions');
 const GATEWAY_DIR = path.join(MEMORY_ROOT, 'gateway');
 const REPORTS_DIR = path.join(MEMORY_ROOT, 'reports');
+const WORKERS_DIR = path.join(MEMORY_ROOT, 'workers');
+
+// Ollama configuration - uses Anthropic Messages API format (Ollama v0.14+)
+const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
+const OLLAMA_CHAT_MODEL = process.env.OLLAMA_CHAT_MODEL || 'gemma3:4b-it-qat';
 
 // MIME types
 const MIME_TYPES = {
@@ -40,9 +45,21 @@ function loadConfig() {
   }
 }
 
+// Get the memory directory path for a project (handles memoryPath vs id)
+function getProjectMemoryDir(projectId) {
+  const config = loadConfig();
+  const project = config.projects.find(p => p.id === projectId);
+  if (project && project.memoryPath) {
+    // memoryPath is relative to MEMORY_ROOT (e.g., "projects/gyst-seller-portal")
+    return path.join(MEMORY_ROOT, project.memoryPath);
+  }
+  // Default: use project ID
+  return path.join(PROJECTS_DIR, projectId);
+}
+
 // Load project data
 function loadProjectData(projectId) {
-  const projectDir = path.join(PROJECTS_DIR, projectId);
+  const projectDir = getProjectMemoryDir(projectId);
   const data = {};
 
   const files = ['index.json', 'summaries.json', 'functions.json', 'schema.json', 'graph.json', 'decisions.json', 'preferences.json'];
@@ -61,19 +78,51 @@ function loadProjectData(projectId) {
   return data;
 }
 
-// Check Ollama status
-function checkOllama() {
-  try {
-    const result = execSync('ollama ps 2>/dev/null', { encoding: 'utf8', timeout: 2000 });
-    const lines = result.trim().split('\n');
-    if (lines.length > 1) {
-      const parts = lines[1].split(/\s+/);
-      return { available: true, model: parts[0] || 'unknown' };
-    }
-    return { available: true, model: null };
-  } catch (e) {
-    return { available: false, model: null };
-  }
+// Check Ollama status using HTTP API
+async function checkOllama() {
+  return new Promise((resolve) => {
+    const options = {
+      hostname: 'localhost',
+      port: 11434,
+      path: '/api/tags',
+      method: 'GET'
+    };
+
+    const timeoutId = setTimeout(() => {
+      req.destroy();
+      resolve({ available: false, model: null, models: [] });
+    }, 2000);
+
+    const req = http.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        clearTimeout(timeoutId);
+        try {
+          if (res.statusCode === 200) {
+            const result = JSON.parse(data);
+            const models = (result.models || []).map(m => m.name);
+            resolve({
+              available: true,
+              model: models.includes(OLLAMA_CHAT_MODEL) ? OLLAMA_CHAT_MODEL : models[0] || null,
+              models
+            });
+          } else {
+            resolve({ available: false, model: null, models: [] });
+          }
+        } catch (e) {
+          resolve({ available: false, model: null, models: [] });
+        }
+      });
+    });
+
+    req.on('error', () => {
+      clearTimeout(timeoutId);
+      resolve({ available: false, model: null, models: [] });
+    });
+
+    req.end();
+  });
 }
 
 // Load efficiency data from learning systems
@@ -287,35 +336,73 @@ function calculateProjection(data, weeksAhead) {
   return projection;
 }
 
-// Query Ollama
-async function queryOllama(prompt, project) {
+// Query Ollama using Anthropic Messages API format (v0.14+)
+async function queryOllama(prompt, project, model = null) {
+  const selectedModel = model || OLLAMA_CHAT_MODEL;
+
+  const payload = {
+    model: selectedModel,
+    max_tokens: 1024,
+    messages: [{ role: 'user', content: prompt }]
+  };
+
+  // Add project context as system prompt if provided
+  if (project) {
+    payload.system = `You are helping with the "${project}" project. Be concise and helpful.`;
+  }
+
   return new Promise((resolve, reject) => {
-    const proc = spawn('ollama', ['run', 'qwen2.5:7b', '--nowordwrap'], {
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
+    const postData = JSON.stringify(payload);
 
-    let output = '';
-    let error = '';
-
-    proc.stdout.on('data', (data) => { output += data.toString(); });
-    proc.stderr.on('data', (data) => { error += data.toString(); });
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        resolve(output.trim());
-      } else {
-        reject(new Error(error || 'Ollama query failed'));
+    const options = {
+      hostname: 'localhost',
+      port: 11434,
+      path: '/v1/messages',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData),
+        'x-api-key': 'ollama'
       }
-    });
+    };
 
-    proc.stdin.write(prompt);
-    proc.stdin.end();
-
-    // Timeout after 60 seconds
-    setTimeout(() => {
-      proc.kill();
+    // Set up timeout
+    const timeoutId = setTimeout(() => {
+      req.destroy();
       reject(new Error('Ollama query timeout'));
     }, 60000);
+
+    const req = http.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        clearTimeout(timeoutId);
+        try {
+          if (res.statusCode !== 200) {
+            const error = JSON.parse(data);
+            reject(new Error(error.error?.message || `Ollama error: ${res.statusCode}`));
+            return;
+          }
+
+          const response = JSON.parse(data);
+          // Extract text from Anthropic format response
+          const texts = (response.content || [])
+            .filter(block => block.type === 'text')
+            .map(block => block.text);
+          resolve(texts.join('\n'));
+        } catch (e) {
+          reject(new Error(`Failed to parse Ollama response: ${e.message}`));
+        }
+      });
+    });
+
+    req.on('error', (e) => {
+      clearTimeout(timeoutId);
+      reject(new Error(`Ollama connection error: ${e.message}`));
+    });
+
+    req.write(postData);
+    req.end();
   });
 }
 
@@ -335,7 +422,7 @@ const apiHandlers = {
       // Load health score from cached health.json
       let healthScore = null;
       let healthTimestamp = null;
-      const healthPath = path.join(PROJECTS_DIR, p.id, 'health.json');
+      const healthPath = path.join(getProjectMemoryDir(p.id), 'health.json');
       try {
         if (fs.existsSync(healthPath)) {
           const health = JSON.parse(fs.readFileSync(healthPath, 'utf8'));
@@ -371,8 +458,8 @@ const apiHandlers = {
     res.end(JSON.stringify(data));
   },
 
-  '/api/ollama/status': (req, res) => {
-    const status = checkOllama();
+  '/api/ollama/status': async (req, res) => {
+    const status = await checkOllama();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(status));
   },
@@ -410,7 +497,7 @@ const apiHandlers = {
     }
 
     // Try to load cached health data
-    const healthPath = path.join(PROJECTS_DIR, projectId, 'health.json');
+    const healthPath = path.join(getProjectMemoryDir(projectId), 'health.json');
     try {
       if (fs.existsSync(healthPath)) {
         let health = JSON.parse(fs.readFileSync(healthPath, 'utf8'));
@@ -495,7 +582,7 @@ const apiHandlers = {
       }
 
       // Save to health.json
-      const healthPath = path.join(PROJECTS_DIR, projectId, 'health.json');
+      const healthPath = path.join(getProjectMemoryDir(projectId), 'health.json');
       fs.writeFileSync(healthPath, JSON.stringify(health, null, 2));
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -571,6 +658,71 @@ const apiHandlers = {
           ollamaStats: { queriesRouted: 0, tokensProcessed: 0, estimatedSavingsUSD: '0.0000' },
           dailyStats: {},
           recentQueries: []
+        }));
+      }
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  },
+
+  '/api/workers': (req, res) => {
+    try {
+      const statePath = path.join(WORKERS_DIR, 'state.json');
+      if (fs.existsSync(statePath)) {
+        const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+
+        // Calculate summaries progress
+        const summariesResult = state.results?.summaries || {};
+        const totalPending = summariesResult.total_pending || 0;
+        const byProject = summariesResult.by_project || {};
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          lastRun: state.last_run || {},
+          workers: {
+            health: {
+              lastRun: state.last_run?.health,
+              status: state.results?.health ? 'ok' : 'unknown'
+            },
+            freshness: {
+              lastRun: state.last_run?.freshness,
+              needsAttention: state.results?.freshness?.needs_attention || false,
+              staleCount: (state.results?.freshness?.stale || []).length
+            },
+            consolidate: {
+              lastRun: state.last_run?.consolidate,
+              trajectoriesProcessed: state.results?.consolidate?.trajectories_processed || 0
+            },
+            checkpoints: {
+              lastRun: state.last_run?.checkpoints,
+              observationsMerged: state.results?.checkpoints?.observations_merged || 0
+            },
+            summaries: {
+              lastRun: state.last_run?.summaries,
+              totalPending,
+              totalProcessed: summariesResult.total_processed || 0,
+              byProject,
+              durationMs: summariesResult._duration_ms || 0
+            }
+          },
+          cron: {
+            logRotation: '3 AM daily',
+            sessionArchival: '4 AM Sundays',
+            summarization: '5 AM daily'
+          }
+        }));
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          lastRun: {},
+          workers: {},
+          cron: {
+            logRotation: '3 AM daily',
+            sessionArchival: '4 AM Sundays',
+            summarization: '5 AM daily'
+          },
+          message: 'No worker state yet. Run: python3 ~/.claude-dash/workers/background_workers.py all'
         }));
       }
     } catch (e) {
@@ -830,6 +982,189 @@ const apiHandlers = {
         largestSession: transcripts[0] || null,
         transcripts: transcripts.slice(0, 10)
       }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  },
+
+  // ===== PORTFOLIO API =====
+  '/api/portfolio': (req, res) => {
+    try {
+      const config = loadConfig();
+      const portfolio = {
+        projects: [],
+        health: {
+          active: 0,
+          paused: 0,
+          stale: 0,
+          total: 0
+        },
+        milestones: [],
+        needsAttention: []
+      };
+
+      const now = new Date();
+      const staleThresholdDays = 7;
+      const milestoneWarningDays = 30;
+
+      for (const project of config.projects) {
+        const roadmapPath = path.join(PROJECTS_DIR, project.id, 'roadmap.json');
+        let roadmap = null;
+
+        try {
+          if (fs.existsSync(roadmapPath)) {
+            roadmap = JSON.parse(fs.readFileSync(roadmapPath, 'utf8'));
+          }
+        } catch (e) {
+          console.error(`Error loading roadmap for ${project.id}:`, e.message);
+        }
+
+        // Calculate project status
+        let status = 'active';
+        let daysSinceActivity = null;
+
+        if (roadmap?.lastUpdated) {
+          const lastUpdate = new Date(roadmap.lastUpdated);
+          daysSinceActivity = Math.floor((now - lastUpdate) / (1000 * 60 * 60 * 24));
+          if (daysSinceActivity > staleThresholdDays) {
+            status = 'stale';
+          }
+        }
+
+        // Check status in both root level and summary (different roadmap schemas)
+        const roadmapStatus = roadmap?.status || roadmap?.summary?.status;
+        if (roadmapStatus === 'paused' || roadmapStatus === 'on_hold') {
+          status = 'paused';
+        }
+
+        // Count sprint items
+        const sprintItems = roadmap?.currentSprint?.items || [];
+        const completedItems = sprintItems.filter(i => i.status === 'completed').length;
+        const inProgressItems = sprintItems.filter(i => i.status === 'in_progress').length;
+        const blockedItems = sprintItems.filter(i => i.status === 'blocked').length;
+
+        // Count recently completed items (some schemas track these separately)
+        const recentlyCompletedCount = roadmap?.recentlyCompleted?.length || 0;
+
+        // Find upcoming milestones
+        if (roadmap?.milestones) {
+          for (const milestone of roadmap.milestones) {
+            if (milestone.targetDate && milestone.status !== 'completed') {
+              const targetDate = new Date(milestone.targetDate);
+              const daysUntil = Math.floor((targetDate - now) / (1000 * 60 * 60 * 24));
+
+              if (daysUntil >= 0 && daysUntil <= milestoneWarningDays) {
+                portfolio.milestones.push({
+                  projectId: project.id,
+                  projectName: project.displayName || project.name || project.id,
+                  name: milestone.title || milestone.name || 'Unnamed',
+                  targetDate: milestone.targetDate,
+                  daysUntil,
+                  status: milestone.status
+                });
+              }
+            }
+          }
+        }
+
+        // Add to needs attention if blocked or stale
+        if (blockedItems > 0) {
+          portfolio.needsAttention.push({
+            projectId: project.id,
+            projectName: project.displayName || project.name || project.id,
+            reason: `${blockedItems} blocked item${blockedItems > 1 ? 's' : ''}`,
+            type: 'blocked'
+          });
+        }
+
+        if (status === 'stale' && daysSinceActivity) {
+          portfolio.needsAttention.push({
+            projectId: project.id,
+            projectName: project.displayName || project.name || project.id,
+            reason: `Stale for ${daysSinceActivity} days`,
+            type: 'stale'
+          });
+        }
+
+        // Update health counts
+        portfolio.health.total++;
+        if (status === 'active') portfolio.health.active++;
+        else if (status === 'paused') portfolio.health.paused++;
+        else if (status === 'stale') portfolio.health.stale++;
+
+        // Calculate backlog count - handle both array and nested object schemas
+        let backlogCount = 0;
+        if (Array.isArray(roadmap?.backlog)) {
+          backlogCount = roadmap.backlog.length;
+        } else if (roadmap?.backlog && typeof roadmap.backlog === 'object') {
+          // Handle nested structure: { shortTerm: { items: [] }, mediumTerm: { items: [] }, ... }
+          for (const timeframe of Object.values(roadmap.backlog)) {
+            if (timeframe?.items && Array.isArray(timeframe.items)) {
+              backlogCount += timeframe.items.length;
+            }
+          }
+        }
+
+        portfolio.projects.push({
+          id: project.id,
+          name: project.displayName || project.name || project.id,
+          path: project.path,
+          status,
+          daysSinceActivity,
+          // Check currentVersion first, fall back to version
+          version: roadmap?.currentVersion || roadmap?.version || null,
+          // Check summary.phase first, fall back to root phase
+          phase: roadmap?.summary?.phase || roadmap?.phase || null,
+          sprint: {
+            total: sprintItems.length,
+            completed: completedItems + recentlyCompletedCount,
+            inProgress: inProgressItems,
+            blocked: blockedItems
+          },
+          backlogCount,
+          recentlyCompleted: recentlyCompletedCount,
+          hasRoadmap: !!roadmap
+        });
+      }
+
+      // Sort milestones by date
+      portfolio.milestones.sort((a, b) => a.daysUntil - b.daysUntil);
+
+      // Sort needs attention by type priority (blocked > stale)
+      portfolio.needsAttention.sort((a, b) => {
+        if (a.type === 'blocked' && b.type !== 'blocked') return -1;
+        if (a.type !== 'blocked' && b.type === 'blocked') return 1;
+        return 0;
+      });
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(portfolio));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  },
+
+  '/api/portfolio/project': (req, res, params) => {
+    const projectId = params.get('id');
+    if (!projectId) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Missing project id' }));
+      return;
+    }
+
+    try {
+      const roadmapPath = path.join(PROJECTS_DIR, projectId, 'roadmap.json');
+      if (!fs.existsSync(roadmapPath)) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'No roadmap found for project' }));
+        return;
+      }
+
+      const roadmap = JSON.parse(fs.readFileSync(roadmapPath, 'utf8'));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(roadmap));
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: e.message }));

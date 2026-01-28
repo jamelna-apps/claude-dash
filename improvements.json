@@ -51,7 +51,7 @@
       "source": "health_check",
       "detectedAt": "2026-01-16T08:37:54.999102",
       "resolvedAt": "2026-01-16T11:22:00.000000",
-      "lastSeen": "2026-01-17T11:43:21.085867"
+      "lastSeen": "2026-01-19T18:50:03.198086"
     },
     {
       "id": "watcher-not-running-6d12",
@@ -60,7 +60,8 @@
       "status": "resolved",
       "source": "health_check",
       "detectedAt": "2026-01-16T08:52:34.980137",
-      "resolvedAt": "2026-01-16T11:22:00.000000"
+      "resolvedAt": "2026-01-16T11:22:00.000000",
+      "lastSeen": "2026-01-25T13:20:48.834214"
     }
   ],
   "techDebt": [

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "claude-dash": {
+      "command": "node",
+      "args": ["/Users/jmelendez/.claude-dash/gateway/server.js"],
+      "env": {}
+    }
+  }
+}

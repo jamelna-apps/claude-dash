@@ -5,7 +5,7 @@
 ⚠️ **gemma3:12b is RISKY on 16GB M2** - It will work but with significant trade-offs.
 
 **Better alternatives:**
-- ✅ **gemma3:4b** - Fast, 128K context, multimodal (3.3GB)
+- ✅ **gemma3:4b-it-qat** - Fast, 128K context, multimodal (3.3GB)
 - ✅ **qwen2.5:7b** - Better quality, proven (4.7GB)
 - ⚠️ **gemma3:12b** - Highest quality BUT slow and tight on RAM (8-9GB)
 
@@ -15,7 +15,7 @@
 
 | Model | Download Size | RAM When Running | Speed on M2 16GB |
 |-------|--------------|------------------|------------------|
-| gemma3:4b | 3.3GB | ~3-4GB | ⚡⚡⚡⚡ Very fast (50-70 tok/s) |
+| gemma3:4b-it-qat | 3.3GB | ~3-4GB | ⚡⚡⚡⚡ Very fast (50-70 tok/s) |
 | gemma3:12b | ~8GB | **~8-10GB** | ⚡ Slow (10-20 tok/s) |
 | qwen2.5:7b | 4.7GB | ~4-5GB | ⚡⚡⚡ Fast (30-50 tok/s) |
 
@@ -96,7 +96,7 @@ Remaining:         2-5GB (VERY TIGHT)
 
 ### Code Quality (HumanEval Benchmark)
 ```
-gemma3:4b    → 36.0  (moderate)
+gemma3:4b-it-qat    → 36.0  (moderate)
 gemma3:12b   → ~50-55 (estimated - significantly better)
 qwen2.5:7b   → ~45-50 (estimated - good)
 ```
@@ -106,7 +106,7 @@ qwen2.5:7b   → ~45-50 (estimated - good)
 
 ### Reasoning (MMLU Benchmark)
 ```
-gemma3:4b    → 59.6
+gemma3:4b-it-qat    → 59.6
 gemma3:12b   → ~70-75 (estimated)
 qwen2.5:7b   → ~65-70 (estimated)
 ```
@@ -132,7 +132,7 @@ qwen2.5:7b   → ~65-70 (estimated)
 
 ### Better Alternatives
 
-#### Option 1: gemma3:4b (Recommended for most use)
+#### Option 1: gemma3:4b-it-qat (Recommended for most use)
 ```
 ✅ Pros:
 - 128K context (HUGE for RAG)
@@ -165,7 +165,7 @@ qwen2.5:7b   → ~65-70 (estimated)
 
 #### Option 3: Hybrid (Best of All Worlds)
 ```
-gemma3:4b (3.3GB)   → RAG, queries (128K context!)
+gemma3:4b-it-qat (3.3GB)   → RAG, queries (128K context!)
 qwen2.5:7b (4.7GB)  → Code tasks (quality + speed)
 qwen3-vl:8b (6.1GB) → UI analysis (specialized)
 
@@ -207,19 +207,19 @@ Consider gemma3:12b ONLY if:
 ```python
 # Optimal for M2 16GB
 TASK_MODEL_MAP = {
-    # RAG: Use gemma3:4b (128K context is killer feature)
-    'rag': 'gemma3:4b',
-    'query': 'gemma3:4b',
-    'ask': 'gemma3:4b',
+    # RAG: Use gemma3:4b-it-qat (128K context is killer feature)
+    'rag': 'gemma3:4b-it-qat',
+    'query': 'gemma3:4b-it-qat',
+    'ask': 'gemma3:4b-it-qat',
 
     # Code: Use qwen2.5:7b (quality + speed balance)
     'code_review': 'qwen2.5:7b',
     'code_analysis': 'qwen2.5:7b',
     'error_analysis': 'qwen2.5:7b',
 
-    # Simple docs: Use gemma3:4b (fast enough)
-    'commit_message': 'gemma3:4b',
-    'summarization': 'gemma3:4b',
+    # Simple docs: Use gemma3:4b-it-qat (fast enough)
+    'commit_message': 'gemma3:4b-it-qat',
+    'summarization': 'gemma3:4b-it-qat',
 
     # Complex reasoning: Use qwen2.5:7b (good enough)
     'planning': 'qwen2.5:7b',
@@ -281,7 +281,7 @@ time mlx ask gyst "explain the authentication flow"  # Uses qwen2.5:7b
 - ❌ Not recommended as primary model
 
 **Better approach:**
-- Use **gemma3:4b** for RAG (128K context rocks!)
+- Use **gemma3:4b-it-qat** for RAG (128K context rocks!)
 - Use **qwen2.5:7b** for code (quality + speed)
 - Keep **qwen3-vl:8b** for vision
 - Optionally install gemma3:12b for rare, critical queries
@@ -291,4 +291,4 @@ time mlx ask gyst "explain the authentication flow"  # Uses qwen2.5:7b
 - Using cloud APIs (Claude, GPT-4)
 - Running on desktop with more RAM
 
-Your current plan (gemma3:4b + qwen2.5:7b + qwen3-vl:8b) is **optimal for M2 16GB**. Don't mess with success! 🎯
+Your current plan (gemma3:4b-it-qat + qwen2.5:7b + qwen3-vl:8b) is **optimal for M2 16GB**. Don't mess with success! 🎯

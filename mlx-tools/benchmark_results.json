@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-01-25T12:41:52.664352",
+  "model": "gemma3:4b-it-qat",
+  "hardware": {
+    "chip": "Apple M2",
+    "memory": "16 GB"
+  },
+  "tests": {
+    "code_completion": {
+      "model_used": "gemma3:4b-it-qat",
+      "elapsed_seconds": 5.96,
+      "prompt_tokens": 15,
+      "response_tokens": 20,
+      "tokens_per_second": 3.4,
+      "quality_score": 1.0,
+      "response_preview": "```python\ndef fibonacci(n):\n  \"\"\"Return the nth Fibonacci number.\"\"\"\n  if n <= 1:\n    return n\n  else:\n    return fibonacci(n-1) + fibonacci(n-2)\n```"
+    },
+    "code_explanation": {
+      "model_used": "gemma3:4b-it-qat",
+      "elapsed_seconds": 3.76,
+      "prompt_tokens": 27,
+      "response_tokens": 56,
+      "tokens_per_second": 14.9,
+      "quality_score": 1.0,
+      "response_preview": "This code defines an asynchronous function called `fetchUserData` that retrieves user data from an API.  It uses the `fetch` API to make a request to a specific endpoint (`/api/users/${userId}`) and t"
+    }
+  },
+  "summary": {
+    "avg_response_time": 4.86,
+    "avg_tokens_per_second": 9.2,
+    "avg_quality_score": 1.0
+  }
+}

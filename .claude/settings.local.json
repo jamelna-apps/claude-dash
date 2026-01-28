@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.claude.com)",
+      "WebFetch(domain:stevekinney.com)",
+      "Bash(xargs:*)",
+      "Bash(python3:*)",
+      "Bash(chmod:*)",
+      "Bash(~/.claude-dash/hooks/inject-context.sh)",
+      "Bash(curl:*)",
+      "Bash(sqlite3:*)",
+      "Bash(node:*)",
+      "Bash(pgrep:*)",
+      "Bash(lsof:*)",
+      "Bash(bash hooks/inject-context.sh:*)",
+      "Bash(echo:*)",
+      "Bash(launchctl list:*)",
+      "Bash(while read line)",
+      "Bash(do echo \"  $line\")",
+      "Bash(done)",
+      "Bash(while read pid exit_code label)",
+      "Bash(do echo '  ✓ $label \\(PID: $pid\\)' done)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: crash-resilient learning capture with three-layer protection\n\n## New Features\n- PreCompact hook: captures learnings before context summarization\n- Incremental checkpoints: saves state every 5 messages \\(background\\)\n- Checkpoint consolidation in background workers\n\n## Model Configuration\n- Replaced qwen2.5:7b references with gemma3:4b \\(default\\)\n- deepseek-coder:6.7b for code review/analysis\n- phi3:mini for fast tasks \\(commit messages, summaries\\)\n\n## Bug Fixes\n- Fixed transcript parsing to handle both \"human\" and \"user\" message types\n- Expanded correction tracker patterns \\(14 → 30 patterns\\)\n- Added prefix matching for semantic triggers \\(\"auth\" matches \"authenticate\"\\)\n- Fixed model fallbacks across 10+ files\n\n## Documentation\n- Updated README with crash protection section\n- Added hooks directory to structure docs\n- Updated requirements with model recommendations\n- Added PreCompact hook to settings.json examples\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(ollama list:*)",
+      "Bash(ollama rm:*)"
+    ]
+  }
+}

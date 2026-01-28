@@ -32,7 +32,7 @@ try:
 except ImportError:
     MEMORY_ROOT = Path.home() / ".claude-dash"
     OLLAMA_URL = "http://localhost:11434"
-    OLLAMA_MODEL = "gemma3:4b"
+    OLLAMA_MODEL = "gemma3:4b-it-qat"
 
 # Import pattern detector for learning
 sys.path.insert(0, str(MEMORY_ROOT / "patterns"))
@@ -230,7 +230,7 @@ If no meaningful observations, return: []"""
     try:
         import re
         # Find JSON array in response
-        json_match = re.search(r'\[[\s\S]*?\]', response)
+        json_match = re.search(r'\[[\s\S]*\]', response)
         if json_match:
             observations = json.loads(json_match.group())
             # Validate structure
@@ -286,6 +286,17 @@ def save_observations(observations, project_id, session_id, summary):
         return 0
 
     timestamp = datetime.utcnow().isoformat() + "Z"
+
+    # Check if this session+project was already processed (deduplication)
+    index_path = MEMORY_ROOT / "sessions" / "index.json"
+    try:
+        index = json.loads(index_path.read_text())
+        existing_sessions = {(s["sessionId"], s["projectId"]) for s in index.get("sessions", [])}
+        if (session_id, project_id) in existing_sessions:
+            print(f"  [SKIP] Session {session_id[:8]}... already processed for {project_id}")
+            return 0
+    except (json.JSONDecodeError, IOError, FileNotFoundError):
+        pass  # Index doesn't exist yet, proceed
 
     # Enrich observations with metadata
     for obs in observations:

@@ -73,6 +73,7 @@
       <h2>Your Projects</h2>
       <div class="portal-tabs">
         <button class="portal-tab active" onclick="showPortalTab('projects', this)">Projects</button>
+        <button class="portal-tab" onclick="showPortalTab('portfolio', this)">Portfolio</button>
         <button class="portal-tab" onclick="showPortalTab('knowledge-base', this)">Knowledge Base</button>
         <button class="portal-tab" onclick="showPortalTab('reports', this)">Reports</button>
       </div>
@@ -91,6 +92,72 @@
 
     <div id="portal-grid" class="portal-grid">
       <div class="loading">Loading projects...</div>
+    </div>
+
+    <!-- Portfolio View -->
+    <div id="portfolio-view" class="portfolio-view hidden">
+      <!-- Portfolio Health Summary -->
+      <div class="portfolio-health-summary">
+        <div class="portfolio-health-card">
+          <div class="portfolio-health-value" id="portfolio-active">0</div>
+          <div class="portfolio-health-label">Active</div>
+        </div>
+        <div class="portfolio-health-card paused">
+          <div class="portfolio-health-value" id="portfolio-paused">0</div>
+          <div class="portfolio-health-label">Paused</div>
+        </div>
+        <div class="portfolio-health-card stale">
+          <div class="portfolio-health-value" id="portfolio-stale">0</div>
+          <div class="portfolio-health-label">Stale</div>
+        </div>
+        <div class="portfolio-health-card total">
+          <div class="portfolio-health-value" id="portfolio-total">0</div>
+          <div class="portfolio-health-label">Total</div>
+        </div>
+      </div>
+
+      <!-- Needs Attention Section -->
+      <div class="portfolio-section" id="portfolio-attention-section">
+        <div class="portfolio-section-header">
+          <h3>⚠️ Needs Attention</h3>
+        </div>
+        <div class="portfolio-attention-list" id="portfolio-attention-list">
+          <div class="loading">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Upcoming Milestones Section -->
+      <div class="portfolio-section" id="portfolio-milestones-section">
+        <div class="portfolio-section-header">
+          <h3>🎯 Upcoming Milestones</h3>
+        </div>
+        <div class="portfolio-milestones-list" id="portfolio-milestones-list">
+          <div class="loading">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Projects Grid -->
+      <div class="portfolio-section">
+        <div class="portfolio-section-header">
+          <h3>📁 All Projects</h3>
+        </div>
+        <div class="portfolio-projects-grid" id="portfolio-projects-grid">
+          <div class="loading">Loading projects...</div>
+        </div>
+      </div>
+
+      <!-- Project Detail Modal -->
+      <div id="portfolio-project-modal" class="portfolio-modal hidden">
+        <div class="portfolio-modal-content">
+          <div class="portfolio-modal-header">
+            <h3 id="portfolio-modal-title">Project Details</h3>
+            <button class="portfolio-modal-close" onclick="closePortfolioModal()">&times;</button>
+          </div>
+          <div class="portfolio-modal-body" id="portfolio-modal-body">
+            <div class="loading">Loading...</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Knowledge Base View -->
@@ -118,57 +185,185 @@
         <div class="loading">Loading reports...</div>
       </div>
 
-      <!-- Ollama Routing Stats Section -->
-      <div class="efficiency-section ollama-section">
-        <div class="efficiency-header">
-          <h3>Ollama Routing Stats</h3>
-          <button onclick="refreshGatewayMetrics()" class="zoom-btn">Refresh</button>
+      <!-- Unified Routing Efficiency Section -->
+      <div class="efficiency-section routing-efficiency-section">
+        <div class="efficiency-header collapsible-header" onclick="toggleReportsSection('routing-efficiency')">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="toggle-icon" id="routing-efficiency-toggle">▼</span>
+            <h3>⚡ Routing Efficiency</h3>
+          </div>
+          <button onclick="event.stopPropagation(); refreshGatewayMetrics(); refreshTokenMetrics();" class="zoom-btn">Refresh All</button>
         </div>
 
-        <div class="efficiency-cards">
-          <div class="efficiency-card ollama-card">
-            <div class="efficiency-card-label">Ollama Queries</div>
-            <div class="efficiency-card-value" id="gw-ollama-queries">-</div>
-            <div class="efficiency-card-sub" id="gw-ollama-percent">- of total</div>
+        <div id="routing-efficiency-content" class="collapsible-content">
+          <!-- Combined Stats Cards -->
+          <div class="efficiency-cards">
+            <div class="efficiency-card" style="border-left: 4px solid #10b981;">
+              <div class="efficiency-card-label">Memory Routing</div>
+              <div class="efficiency-card-value" id="token-memory-queries">-</div>
+              <div class="efficiency-card-sub" id="token-memory-percent">- of total</div>
+            </div>
+            <div class="efficiency-card" style="border-left: 4px solid #f59e0b;">
+              <div class="efficiency-card-label">Ollama Queries</div>
+              <div class="efficiency-card-value" id="gw-ollama-queries">-</div>
+              <div class="efficiency-card-sub" id="gw-ollama-percent">- of total</div>
+            </div>
+            <div class="efficiency-card" style="border-left: 4px solid #3b82f6;">
+              <div class="efficiency-card-label">Claude API</div>
+              <div class="efficiency-card-value" id="gw-api-queries">-</div>
+              <div class="efficiency-card-sub" id="gw-api-percent">- of total</div>
+            </div>
+            <div class="efficiency-card" style="border-left: 4px solid #8b5cf6;">
+              <div class="efficiency-card-label">Total Queries</div>
+              <div class="efficiency-card-value" id="gw-total-queries">-</div>
+              <div class="efficiency-card-sub">all time</div>
+            </div>
           </div>
-          <div class="efficiency-card api-card">
-            <div class="efficiency-card-label">Claude API</div>
-            <div class="efficiency-card-value" id="gw-api-queries">-</div>
-            <div class="efficiency-card-sub" id="gw-api-percent">- of total</div>
+
+          <!-- Token Savings Cards -->
+          <div class="efficiency-cards" style="margin-top: 1rem;">
+            <div class="efficiency-card" style="border-left: 4px solid #3b82f6;">
+              <div class="efficiency-card-label">Tokens Used</div>
+              <div class="efficiency-card-value" id="token-actual-used">-</div>
+              <div class="efficiency-card-sub">actual consumption</div>
+            </div>
+            <div class="efficiency-card" style="border-left: 4px solid #10b981;">
+              <div class="efficiency-card-label">Tokens Saved</div>
+              <div class="efficiency-card-value" id="token-saved">-</div>
+              <div class="efficiency-card-sub" id="token-savings-rate">- savings rate</div>
+            </div>
+            <div class="efficiency-card" style="border-left: 4px solid #6b7280;">
+              <div class="efficiency-card-label">Would Have Used</div>
+              <div class="efficiency-card-value" id="token-would-have">-</div>
+              <div class="efficiency-card-sub">without memory</div>
+            </div>
+            <div class="efficiency-card" style="border-left: 4px solid #10b981;">
+              <div class="efficiency-card-label">Est. Savings</div>
+              <div class="efficiency-card-value" id="gw-savings">$0.00</div>
+              <div class="efficiency-card-sub">from local routing</div>
+            </div>
           </div>
-          <div class="efficiency-card savings-card">
-            <div class="efficiency-card-label">Est. Savings</div>
-            <div class="efficiency-card-value" id="gw-savings">$0.00</div>
-            <div class="efficiency-card-sub">from local routing</div>
+
+          <!-- Routing Distribution -->
+          <div class="efficiency-progress-section" style="margin-top: 2rem;">
+            <h4>Routing Distribution</h4>
+            <div class="efficiency-progress-item">
+              <div class="efficiency-progress-header">
+                <span class="efficiency-progress-label">Local (Ollama + Memory + Cache)</span>
+                <span class="efficiency-progress-value" id="gw-local-percent">-</span>
+              </div>
+              <div class="efficiency-progress-bar">
+                <div class="efficiency-progress-fill ollama-fill" id="gw-local-bar" style="width: 0%"></div>
+              </div>
+              <div class="efficiency-progress-hint">Free queries handled locally</div>
+            </div>
           </div>
-          <div class="efficiency-card">
-            <div class="efficiency-card-label">Total Queries</div>
-            <div class="efficiency-card-value" id="gw-total-queries">-</div>
-            <div class="efficiency-card-sub">all time</div>
+
+          <!-- Daily Stats Table -->
+          <div style="margin-top: 24px;">
+            <h4 style="margin-bottom: 12px; font-size: 14px; color: #aaa; font-weight: 500;">Last 7 Days</h4>
+            <table class="metrics-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Queries</th>
+                  <th>Tokens Saved</th>
+                  <th>Memory Hits</th>
+                  <th>Cache Hits</th>
+                </tr>
+              </thead>
+              <tbody id="token-trend-table">
+                <tr><td colspan="5" style="text-align: center; color: #666;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Projections -->
+          <div style="margin-top: 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+            <div class="projection-card">
+              <div class="efficiency-card-label">Current Session</div>
+              <div class="efficiency-card-value" id="proj-current-savings">-</div>
+              <div class="efficiency-card-sub">tokens saved</div>
+            </div>
+            <div class="projection-card">
+              <div class="efficiency-card-label">Projected Monthly</div>
+              <div class="efficiency-card-value" id="proj-monthly-savings">-</div>
+              <div class="efficiency-card-sub">tokens saved</div>
+            </div>
+            <div class="projection-card">
+              <div class="efficiency-card-label">Est. Cost Savings</div>
+              <div class="efficiency-card-value" style="color: #10b981;" id="proj-cost-savings">-</div>
+              <div class="efficiency-card-sub">per month</div>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div class="efficiency-progress-section">
-          <h4>Routing Distribution</h4>
-          <div class="efficiency-progress-item">
-            <div class="efficiency-progress-header">
-              <span class="efficiency-progress-label">Local (Ollama + Memory + Cache)</span>
-              <span class="efficiency-progress-value" id="gw-local-percent">-</span>
+      <!-- Background Workers Section -->
+      <div class="efficiency-section workers-section">
+        <div class="efficiency-header collapsible-header" onclick="toggleReportsSection('workers')">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="toggle-icon" id="workers-toggle">▼</span>
+            <h3>⚙️ Background Workers</h3>
+          </div>
+          <button onclick="event.stopPropagation(); refreshWorkers()" class="zoom-btn">Refresh</button>
+        </div>
+
+        <div id="workers-content" class="collapsible-content">
+          <div class="efficiency-cards">
+            <div class="efficiency-card" style="border-left: 4px solid #10b981;">
+              <div class="efficiency-card-label">Summaries Pending</div>
+              <div class="efficiency-card-value" id="wkr-summaries-pending">-</div>
+              <div class="efficiency-card-sub" id="wkr-summaries-last">last run: -</div>
             </div>
-            <div class="efficiency-progress-bar">
-              <div class="efficiency-progress-fill ollama-fill" id="gw-local-bar" style="width: 0%"></div>
+            <div class="efficiency-card" style="border-left: 4px solid #3b82f6;">
+              <div class="efficiency-card-label">Freshness</div>
+              <div class="efficiency-card-value" id="wkr-freshness-status">-</div>
+              <div class="efficiency-card-sub" id="wkr-freshness-last">last run: -</div>
             </div>
-            <div class="efficiency-progress-hint">Free queries handled locally</div>
+            <div class="efficiency-card" style="border-left: 4px solid #8b5cf6;">
+              <div class="efficiency-card-label">Checkpoints</div>
+              <div class="efficiency-card-value" id="wkr-checkpoints-merged">-</div>
+              <div class="efficiency-card-sub" id="wkr-checkpoints-last">last run: -</div>
+            </div>
+            <div class="efficiency-card" style="border-left: 4px solid #f59e0b;">
+              <div class="efficiency-card-label">Learning</div>
+              <div class="efficiency-card-value" id="wkr-learning-trajectories">-</div>
+              <div class="efficiency-card-sub" id="wkr-learning-last">last run: -</div>
+            </div>
+          </div>
+
+          <!-- Cron Schedule -->
+          <div style="margin-top: 1rem; padding: 12px; background: var(--bg-tertiary); border-radius: 8px;">
+            <h4 style="margin-bottom: 8px; font-size: 13px; color: var(--text-muted);">Scheduled Jobs</h4>
+            <div style="display: flex; gap: 24px; font-size: 12px; color: var(--text-secondary);">
+              <span>🕐 3 AM - Log Rotation</span>
+              <span>🕐 4 AM Sun - Session Archival</span>
+              <span>🕐 5 AM - Summarization</span>
+            </div>
+          </div>
+
+          <!-- Per-Project Summaries -->
+          <div style="margin-top: 1rem;">
+            <h4 style="margin-bottom: 8px; font-size: 13px; color: var(--text-muted);">Summaries by Project</h4>
+            <div id="wkr-project-summaries" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;">
+              <div style="color: var(--text-muted); font-size: 12px;">Loading...</div>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Efficiency Metrics Section -->
       <div class="efficiency-section">
-        <div class="efficiency-header">
-          <h3>Learning Efficiency</h3>
-          <button onclick="refreshEfficiency()" class="zoom-btn">Refresh</button>
+        <div class="efficiency-header collapsible-header" onclick="toggleReportsSection('learning-efficiency')">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="toggle-icon" id="learning-efficiency-toggle">▼</span>
+            <h3>📊 Learning Efficiency</h3>
+          </div>
+          <button onclick="event.stopPropagation(); refreshEfficiency()" class="zoom-btn">Refresh</button>
         </div>
+
+        <div id="learning-efficiency-content" class="collapsible-content">
 
         <!-- Current Stats Cards -->
         <div class="efficiency-cards">
@@ -247,70 +442,91 @@
             <div class="efficiency-domain-empty">No domain data yet. Use Claude more to build calibration.</div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Activity Heatmap Section -->
-    <div class="efficiency-section activity-section">
-      <div class="efficiency-header">
-        <h3>Activity by Project</h3>
-        <button onclick="refreshActivityHeatmap()" class="zoom-btn">Refresh</button>
-      </div>
-      <div class="activity-heatmap" id="activity-heatmap">
-        <div class="loading">Loading activity data...</div>
-      </div>
-      <div class="activity-total" id="activity-total"></div>
-    </div>
-
-    <!-- Recent Session Summaries Section -->
-    <div class="efficiency-section sessions-section">
-      <div class="efficiency-header">
-        <h3>Recent Session Summaries</h3>
-        <button onclick="refreshSessionSummaries()" class="zoom-btn">Refresh</button>
-      </div>
-      <div class="session-summaries" id="session-summaries">
-        <div class="loading">Loading session summaries...</div>
-      </div>
-    </div>
-
-    <!-- Transcript Stats Section -->
-    <div class="efficiency-section transcripts-section">
-      <div class="efficiency-header">
-        <h3>Transcript Stats</h3>
-        <button onclick="refreshTranscriptStats()" class="zoom-btn">Refresh</button>
-      </div>
-      <div class="efficiency-cards">
-        <div class="efficiency-card">
-          <div class="efficiency-card-label">Total Transcripts</div>
-          <div class="efficiency-card-value" id="ts-total">-</div>
-          <div class="efficiency-card-sub">conversations logged</div>
-        </div>
-        <div class="efficiency-card">
-          <div class="efficiency-card-label">Total Size</div>
-          <div class="efficiency-card-value" id="ts-size">-</div>
-          <div class="efficiency-card-sub">MB stored</div>
-        </div>
-        <div class="efficiency-card">
-          <div class="efficiency-card-label">Est. Tokens</div>
-          <div class="efficiency-card-value" id="ts-tokens">-</div>
-          <div class="efficiency-card-sub">processed</div>
-        </div>
-        <div class="efficiency-card">
-          <div class="efficiency-card-label">Largest Session</div>
-          <div class="efficiency-card-value" id="ts-largest">-</div>
-          <div class="efficiency-card-sub" id="ts-largest-id">-</div>
         </div>
       </div>
-    </div>
 
-    <!-- Project Activity Timeline Section -->
-    <div class="efficiency-section timeline-section">
-      <div class="efficiency-header">
-        <h3>Activity Timeline</h3>
-        <button onclick="refreshActivityTimeline()" class="zoom-btn">Refresh</button>
+      <!-- Activity Heatmap Section -->
+      <div class="efficiency-section activity-section">
+        <div class="efficiency-header collapsible-header" onclick="toggleReportsSection('activity-heatmap')">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="toggle-icon" id="activity-heatmap-toggle">▼</span>
+            <h3>📅 Activity by Project</h3>
+          </div>
+          <button onclick="event.stopPropagation(); refreshActivityHeatmap()" class="zoom-btn">Refresh</button>
+        </div>
+        <div id="activity-heatmap-content" class="collapsible-content">
+          <div class="activity-heatmap" id="activity-heatmap">
+            <div class="loading">Loading activity data...</div>
+          </div>
+          <div class="activity-total" id="activity-total"></div>
+        </div>
       </div>
-      <div class="activity-timeline" id="activity-timeline">
-        <div class="loading">Loading timeline...</div>
+
+      <!-- Recent Session Summaries Section -->
+      <div class="efficiency-section sessions-section">
+        <div class="efficiency-header collapsible-header" onclick="toggleReportsSection('session-summaries')">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="toggle-icon" id="session-summaries-toggle">▼</span>
+            <h3>💬 Recent Session Summaries</h3>
+          </div>
+          <button onclick="event.stopPropagation(); refreshSessionSummaries()" class="zoom-btn">Refresh</button>
+        </div>
+        <div id="session-summaries-content" class="collapsible-content">
+          <div class="session-summaries" id="session-summaries">
+            <div class="loading">Loading session summaries...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transcript Stats Section -->
+      <div class="efficiency-section transcripts-section">
+        <div class="efficiency-header collapsible-header" onclick="toggleReportsSection('transcript-stats')">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="toggle-icon" id="transcript-stats-toggle">▼</span>
+            <h3>📝 Transcript Stats</h3>
+          </div>
+          <button onclick="event.stopPropagation(); refreshTranscriptStats()" class="zoom-btn">Refresh</button>
+        </div>
+        <div id="transcript-stats-content" class="collapsible-content">
+          <div class="efficiency-cards">
+            <div class="efficiency-card">
+              <div class="efficiency-card-label">Total Transcripts</div>
+              <div class="efficiency-card-value" id="ts-total">-</div>
+              <div class="efficiency-card-sub">conversations logged</div>
+            </div>
+            <div class="efficiency-card">
+              <div class="efficiency-card-label">Total Size</div>
+              <div class="efficiency-card-value" id="ts-size">-</div>
+              <div class="efficiency-card-sub">MB stored</div>
+            </div>
+            <div class="efficiency-card">
+              <div class="efficiency-card-label">Est. Tokens</div>
+              <div class="efficiency-card-value" id="ts-tokens">-</div>
+              <div class="efficiency-card-sub">processed</div>
+            </div>
+            <div class="efficiency-card">
+              <div class="efficiency-card-label">Largest Session</div>
+              <div class="efficiency-card-value" id="ts-largest">-</div>
+              <div class="efficiency-card-sub" id="ts-largest-id">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Project Activity Timeline Section -->
+      <div class="efficiency-section timeline-section">
+        <div class="efficiency-header collapsible-header" onclick="toggleReportsSection('activity-timeline')">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="toggle-icon" id="activity-timeline-toggle">▼</span>
+            <h3>🕐 Activity Timeline</h3>
+          </div>
+          <button onclick="event.stopPropagation(); refreshActivityTimeline()" class="zoom-btn">Refresh</button>
+        </div>
+        <div id="activity-timeline-content" class="collapsible-content">
+          <div class="activity-timeline" id="activity-timeline">
+            <div class="loading">Loading timeline...</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -325,21 +541,17 @@
       </div>
       <div class="settings-modal-body">
         <div class="settings-section">
-          <h4>API Status</h4>
-          <p class="settings-desc">Direct API integration - no external dependencies.</p>
+          <h4>Local AI Status</h4>
+          <p class="settings-desc">All AI runs locally via Ollama - no external API keys required.</p>
 
           <div id="api-status" class="api-status">
             <div class="api-item">
-              <span class="status-dot" id="anthropic-status"></span>
-              <span>Claude API (Anthropic)</span>
-            </div>
-            <div class="api-item">
-              <span class="status-dot" id="tavily-status"></span>
-              <span>Web Search (Tavily)</span>
+              <span class="status-dot" id="ollama-status"></span>
+              <span>Ollama (Local LLM)</span>
             </div>
           </div>
 
-          <p class="settings-hint">API keys are configured in the launchd plist.<br>Features: AI reports, web search, knowledge base extraction.</p>
+          <p class="settings-hint">Claude-Dash uses local Ollama for all AI features.<br>No external API dependencies.</p>
         </div>
       </div>
     </div>

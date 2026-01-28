@@ -109,12 +109,11 @@ def main():
     print("Recommendations for 16GB M2")
     print("=" * 70)
 
-    print("\n✅ WILL RUN WELL (Recommended):")
+    print("\n✅ MINIMAL SETUP (Recommended):")
+    print("   Use Claude for real code work, Ollama for embeddings + cheap tasks\n")
     recommendations = [
-        ("gemma3:4b", "~3GB", "General tasks, 128K context", "Already installed" if "gemma3:4b" in installed else "ollama pull gemma3:4b"),
-        ("deepseek-coder:6.7b", "~4GB", "Code-focused tasks", "Already installed" if "deepseek-coder:6.7b" in installed else "ollama pull deepseek-coder:6.7b"),
-        ("phi3:mini", "~2GB", "Fast, simple tasks", "Already installed" if "phi3:mini" in installed else "ollama pull phi3:mini"),
-        ("qwen3-vl:8b", "~5GB", "Vision/UI analysis", "Already installed" if "qwen3-vl:8b" in installed else "ollama pull qwen3-vl:8b"),
+        ("gemma3:4b-it-qat", "~4GB", "All local generation tasks (128K context)", "Already installed" if "gemma3:4b-it-qat" in installed else "ollama pull gemma3:4b-it-qat"),
+        ("nomic-embed-text", "~0.3GB", "Embeddings for semantic search", "Already installed" if "nomic-embed-text:latest" in installed else "ollama pull nomic-embed-text"),
     ]
 
     for model, size, purpose, install_cmd in recommendations:
@@ -123,20 +122,19 @@ def main():
         if model not in installed:
             print(f"       Install: {install_cmd}")
 
-    print("\n⚠️  POSSIBLE BUT SLOWER:")
-    slow_models = [
-        ("llava:13b", "~8GB", "Better vision, but will slow system"),
-        ("mixtral:8x7b", "~26GB", "High quality, but won't fit comfortably"),
+    print("\n⚠️  OPTIONAL (If you want more local power):")
+    optional_models = [
+        ("gemma3:12b", "~8GB", "Higher quality but slower"),
     ]
 
-    for model, size, note in slow_models:
-        print(f"   [ ] {model:<25} {size:<8} - {note}")
+    for model, size, note in optional_models:
+        status = "✓" if model in installed else " "
+        print(f"   [{status}] {model:<25} {size:<8} - {note}")
 
-    print("\n❌ DON'T INSTALL (Too Large):")
+    print("\n❌ NOT NEEDED (Use Claude instead):")
     avoid = [
-        ("deepseek-coder:33b", "~20GB", "Won't run well"),
-        ("llama3:70b", "~40GB", "Way too large"),
-        ("llava:34b", "~20GB", "Won't run well"),
+        ("deepseek-coder", "~4GB", "Use Claude for code review"),
+        ("qwen3:*", "~2-20GB", "Use Claude for tool calling/agents"),
     ]
 
     for model, size, note in avoid:
@@ -147,45 +145,32 @@ def main():
     print("Expected Performance on M2 16GB")
     print("=" * 70)
 
-    print("\n4-7B models (gemma3:4b, deepseek-coder:6.7b):")
+    print("\n4B models (gemma3:4b-it-qat):")
     print("  • Speed: 30-50 tokens/sec")
-    print("  • RAM: 3-5GB while running")
-    print("  • Quality: ⭐⭐⭐⭐ Very good")
-    print("  • Verdict: ✅ Perfect for your hardware")
+    print("  • RAM: 3-4GB while running")
+    print("  • Quality: ⭐⭐⭐⭐ Good for non-critical tasks")
+    print("  • Verdict: ✅ Use for embeddings, commit msgs, cheap queries")
 
-    print("\n13B models (llava:13b):")
+    print("\n12B models (gemma3:12b):")
     print("  • Speed: 15-25 tokens/sec")
     print("  • RAM: 8-9GB while running")
     print("  • Quality: ⭐⭐⭐⭐⭐ Excellent")
     print("  • Verdict: ⚠️  Possible but will slow down other apps")
-
-    print("\n3B models (qwen2.5:3b, llama3.2:3b):")
-    print("  • Speed: 50-80 tokens/sec")
-    print("  • RAM: 2-3GB while running")
-    print("  • Quality: ⭐⭐⭐ Good")
-    print("  • Verdict: ✅ Great for quick/simple tasks")
 
     # Suggested setup
     print("\n" + "=" * 70)
     print("Suggested Setup for Your Use Case")
     print("=" * 70)
 
-    print("\n🎯 Recommended (Start Here):")
-    print("   • gemma3:4b → All text tasks (128K context)")
-    print("   • nomic-embed-text → Embeddings")
-    print("   Total: ~4GB disk, ~4GB RAM when running")
+    print("\n🎯 Current Setup (Minimal - Claude for real work):")
+    print("   • gemma3:4b-it-qat → Commit msgs, Enchanted queries, summarization")
+    print("   • nomic-embed-text → Embeddings for semantic search")
+    print("   • Claude (Sonnet/Opus) → All real code work")
+    print("   Total: ~4.3GB disk, ~4GB RAM when running")
 
-    print("\n🎨 Add for UI Analysis:")
-    print("   • llava:7b → Screenshot/UI analysis")
-    print("   Total: +5GB disk")
-
-    print("\n💻 Add for Better Code Review (Optional):")
-    print("   • deepseek-coder:6.7b → Specialized code understanding")
-    print("   Total: +4GB disk")
-
-    print("\n⚡ Add for Speed (Optional):")
-    print("   • qwen2.5:3b → Quick queries, simple tasks")
-    print("   Total: +2GB disk")
+    print("\n🎨 For UI/Vision Analysis:")
+    print("   • Use Claude API (no local VLM configured)")
+    print("   • Better quality than local vision models")
 
     # Model management tips
     print("\n" + "=" * 70)
@@ -204,14 +189,12 @@ def main():
     print("=" * 70)
 
     print("\nTest current setup:")
-    print("  mlx models status")
-    print("  mlx models list")
-    print("  time mlx ask gyst 'what is this app?'")
+    print("  python hardware_check.py")
+    print("  ollama list")
+    print("  curl http://localhost:11434/api/tags | jq '.models[].name'")
 
-    print("\nAdd visual analysis:")
-    print("  ollama pull llava:7b")
-    print("  export OLLAMA_VLM_MODEL='llava:7b'")
-    print("  mlx models test ui_analysis")
+    print("\nTest model routing:")
+    print("  python -c \"from config import get_model_for_task; print(get_model_for_task('code_review'))\"")
 
     print("\nCleanup unused models:")
     print("  ollama list")

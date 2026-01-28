@@ -31,7 +31,7 @@ import urllib.request
 MEMORY_ROOT = Path.home() / ".claude-dash"
 HAIKU_MODEL = "claude-haiku-4-5-20251001"  # Haiku 4.5 - fast, cheap, excellent quality
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "deepseek-coder:6.7b"
+OLLAMA_MODEL = "gemma3:4b-it-qat"
 
 
 def get_api_key() -> Optional[str]:

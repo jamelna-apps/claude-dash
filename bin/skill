@@ -1,0 +1,35 @@
+#!/bin/bash
+#
+# Claude-Dash Skills CLI
+#
+# Manages skills: list, install, update, publish.
+#
+# Usage:
+#   skill list                    - List installed skills
+#   skill info <name>            - Show skill details
+#   skill install <github-url>   - Install from GitHub
+#   skill update [name]          - Update skill(s)
+#   skill remove <name>          - Remove a skill
+#   skill publish <name>         - Export skill to GitHub format
+#   skill create <name>          - Create new skill scaffold
+#
+
+MEMORY_ROOT="$HOME/.claude-dash"
+INSTALLER="$MEMORY_ROOT/skills/installer.py"
+
+# Check if installer exists
+if [ ! -f "$INSTALLER" ]; then
+    echo "Error: Skills installer not found at $INSTALLER"
+    exit 1
+fi
+
+# Use virtual environment if available
+VENV_PYTHON="$MEMORY_ROOT/mlx-env/bin/python3"
+if [ -f "$VENV_PYTHON" ]; then
+    PYTHON="$VENV_PYTHON"
+else
+    PYTHON="python3"
+fi
+
+# Pass all arguments to the installer
+exec "$PYTHON" "$INSTALLER" "$@"
