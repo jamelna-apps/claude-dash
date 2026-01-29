@@ -107,6 +107,61 @@ find "$PROJECT_SESSION_DIR" -name "session-*.json" -type f -printf '%T@ %p\n' 2>
   # Fallback for macOS (doesn't have -printf)
   ls -t "$PROJECT_SESSION_DIR"/session-*.json 2>/dev/null | tail -n +11 | while read -r f; do rm -f "$f"; done 2>/dev/null
 
+# === OUTCOME TRACKING ===
+# Infer session outcome from transcript and record for learning
+
+OUTCOME_TRACKER="$MEMORY_ROOT/learning/outcome_tracker.py"
+if [ -f "$OUTCOME_TRACKER" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+  # Infer outcome from transcript (look for error indicators vs success indicators)
+  OUTCOME=$(cat "$TRANSCRIPT_PATH" | python3 -c "
+import sys, json
+error_indicators = ['error', 'failed', 'crash', 'bug', 'broken', 'not working', 'issue']
+success_indicators = ['works', 'fixed', 'done', 'complete', 'thanks', 'perfect', 'great']
+errors = 0
+successes = 0
+last_human_msg = ''
+for line in sys.stdin:
+    try:
+        msg = json.loads(line.strip())
+        text = ''
+        if msg.get('type') == 'human':
+            content = msg.get('message', {}).get('content', '')
+            if isinstance(content, str):
+                text = content.lower()
+                last_human_msg = text
+        elif msg.get('type') == 'assistant':
+            content = msg.get('message', {}).get('content', [])
+            if isinstance(content, list):
+                text = ' '.join([c.get('text','') for c in content if c.get('type')=='text']).lower()
+        for ind in error_indicators:
+            if ind in text: errors += 1
+        for ind in success_indicators:
+            if ind in text: successes += 1
+    except: pass
+# Weight last message heavily
+for ind in success_indicators:
+    if ind in last_human_msg: successes += 3
+for ind in error_indicators:
+    if ind in last_human_msg: errors += 3
+if successes > errors + 2:
+    print('success')
+elif errors > successes + 2:
+    print('partial')
+else:
+    print('success')  # Default to success
+" 2>/dev/null)
+
+  # Record the outcome
+  if [ -n "$OUTCOME" ]; then
+    python3 "$OUTCOME_TRACKER" --record \
+      --approach "session work on $PROJECT_ID" \
+      --outcome "$OUTCOME" \
+      --domain "session" \
+      --context "Exit: $EXIT_REASON" \
+      2>/dev/null &
+  fi
+fi
+
 # === NEW: Session Memory with Observation Extraction ===
 
 TRANSCRIPTS_DIR="$MEMORY_ROOT/sessions/transcripts"

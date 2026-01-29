@@ -128,6 +128,12 @@
         "path": "core/claude-dash-admin/SKILL.md",
         "triggers": ["system health", "system cleanup", "optimize claude-dash", "memory system", "indexes", "watcher"],
         "description": "Self-maintenance and system administration guidance"
+      },
+      {
+        "name": "self-healing",
+        "path": "core/self-healing/SKILL.md",
+        "triggers": ["remove model", "delete dependency", "cleanup models", "broken reference", "impact analysis", "cascade fix", "self-heal", "dependency removed"],
+        "description": "Auto-detect and fix broken dependencies when resources are removed"
       }
     ],
     "marketing": [

@@ -26,7 +26,25 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: crash-resilient learning capture with three-layer protection\n\n## New Features\n- PreCompact hook: captures learnings before context summarization\n- Incremental checkpoints: saves state every 5 messages \\(background\\)\n- Checkpoint consolidation in background workers\n\n## Model Configuration\n- Replaced qwen2.5:7b references with gemma3:4b \\(default\\)\n- deepseek-coder:6.7b for code review/analysis\n- phi3:mini for fast tasks \\(commit messages, summaries\\)\n\n## Bug Fixes\n- Fixed transcript parsing to handle both \"human\" and \"user\" message types\n- Expanded correction tracker patterns \\(14 → 30 patterns\\)\n- Added prefix matching for semantic triggers \\(\"auth\" matches \"authenticate\"\\)\n- Fixed model fallbacks across 10+ files\n\n## Documentation\n- Updated README with crash protection section\n- Added hooks directory to structure docs\n- Updated requirements with model recommendations\n- Added PreCompact hook to settings.json examples\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(ollama list:*)",
-      "Bash(ollama rm:*)"
+      "Bash(ollama rm:*)",
+      "Bash(~/.claude-dash/mlx-tools/mlx self-heal check:*)",
+      "Bash(~/.claude-dash/mlx-tools/mlx self-heal sync:*)",
+      "Bash(~/.claude-dash/mlx-tools/mlx self-heal registry:*)",
+      "Bash(wc:*)",
+      "Bash(du:*)",
+      "Bash(# Find files older than 14 days in transcripts find ~/.claude-dash/sessions/transcripts -type f -mtime +14 -exec ls -lh {} \\\\;)",
+      "Bash(# Check uncompressed vs compressed sizes echo \"\"Uncompressed .jsonl files:\"\" ls -lh ~/.claude-dash/sessions/transcripts/*.jsonl)",
+      "Bash(# Get accurate sizes echo \"\"=== Uncompressed .jsonl ===\"\" du -ch ~/.claude-dash/sessions/transcripts/*.jsonl)",
+      "Bash(tail -1 echo \"\" echo \"=== Compressed .jsonl.gz ===\" du -ch ~/.claude-dash/sessions/transcripts/*.jsonl.gz)",
+      "Bash(__NEW_LINE_1b3054ad72561cb7__ echo \"\")",
+      "Bash(./start.sh:*)",
+      "Bash(ps:*)",
+      "Bash(~/.claude/hooks/inject-context.sh)",
+      "Bash(# Test with timeout like the actual hook does cd ~/.claude-dash && timeout 5 python3 hooks/inject_all_context.py \"\"I have a bug\"\" \"\".claude-dash\"\" --first)",
+      "Bash(__NEW_LINE_ea19715638b52019__ echo -e \"\\\\n=== PRE-COMPACT HOOK ===\")",
+      "Bash(__NEW_LINE_5d76c227ab849fc2__ echo -e \"\\\\n=== POST-TOOL-USE HOOK ===\")",
+      "Bash(# Check if outcome tracking is called anywhere echo \"\"=== WHERE IS OUTCOME_TRACKER CALLED? ===\"\" grep -r \"\"outcome_tracker\\\\|record.*outcome\\\\|--outcome\"\" ~/.claude-dash/hooks/ ~/.claude-dash/gateway/)",
+      "Bash(# Check correction tracking echo \"\"=== CORRECTION TRACKER ===\"\" head -50 ~/.claude-dash/learning/correction_tracker.py echo -e \"\"\\\\n=== WHERE IS IT CALLED? ===\"\" grep -r \"\"correction_tracker\\\\|record_correction\"\" ~/.claude-dash/hooks/)"
     ]
   }
 }

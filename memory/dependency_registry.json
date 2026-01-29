@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "updated": "2026-01-28T18:48:28.580576",
+  "resources": [
+    {
+      "type": "ollama_model",
+      "id": "gemma3:4b-it-qat",
+      "description": "Auto-discovered Ollama model",
+      "required": false,
+      "alternatives": [],
+      "metadata": {
+        "discovered": true,
+        "synced": "2026-01-28T18:45:53.881267"
+      }
+    },
+    {
+      "type": "ollama_model",
+      "id": "nomic-embed-text:latest",
+      "description": "Auto-discovered Ollama model",
+      "required": false,
+      "alternatives": [],
+      "metadata": {
+        "discovered": true,
+        "synced": "2026-01-28T18:45:53.881540"
+      }
+    }
+  ],
+  "patterns": {
+    "ollama_model": [
+      "['\\\"]([a-z0-9_-]+:[a-z0-9._-]+)['\\\"]",
+      "OLLAMA_MODEL\\s*=\\s*['\\\"]([^'\\\"]+)['\\\"]",
+      "model\\s*=\\s*['\\\"]([a-z0-9_-]+:[a-z0-9._-]+)['\\\"]"
+    ],
+    "config_key": [
+      "get_model_for_task\\(['\\\"]([^'\\\"]+)['\\\"]",
+      "TASK_MODEL_MAP\\[['\\\"]([^'\\\"]+)['\\\"]"
+    ],
+    "env_var": [
+      "os\\.environ\\.get\\(['\\\"]([^'\\\"]+)['\\\"]",
+      "\\$\\{?([A-Z_]+)\\}?"
+    ]
+  }
+}

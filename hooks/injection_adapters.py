@@ -160,32 +160,53 @@ def get_weak_areas() -> str:
 def get_semantic_context(prompt: str, project_id: str) -> str:
     """
     Adapter: inject_all_context.py expects get_semantic_context()
-    Actual: semantic_triggers.py has detect_topics(), search_decisions(), etc.
+    Enhanced: Uses FTS5 search (fast) + keyword matching for relevant context.
     """
+    parts = []
+
+    # 1. Fast FTS5 search for relevant files
+    try:
+        sys.path.insert(0, str(MEMORY_ROOT / "mlx-tools"))
+        from hybrid_search import fts5_search
+
+        # Extract key terms from prompt (simple extraction)
+        import re
+        words = re.findall(r'\b\w{4,}\b', prompt.lower())
+        # Filter common words
+        stopwords = {'this', 'that', 'with', 'from', 'have', 'what', 'when', 'where', 'which', 'would', 'could', 'should', 'about', 'there', 'their', 'they', 'been', 'were', 'some', 'more', 'other'}
+        keywords = [w for w in words if w not in stopwords][:5]
+
+        if keywords and project_id:
+            query = ' OR '.join(keywords)
+            results = fts5_search(project_id, query, top_k=3)
+            if results:
+                parts.append("[RELEVANT FILES from memory]")
+                for r in results:
+                    summary = r.get('summary', '')[:80] or r.get('purpose', '')[:80]
+                    if summary:
+                        parts.append(f"  • {r['file']}: {summary}")
+    except Exception:
+        pass  # FTS5 not available, continue with keyword search
+
+    # 2. Keyword-based decision search (original behavior)
     try:
         from semantic_triggers import detect_topics, search_decisions
 
         topics = detect_topics(prompt)
-        if not topics:
-            return ""
-
-        parts = []
-
-        # Search decisions for these topics
-        for topic in topics[:2]:  # Limit to 2 topics
-            decisions = search_decisions(topic, project_id)
-            if decisions:
-                parts.append(f"[RELEVANT MEMORY for: {topic}]")
-                parts.append("Past decisions:")
-                for d in decisions[:2]:  # Limit results
-                    if isinstance(d, dict):
-                        parts.append(f"  • {d.get('summary', str(d))[:100]}")
-                    else:
-                        parts.append(f"  • {str(d)[:100]}")
-
-        if not parts:
-            return ""
-
-        return "\n".join(parts)
+        if topics:
+            for topic in topics[:2]:  # Limit to 2 topics
+                decisions = search_decisions(topic, project_id)
+                if decisions:
+                    if not parts:
+                        parts.append(f"[RELEVANT MEMORY for: {topic}]")
+                    parts.append("Past decisions:")
+                    for d in decisions[:2]:  # Limit results
+                        if isinstance(d, dict):
+                            text = d.get('text', d.get('summary', str(d)))[:100]
+                            parts.append(f"  • {text}")
+                        else:
+                            parts.append(f"  • {str(d)[:100]}")
     except Exception:
-        return ""
+        pass
+
+    return "\n".join(parts) if parts else ""

@@ -386,22 +386,7 @@ const TOOLS = [
       required: ['question']
     }
   },
-  {
-    name: 'local_review',
-    description: 'NON-CRITICAL USE ONLY: NOT recommended for code review. Use Claude (Sonnet) for quality code reviews. This tool is only for personal experimentation.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        file: { type: 'string', description: 'File path to review' },
-        diff: { type: 'string', description: 'Git diff to review (alternative to file)' },
-        focus: {
-          type: 'string',
-          enum: ['bugs', 'security', 'performance', 'style', 'all'],
-          description: 'Review focus (default: all)'
-        }
-      }
-    }
-  },
+  // local_review REMOVED - use Claude for code reviews
 
   // --- GATEWAY INFO ---
   {
@@ -763,6 +748,60 @@ const TOOLS = [
       },
       required: ['question']
     }
+  },
+
+  // --- SELF-HEALING TOOLS ---
+  {
+    name: 'self_heal_check',
+    description: 'Check system health for broken dependencies (missing models, broken imports, stale references). Run this after removing resources.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        verbose: { type: 'boolean', description: 'Show detailed output' }
+      }
+    }
+  },
+  {
+    name: 'self_heal_analyze',
+    description: 'Analyze impact of removing a resource. Shows what files would be affected and suggests fixes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        resource_type: {
+          type: 'string',
+          enum: ['ollama_model', 'config_key', 'env_var', 'file'],
+          description: 'Type of resource'
+        },
+        resource_id: { type: 'string', description: 'Resource identifier (e.g., "deepseek-coder:6.7b")' },
+        replacement: { type: 'string', description: 'Optional replacement value' }
+      },
+      required: ['resource_id']
+    }
+  },
+  {
+    name: 'self_heal_fix',
+    description: 'Apply fixes for broken dependencies. Creates backup before making changes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        resource_id: { type: 'string', description: 'Resource to fix references for' },
+        replacement: { type: 'string', description: 'What to replace it with' },
+        dry_run: { type: 'boolean', description: 'Preview changes without applying (default: true)' },
+        min_confidence: { type: 'number', description: 'Minimum confidence to apply fix (0-1, default: 0.5)' }
+      },
+      required: ['resource_id', 'replacement']
+    }
+  },
+  {
+    name: 'self_heal_rollback',
+    description: 'Rollback self-healing changes from a backup.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        backup_id: { type: 'string', description: 'Backup timestamp to rollback (use self_heal_check to list backups)' }
+      },
+      required: ['backup_id']
+    }
   }
 ];
 
@@ -1054,54 +1093,7 @@ async function handleLocalAsk(params, cwd) {
   }
 }
 
-async function handleLocalReview(params, cwd) {
-  const startTime = Date.now();
-  const focus = params.focus || 'all';
-
-  try {
-    let args = [];
-
-    if (params.file) {
-      // SECURITY: Validate file path
-      const pathCheck = validateFilePath(params.file, 'read');
-      if (!pathCheck.valid) {
-        return { error: pathCheck.error };
-      }
-      args = [pathCheck.path];
-    } else if (params.diff) {
-      // Review a diff string - write to temp file
-      const tempPath = path.join('/tmp', `review-${Date.now()}.diff`);
-      fs.writeFileSync(tempPath, params.diff);
-      args = ['--diff', tempPath];
-    } else {
-      // Review staged changes
-      args = [];
-    }
-
-    if (focus !== 'all') {
-      args.push('--focus', focus);
-    }
-
-    const output = await runPythonScript(
-      path.join(MLX_TOOLS, 'smart_reviewer.py'),
-      args,
-      60000 // 60s timeout
-    );
-
-    metrics.recordQuery({
-      tool: 'local_review',
-      route: 'ollama',
-      tokensUsed: metrics.estimateTokens(output),
-      tokensSaved: metrics.estimateTokens(output) * 5,
-      latencyMs: Date.now() - startTime,
-      cacheHit: false
-    });
-
-    return { result: `[Local Review - FREE]\n\n${output}` };
-  } catch (error) {
-    return { error: `Local review error: ${error.message}` };
-  }
-}
+// handleLocalReview REMOVED - use Claude for code reviews
 
 async function handlePatternReview(params, cwd) {
   const project = params?.project || detectProject(cwd);
@@ -1735,6 +1727,122 @@ async function handlePmAsk(params, cwd) {
   }
 }
 
+// =============================================================================
+// SELF-HEALING HANDLERS
+// =============================================================================
+
+async function handleSelfHealCheck(params) {
+  const analyzerPath = path.join(MEMORY_ROOT, 'memory', 'self_healing', 'analyzer.py');
+  const registryPath = path.join(MEMORY_ROOT, 'memory', 'self_healing', 'registry.py');
+  const fixerPath = path.join(MEMORY_ROOT, 'memory', 'self_healing', 'fixer.py');
+
+  if (!fs.existsSync(analyzerPath)) {
+    return { error: 'Self-healing system not installed.' };
+  }
+
+  try {
+    // Run health scan
+    const scanOutput = await runPythonScript(analyzerPath, ['scan']);
+
+    // Also list backups
+    let backupsOutput = '';
+    if (fs.existsSync(fixerPath)) {
+      try {
+        backupsOutput = await runPythonScript(fixerPath, ['backups']);
+        if (backupsOutput && !backupsOutput.includes('No backups')) {
+          backupsOutput = '\n\nAvailable rollback points:\n' + backupsOutput;
+        } else {
+          backupsOutput = '';
+        }
+      } catch (e) {
+        // Ignore backup listing errors
+      }
+    }
+
+    return { result: scanOutput + backupsOutput };
+  } catch (error) {
+    return { error: `Health check failed: ${error.message}` };
+  }
+}
+
+async function handleSelfHealAnalyze(params) {
+  const resourceId = params?.resource_id;
+  if (!resourceId) {
+    return { error: 'resource_id is required.' };
+  }
+
+  const analyzerPath = path.join(MEMORY_ROOT, 'memory', 'self_healing', 'analyzer.py');
+  if (!fs.existsSync(analyzerPath)) {
+    return { error: 'Self-healing system not installed.' };
+  }
+
+  try {
+    const args = ['analyze', resourceId];
+    if (params.replacement) {
+      args.push(params.replacement);
+    }
+
+    const output = await runPythonScript(analyzerPath, args);
+    return { result: output || 'No impacts found.' };
+  } catch (error) {
+    return { error: `Analysis failed: ${error.message}` };
+  }
+}
+
+async function handleSelfHealFix(params) {
+  const resourceId = params?.resource_id;
+  const replacement = params?.replacement;
+
+  if (!resourceId || !replacement) {
+    return { error: 'resource_id and replacement are required.' };
+  }
+
+  const fixerPath = path.join(MEMORY_ROOT, 'memory', 'self_healing', 'fixer.py');
+  if (!fs.existsSync(fixerPath)) {
+    return { error: 'Self-healing system not installed.' };
+  }
+
+  try {
+    const args = ['fix', resourceId, replacement];
+
+    // Default to dry_run unless explicitly set to false
+    const dryRun = params.dry_run !== false;
+    if (!dryRun) {
+      args.push('--apply');
+    }
+
+    const output = await runPythonScript(fixerPath, args);
+    return { result: output };
+  } catch (error) {
+    return { error: `Fix operation failed: ${error.message}` };
+  }
+}
+
+async function handleSelfHealRollback(params) {
+  const backupId = params?.backup_id;
+  if (!backupId) {
+    return { error: 'backup_id is required.' };
+  }
+
+  const fixerPath = path.join(MEMORY_ROOT, 'memory', 'self_healing', 'fixer.py');
+  if (!fs.existsSync(fixerPath)) {
+    return { error: 'Self-healing system not installed.' };
+  }
+
+  // Construct backup path
+  const backupPath = path.join(MEMORY_ROOT, 'backups', 'self_heal', backupId);
+  if (!fs.existsSync(backupPath)) {
+    return { error: `Backup not found: ${backupId}` };
+  }
+
+  try {
+    const output = await runPythonScript(fixerPath, ['rollback', backupPath]);
+    return { result: output };
+  } catch (error) {
+    return { error: `Rollback failed: ${error.message}` };
+  }
+}
+
 // --- Cross-Project Query Handler ---
 
 async function handleProjectQuery(params, cwd) {
@@ -1967,13 +2075,11 @@ class MCPServer {
           result = await handleSmartEdit(args, this.currentCwd);
           break;
 
-        // Local LLM tools (Ollama - FREE)
+        // Local LLM tools (Ollama - FREE, non-critical only)
         case 'local_ask':
           result = await handleLocalAsk(args, this.currentCwd);
           break;
-        case 'local_review':
-          result = await handleLocalReview(args, this.currentCwd);
-          break;
+        // local_review REMOVED - use Claude for code reviews
 
         case 'gateway_metrics':
           result = await handleGatewayMetrics(args);
@@ -2047,6 +2153,20 @@ class MCPServer {
         // Cross-project query tool
         case 'project_query':
           result = await handleProjectQuery(args, this.currentCwd);
+          break;
+
+        // Self-healing tools
+        case 'self_heal_check':
+          result = await handleSelfHealCheck(args);
+          break;
+        case 'self_heal_analyze':
+          result = await handleSelfHealAnalyze(args);
+          break;
+        case 'self_heal_fix':
+          result = await handleSelfHealFix(args);
+          break;
+        case 'self_heal_rollback':
+          result = await handleSelfHealRollback(args);
           break;
 
         default:

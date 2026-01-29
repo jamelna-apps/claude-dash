@@ -73,26 +73,13 @@ case "$1" in
         python3 "$MLX_DIR/code_analyzer.py" "$@" explain
         ;;
     review)
-        shift
-        python3 "$MLX_DIR/code_analyzer.py" "$@" review
+        echo "REMOVED: Use Claude for code reviews instead of local LLM."
+        echo "The local review tools have been deprecated."
+        exit 1
         ;;
-    # ===================
-    # SMART REVIEW (Token-saving with qwen3)
-    # ===================
-    review-local|rl)
-        # Local-only review using qwen3 (free, no Claude tokens)
-        shift
-        python3 "$MLX_DIR/smart_reviewer.py" "$@"
-        ;;
-    review-summary|rs)
-        # Generate Claude-ready summary (for copy/paste to Claude)
-        shift
-        python3 "$MLX_DIR/smart_reviewer.py" "$@" --summary-only
-        ;;
-    review-smart|smart)
-        # Smart review: local first, escalate if needed
-        shift
-        python3 "$MLX_DIR/smart_reviewer.py" "$@" --verbose
+    review-local|rl|review-summary|rs|review-smart|smart)
+        echo "REMOVED: Local review tools deprecated. Use Claude for quality code reviews."
+        exit 1
         ;;
     health)
         project="$2"
@@ -220,19 +207,12 @@ case "$1" in
         python3 "$MLX_DIR/pr_helper.py" "$@"
         ;;
     # ===================
-    # CODE HELPERS
+    # CODE HELPERS (Deprecated - use Claude)
     # ===================
-    code-review|cr)
-        shift
-        python3 "$MLX_DIR/code_reviewer.py" "$@"
-        ;;
-    test|generate-test|gt)
-        shift
-        python3 "$MLX_DIR/test_generator.py" "$@"
-        ;;
-    error|analyze-error|ae)
-        shift
-        python3 "$MLX_DIR/error_analyzer.py" "$@"
+    code-review|cr|test|generate-test|gt|error|analyze-error|ae)
+        echo "REMOVED: These local code tools have been deprecated."
+        echo "Use Claude for code review, test generation, and error analysis."
+        exit 1
         ;;
     # ===================
     # EMBEDDINGS & RAG
@@ -482,6 +462,14 @@ case "$1" in
         echo "  mlx pending                            # Show pending summaries"
         echo "  mlx process [--all | <project>]        # Process pending summaries"
         echo ""
+        echo "SELF-HEALING (Dependency management):"
+        echo "  mlx self-heal check                    # Check for broken dependencies"
+        echo "  mlx self-heal analyze <resource>       # Analyze removal impact"
+        echo "  mlx self-heal fix <resource> <repl>    # Fix references (dry-run)"
+        echo "  mlx self-heal fix <resource> <repl> --apply  # Apply fixes"
+        echo "  mlx self-heal rollback <backup_id>     # Rollback from backup"
+        echo "  mlx self-heal sync                     # Sync registry with Ollama"
+        echo ""
         echo "Examples:"
         echo "  mlx ask gyst \"how does authentication work?\""
         echo "  mlx chat gyst                              # Start interactive chat"
@@ -489,7 +477,85 @@ case "$1" in
         echo "  mlx q gyst \"where is the login screen?\""
         echo "  mlx search gyst \"authentication firebase\""
         echo "  mlx sessions \"PID file\""
+        echo "  mlx self-heal check"
+        echo "  mlx self-heal analyze deepseek-coder:6.7b"
+        echo "  mlx self-heal fix deepseek-coder:6.7b gemma3:4b-it-qat --apply"
         ;;
+
+    # ===================
+    # SELF-HEALING
+    # ===================
+    self-heal|heal)
+        SELF_HEAL_DIR="$HOME/.claude-dash/memory/self_healing"
+        shift
+        subcmd="${1:-check}"
+        shift 2>/dev/null
+
+        case "$subcmd" in
+            check|health)
+                echo "Running system health check..."
+                python3 "$SELF_HEAL_DIR/analyzer.py" scan
+                echo ""
+                echo "Checking backups..."
+                python3 "$SELF_HEAL_DIR/fixer.py" backups 2>/dev/null || echo "No backups yet."
+                ;;
+            analyze|impact)
+                if [ -z "$1" ]; then
+                    echo "Usage: mlx self-heal analyze <resource_id> [replacement]"
+                    exit 1
+                fi
+                resource="$1"
+                replacement="${2:-}"
+                python3 "$SELF_HEAL_DIR/analyzer.py" analyze "$resource" $replacement
+                ;;
+            fix)
+                if [ -z "$1" ] || [ -z "$2" ]; then
+                    echo "Usage: mlx self-heal fix <resource_id> <replacement> [--apply]"
+                    exit 1
+                fi
+                resource="$1"
+                replacement="$2"
+                shift 2
+                if [ "$1" = "--apply" ]; then
+                    python3 "$SELF_HEAL_DIR/fixer.py" fix "$resource" "$replacement" --apply
+                else
+                    echo "DRY RUN (use --apply to make changes)"
+                    python3 "$SELF_HEAL_DIR/fixer.py" fix "$resource" "$replacement"
+                fi
+                ;;
+            rollback)
+                if [ -z "$1" ]; then
+                    echo "Usage: mlx self-heal rollback <backup_id>"
+                    echo ""
+                    echo "Available backups:"
+                    python3 "$SELF_HEAL_DIR/fixer.py" backups
+                    exit 1
+                fi
+                backup_path="$HOME/.claude-dash/backups/self_heal/$1"
+                python3 "$SELF_HEAL_DIR/fixer.py" rollback "$backup_path"
+                ;;
+            sync)
+                echo "Syncing registry with Ollama..."
+                python3 "$SELF_HEAL_DIR/registry.py" sync
+                ;;
+            registry|list)
+                python3 "$SELF_HEAL_DIR/registry.py" list
+                ;;
+            find)
+                if [ -z "$1" ]; then
+                    echo "Usage: mlx self-heal find <resource_id>"
+                    exit 1
+                fi
+                python3 "$SELF_HEAL_DIR/registry.py" find "$1"
+                ;;
+            *)
+                echo "Unknown self-heal command: $subcmd"
+                echo "Available: check, analyze, fix, rollback, sync, registry, find"
+                exit 1
+                ;;
+        esac
+        ;;
+
     *)
         echo "Unknown command: $1"
         echo "Run 'mlx help' for usage"
