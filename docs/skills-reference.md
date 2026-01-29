@@ -1,19 +1,19 @@
 # Claude-Dash Skills Reference
 
-> Auto-generated on 2026-01-26 09:01
+> Auto-generated on 2026-01-29 (updated)
 > Source: `~/.claude-dash/skills/registry.json`
 
 ## Summary
 
-**Global Skills:** 25
+**Global Skills:** 26
 **Project-Specific Skills:** 0
-**Total:** 25
+**Total:** 26
 
 ### By Category
 
 | Category | Count |
 |----------|-------|
-| core | 21 |
+| core | 22 |
 | marketing | 4 |
 
 ---
@@ -197,6 +197,16 @@
 **Triggers:** `refactor, clean up, technical debt, restructure, reorganize`
 
 **Path:** `~/.claude-dash/skills/core/refactor-guide/SKILL.md`
+
+---
+
+### self-healing *(NEW)*
+
+**Description:** Auto-detect and fix broken dependencies when resources are removed
+
+**Triggers:** `remove model, deprecate, cleanup, broken dependency, self-heal, impact analysis`
+
+**Path:** `~/.claude-dash/skills/core/self-healing/SKILL.md`
 
 ---
 

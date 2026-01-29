@@ -16,6 +16,7 @@ Claude-Dash gives Claude Code persistent memory across sessions. It indexes your
 - **Semantic Memory** - Auto-fetches relevant context when you mention topics like "docker" or "auth"
 - **Skills System** - 25+ auto-activating skills based on conversation keywords
 - **Project Roadmaps** - Track tasks, sprints, and project status
+- **Self-Healing** - Automatically detects and fixes broken dependencies when resources change
 
 ## Quick Start
 
@@ -178,6 +179,38 @@ Three-layer protection ensures learnings are never lost:
 
 Even if your terminal crashes or is force-quit, recent learnings are preserved in `sessions/checkpoints/`.
 
+### Self-Healing System
+
+**Automatic Dependency Repair** (`memory/self_healing/`) *(NEW)*
+
+When you remove a resource (Ollama model, config key, file), the self-healing system:
+1. **Detects** broken references across the codebase
+2. **Analyzes** impact severity (critical → info)
+3. **Suggests** fixes with confidence scores
+4. **Applies** fixes automatically (with backup)
+5. **Rolls back** if something goes wrong
+
+```bash
+# Check for broken dependencies
+claude-code: self_heal_check
+
+# Analyze impact of removing a resource
+claude-code: self_heal_analyze resource_id="deepseek-coder:6.7b"
+
+# Apply fixes (dry run by default)
+claude-code: self_heal_fix resource_id="old-model" replacement="gemma3:4b-it-qat"
+
+# Rollback if needed
+claude-code: self_heal_rollback backup_id="20240128_103045"
+```
+
+**Severity Levels:**
+- `CRITICAL` - System won't function
+- `HIGH` - Major feature broken
+- `MEDIUM` - Some functionality affected
+- `LOW` - Minor/cosmetic issues
+- `INFO` - Documentation/comments only
+
 ### Hybrid Search System
 
 **BM25 + Semantic Search** (v2.0)
@@ -233,6 +266,12 @@ Even if your terminal crashes or is force-quit, recent learnings are preserved i
 - `context_budget` - HOT/WARM/COLD tier breakdown with token costs
 - `pattern_review` - LLM-powered code validation against patterns
 
+**Self-Healing Tools** *(NEW)*
+- `self_heal_check` - Check system health for broken dependencies
+- `self_heal_analyze` - Analyze impact of removing a resource
+- `self_heal_fix` - Apply fixes for broken dependencies (with backup)
+- `self_heal_rollback` - Rollback changes from a backup
+
 ### Local AI Tools (Minimal Setup)
 
 Claude-Dash uses a **minimal local model setup** - Claude handles all real code work:
@@ -252,6 +291,8 @@ mlx models list      # Show installed models
 mlx models status    # Show Ollama status
 mlx hardware         # Hardware recommendations
 ```
+
+**Note:** Specialized analyzers (code_reviewer, error_analyzer, etc.) have been deprecated and moved to `mlx-tools/deprecated/`. Claude (Sonnet/Opus) handles all code analysis work directly - local models are only used for cheap, non-critical tasks.
 
 **See also:**
 - `mlx-tools/ARCHITECTURE_OVERVIEW.md` - Complete system design
@@ -309,7 +350,12 @@ Opens at `http://localhost:3847`.
 │   ├── semantic_triggers.py    # Topic-based memory fetch
 │   ├── summarizer.py           # Session summarization
 │   ├── transcript_compactor.py # Storage optimization
-│   └── health_check.py         # System health checks
+│   ├── health_check.py         # System health checks
+│   ├── dependency_registry.json # Resource dependency tracking
+│   └── self_healing/           # Auto-repair system (NEW)
+│       ├── analyzer.py         # Impact analysis
+│       ├── fixer.py            # Automated fixes
+│       └── registry.py         # Resource registry
 ├── patterns/
 │   ├── patterns.json           # Mode definitions
 │   └── detector.py             # Conversation mode detection
@@ -332,7 +378,11 @@ Opens at `http://localhost:3847`.
 │   ├── memory_db.py            # SQLite database
 │   ├── hybrid_search.py        # BM25 + semantic search
 │   ├── embeddings.py           # Unified embedding provider
-│   └── indexing_daemon.py      # Background auto-indexer
+│   ├── indexing_daemon.py      # Background auto-indexer
+│   └── deprecated/             # Archived tools (Claude handles these now)
+│       ├── code_reviewer.py
+│       ├── error_analyzer.py
+│       └── ...                 # Other specialized analyzers
 └── dashboard/
     └── server.js               # Web dashboard
 ```

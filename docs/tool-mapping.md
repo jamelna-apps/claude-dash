@@ -84,6 +84,15 @@ Use for: Enchanted/mobile, commit messages, personal experimentation only.
 | `local_ask` | NON-CRITICAL: commit messages, Enchanted API only |
 | `local_review` | NOT for critical code - use Sonnet instead |
 
+### Self-Healing Tools *(NEW)*
+
+| Tool | Purpose |
+|------|---------|
+| `self_heal_check` | Check system health for broken dependencies |
+| `self_heal_analyze` | Analyze impact of removing a resource |
+| `self_heal_fix` | Apply cascade fixes (dry_run=true by default) |
+| `self_heal_rollback` | Rollback changes from a backup |
+
 ### Utility
 
 | Tool | Purpose |
@@ -247,4 +256,59 @@ python3 ~/.claude-dash/learning/reasoning_chains.py recall "context" --domain da
 
 # View stats
 python3 ~/.claude-dash/learning/reasoning_chains.py stats
+```
+
+## Self-Healing System *(NEW)*
+
+Auto-detect and fix broken dependencies when resources are removed.
+
+### Workflow
+
+1. **Before removing a resource** - Analyze impact:
+   ```
+   self_heal_analyze resource_id="deepseek-coder:6.7b"
+   ```
+
+2. **Apply fixes** (preview first):
+   ```
+   self_heal_fix resource_id="old-model" replacement="gemma3:4b-it-qat" dry_run=true
+   ```
+
+3. **Apply for real** (creates backup):
+   ```
+   self_heal_fix resource_id="old-model" replacement="gemma3:4b-it-qat" dry_run=false
+   ```
+
+4. **Rollback if needed**:
+   ```
+   self_heal_rollback backup_id="20240128_103045"
+   ```
+
+### Severity Levels
+
+| Level | Meaning | Example Files |
+|-------|---------|---------------|
+| CRITICAL | System won't work | config.py, gateway/server.js |
+| HIGH | Major feature broken | Active tools, API handlers |
+| MEDIUM | Some functionality affected | Secondary tools |
+| LOW | Minor impact | Deprecated code, docs |
+| INFO | Just informational | Comments, docstrings |
+
+### CLI Usage
+
+```bash
+# Check for broken dependencies
+~/.claude-dash/mlx-tools/mlx self-heal check
+
+# Analyze impact
+~/.claude-dash/mlx-tools/mlx self-heal analyze <resource_id> [replacement]
+
+# Preview fixes
+~/.claude-dash/mlx-tools/mlx self-heal fix <resource_id> <replacement>
+
+# Apply fixes
+~/.claude-dash/mlx-tools/mlx self-heal fix <resource_id> <replacement> --apply
+
+# Rollback
+~/.claude-dash/mlx-tools/mlx self-heal rollback <backup_timestamp>
 ```
